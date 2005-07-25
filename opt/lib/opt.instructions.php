@@ -9,6 +9,8 @@
   //  published by the Free Software Foundation; either version 2.1 of the  //
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
+  //
+  // $Id$
 
 	class opt_instruction extends opt_node
 	{
@@ -186,6 +188,27 @@
 			$this -> compiler  -> parametrize_error('var', $this -> compiler  -> parametrize($this->data[0], $params));
 	
 			$this -> output .= '\'; $this -> vars[\''.$params['name'].'\'] = '.$params['value'].'; '.$this -> compiler -> tpl -> capture_to.' \'';
+		} // end process();
+	}
+	
+	class opt_default extends opt_instruction
+	{
+		static public function configure()
+		{
+			return array(
+				'default' => OPT_COMMAND
+			);
+		} // end configure();
+
+		public function process()
+		{
+			$params = array(
+				'test' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+				'alt' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+			);
+			$this -> compiler -> parametrize_error('default', $this -> compiler -> parametrize($this->data[0], $params));
+			
+			$this -> output .= '\'.(isset('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].').\'';
 		} // end process();
 	}
 

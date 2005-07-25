@@ -9,6 +9,8 @@
   //  published by the Free Software Foundation; either version 2.1 of the  //
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
+  //
+  // $Id$
 	 
 	function opt_predef_parse_int(opt_template $tpl, $bigint)
 	{

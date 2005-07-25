@@ -4,9 +4,8 @@
 </head> 
 <body>
 <h1>Example 8</h1>
-<h3>PHP-defined components</h3>
-<p>In this example we create the component inside the PHP code. In the template, there is only a place where
-we may link it using normal assign() method.</p>
+<h3>Template-defined components</h3>
+<p>In this example whole component is defined inside the template. The application provides the data using standard blocks.</p>
 <hr/>
 <form method="get" action="example7.php">
 Select the category:

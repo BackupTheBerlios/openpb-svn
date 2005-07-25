@@ -9,6 +9,8 @@
   //  published by the Free Software Foundation; either version 2.1 of the  //
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
+  //
+  // $Id$
 
 	define('OPT_FORCE_REWRITE', 1);	
 	define('OPT_MAX_NESTING_LEVEL', 32);
@@ -80,6 +82,7 @@
 		private $cache_header;
 		# /OUTPUT_CACHING
 		
+		public $compile_code;
 		private $included_files;
 		private $test_included_files;
 		
@@ -93,6 +96,7 @@
 			$this -> compiler = NULL;
 			$this -> res = NULL;
 			$this -> cache_test = 0;
+			$this -> compile_code = '';
 
 			// registering predefined elements
 			$this -> functions['parse_int'] = 'predef_parse_int';
@@ -110,6 +114,9 @@
 			$this -> php_functions['date'] = 'date';
 			
 			$this -> components['selectComponent'] = 1;
+			$this -> components['textInputComponent'] = 1;
+			$this -> components['textLabelComponent'] = 1;
+			$this -> components['formActionsComponent'] = 1;
 
 			$this -> control = array(
 				'opt_section',
@@ -120,7 +127,8 @@
 				'opt_for',
 				'opt_foreach',
 				'opt_capture',
-				'opt_dynamic'	
+				'opt_dynamic',
+				'opt_default'
 			);
 
 			$this -> delimiters = array(0 => '\{(\/?)(.*?)\}');
@@ -1288,13 +1296,13 @@
 			{
 				return 0;
 			}
-			
+
 			$this -> conf['plugins'] = $this -> validate_dir($this -> conf['plugins'], 'plugin');
-			
+
 			if(file_exists($this -> conf['plugins'].'plugins.php'))
 			{
 				// Load precompiled plugin database
-				require($this -> conf['plugins'].'plugins.php');			
+				require($this -> conf['plugins'].'plugins.php');	
 			}
 			else
 			{
@@ -1303,7 +1311,7 @@
 				{
 					return 0;
 				}
-			
+
 				$code = '';
 				$file = '';
 				$dir = opendir($this -> conf['plugins']);
@@ -1318,8 +1326,8 @@
 								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
 								break;
 							case 'instruction':
-								$code .= "\trequire(\$this -> conf['plugins'].'".$file."');\n";
-								$code .= "\t\$this->control[] = '".$matches[2]."';\n";
+								$this -> compile_code .= "\trequire(\$this -> tpl-> conf['plugins'].'".$file."');\n";
+								$this -> compile_code .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
 								break;
 							case 'function':
 								$code .= "\trequire(\$this -> conf['plugins'].'".$file."');\n";
@@ -1346,6 +1354,7 @@
 				}
 				closedir($dir);
 				file_put_contents($this -> conf['plugins'].'plugins.php', "<?php\n".$code."?>");
+				file_put_contents($this -> conf['plugins'].'compile.php', "<?php\n".$this -> compile_code."?>");
 				eval($code);
 			}
 			return 1;
