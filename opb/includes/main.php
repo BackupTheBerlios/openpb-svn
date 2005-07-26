@@ -33,6 +33,11 @@
          */
         public $config;
         
+         /**
+         * @var
+         */
+        public $services;
+        
         /**
          * @var
          */
@@ -77,6 +82,21 @@
         {
             $this -> config  = new opbConfig('config.ini.php');
             $this -> request = new opbRequest;
+            
+            // added for DAO system, replace it on xml config
+            $this -> services = array(
+				'forum' => array(
+					'topic',
+				),
+				'topic' => array(
+					'post'
+				),
+				'post'  => array(
+					'user', 'poll'
+				),
+				'user'  => array(),
+				'poll'  => array(),
+			);
             
             // Router selection
             switch($this->config->get('MAIN', 'router'))

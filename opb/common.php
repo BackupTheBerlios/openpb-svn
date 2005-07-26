@@ -22,7 +22,7 @@
 
     require(OPB_INC . 'opd/OPD.php');
     require(OPB_INC . 'opt/opt.class.php');
-    require(OPB_INC . 'dao/common.php');
+    require(OPB_INC . 'dao/MainManager.lib.php'); // edit for DAO
 	
     require(OPB_INC . 'interfaces.php');
     require(OPB_INC . 'session.php');
