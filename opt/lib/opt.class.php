@@ -360,45 +360,49 @@
 			{
 				return 0;
 			}
+			
+			if(isset($this -> conf['charset']))
+			{
+				$charset = ';charset='.$this -> conf['charset'];
+			}
+			else
+			{
+				$charset = '';
+			}
 
 			switch($content)
 			{		
 				case OPT_HTML:
-						header('Content-type: text/html');
+						header('Content-type: text/html'.$charset);
 						break;
 				case OPT_XHTML:
 						if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
 						{
-							header('content-type: application/xhtml+xml');
+							header('content-type: application/xhtml+xml'.$charset);
 						}
 						else
 						{
-							header('content-type: text/html');
+							header('content-type: text/html'.$charset);
 						}
 						break;
 				case OPT_XML:
-						header('Content-type: application/xml');
+						header('Content-type: application/xml'.$charset);
 						break;
 				case OPT_WML:
-						header('Content-type: text/vnd.wap.wml');
+						header('Content-type: text/vnd.wap.wml'.$charset);
 						break;
 				case OPT_TXT:
-						header('Content-type: text/plain');
+						header('Content-type: text/plain'.$charset);
 						break;
 				default:
 						if(is_string($content))
 						{
-							header('Content-type: '.$content);						
+							header('Content-type: '.$content.$charset);						
 						}
 						else
 						{
 							$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, 5);
 						}
-			}
-
-			if(isset($this -> conf['charset']))
-			{
-				header('Charset: '.$this -> conf['charset']);
 			}
 			if($cache == OPT_NO_HTTP_CACHE)
 			{
