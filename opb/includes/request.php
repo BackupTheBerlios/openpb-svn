@@ -26,46 +26,16 @@
     define('MAP_CHOOSE',  128);
     define('MAP_DEFAULT', 256);
     define('MAP_PATTERN', 512);
+    define('MAP_ARRAY', 1024);
 
     // additional flags
-    define('MAP_GT',        1024); // greather than
-    define('MAP_LT',        2048); // lower than
-    define('MAP_SCOPE',     4096);
-    define('MAP_COMPARE',   8192);
-    define('MAP_LENGTH',   16384);
-    define('MAP_PASSWORD', 32768);
-    define('MAP_BASE64',   65536);
-    
-    /**
-     * Function for stripping magic quotes.
-     *
-     * @param array to remove quotes from e.g. $_GET, $_POST
-     * @return void
-     */
-    function remove_slashes(&$var)
-    { 
-        if (is_array($var))
-        {
-            foreach ($var as $key => $value)
-            {
-                $this->remove_slashes($var[$key]);       
-            }
-        }
-        else
-        {
-            $var = stripslashes($var);
-        }
-    }
-  
-    // Strip quotes if magic quotes are on
-    if (get_magic_quotes_gpc())
-    {
-        remove_slashes($_GET);
-        remove_slashes($_POST);
-        remove_slashes($_REQUEST);
-        remove_slashes($_FILES);
-        remove_slashes($_COOKIES);
-    }
+    define('MAP_GT',        2048); // greather than
+    define('MAP_LT',        4096); // lower than
+    define('MAP_SCOPE',     8192);
+    define('MAP_COMPARE',   16384);
+    define('MAP_LENGTH',   32768);
+    define('MAP_PASSWORD', 65536);
+    define('MAP_BASE64',   131072);
     
     /**
      *
@@ -77,6 +47,7 @@
         public $data;
         private $ok;
         public $defaultTrim;
+        private $main;
         
         public function __construct()
         {
@@ -91,6 +62,7 @@
             $this -> defaultTrim = 1;
             $this -> data = array();
             $this -> ok = 1;
+            
         } // end __construct();
         
         public function __get($name)
@@ -102,6 +74,20 @@
             return NULL;
         } // end __get();
         
+        public function get($name)
+        {
+            if(isset($this -> data[$name]))
+            {
+                return $this -> data[$name];
+            }
+            return NULL;
+        } // end get();
+        
+        public function reset()
+        {
+        	$this -> ok = 1;
+        } // end reset();
+        
         public function isOK()
         {
             return $this -> ok;
@@ -112,23 +98,39 @@
             return $this -> type;
         } // end isOK();
         
+        public function form($referer)
+        {
+        	if($_SERVER['REQUEST_METHOD'] == 'POST' && strpos($_SERVER['HTTP_REFERER'], $referer) !== FALSE)
+			{
+				return 1;
+			}
+			return 0;
+        } // end form();
+        
         public function map($name, $method_id, $flags)
         {
+        	if($this -> main == NULL)
+        	{
+        		$this -> main = OPB::getInstance();
+        	}
             switch($method_id)
             {
                 case OPB_POST:
-                        $method = &$_POST;
-                        break;
+                    $method = &$_POST;
+                    break;
                 case OPB_GET:
-                        $method = &$_GET;
-                        break;
+                	$getData = $this -> main -> router -> handleData($name);
+                	if($getData !== NULL)
+                	{
+                		$method[$name] = &$getData;
+                	}
+                    break;
                 case OPB_COOKIE:
-                        $method = &$_COOKIE;
-                        break;
+                    $method = &$_COOKIE;
+                    break;
                 default:
-                        return 0;
+                    return 0;
             }
-
             $arg = func_get_args();
             $ai = 3;
 
@@ -141,30 +143,41 @@
 
             if(isset($method[$name]))
             {
-                
                 // ok, map the field
                 
                 if($this -> defaultTrim == 1)
                 {
-                    $method[$name] = trim($method[$name]);
+                	if(!is_array($method[$name]))
+                	{
+                    	$method[$name] = trim($method[$name]);
+                    }
+                    else
+                    {
+                    	foreach($method[$name] as &$value)
+                    	{
+                    		$value = trim($value);
+                    	}                    
+                    }
                 }
-                
+
                 if($flags & MAP_BASE64)
                 {
                     $method[$name] = base64_decode($method[$name]);
                 }
 
                 $extype = 0;
+
                 if(!$this -> extractType($flags, $method[$name], $extype))
                 {
-                    $this -> ok = 0;
+                    $this -> tryUnok($flags);
                     return 0;
                 }
+
                 if($extype == MAP_PATTERN)
                 {
                     if(!preg_match($arg[$ai], $method[$name]))
                     {
-                        $this -> ok = 0;
+                        $this -> tryUnok($flags);
                         return 0;
                     }
                     $ai++;        
@@ -176,7 +189,7 @@
                     {
                         if(!($arg[$ai] < strlen($method[$name]) && strlen($method[$name]) < $arg[$ai+1]))
                         {
-                            $this -> ok = 0;
+                            $this -> tryUnok($flags);
                             return 0;
                         }
                     }
@@ -184,7 +197,7 @@
                     {
                         if(!($arg[$ai] < $method[$name] && $method[$name] < $arg[$ai+1]))
                         {
-                            $this -> ok = 0;
+                            $this -> tryUnok($flags);
                             return 0;
                         }
                     }
@@ -196,7 +209,7 @@
                     {
                         if(!($arg[$ai] < strlen($method[$name])))
                         {
-                            $this -> ok = 0;
+                            $this -> tryUnok($flags);
                             return 0;
                         }
                     }
@@ -204,7 +217,7 @@
                     {
                         if(!($arg[$ai] < $method[$name]))
                         {
-                            $this -> ok = 0;
+                            $this -> tryUnok($flags);
                             return 0;
                         }
                     }
@@ -216,7 +229,7 @@
                     {
                         if(!($arg[$ai] > strlen($method[$name])))
                         {
-                            $this -> ok = 0;
+                            $this -> tryUnok($flags);
                             return 0;
                         }
                     }
@@ -224,7 +237,7 @@
                     {
                         if(!($arg[$ai] > $method[$name]))
                         {
-                            $this -> ok = 0;
+                            $this -> tryUnok($flags);
                             return 0;
                         }
                     }
@@ -235,7 +248,7 @@
                 {
                     if($method[$name] != $method[$arg[$ai]])
                     {
-                        $this -> ok = 0;
+                        $this -> tryUnok($flags);
                         return 0;
                     }
                     $ai++;
@@ -244,7 +257,7 @@
                 {
                     if($method[$name] != $arg[$ai])
                     {
-                        $this -> ok = 0;
+                        $this -> tryUnok($flags);
                         return 0;
                     }
                     $ai++;
@@ -253,13 +266,16 @@
                 {
                     if(strlen($method[$name]) != $arg[$ai])
                     {
-                        $this -> ok = 0;
+						$this -> tryUnok($flags);
                         return 0;
                     }
                     $ai++;
                 }            
             }
-            
+            else
+            {
+            	return 0;
+            }
             // if we are here, everything is all right
             switch($method_id)
             {
@@ -271,19 +287,19 @@
 						else
 						{
 							$this -> data[$name] = NULL;
-							$this -> ok = 0;
+							$this -> tryUnok($flags);
             				return 0;
 						}
                         break;
                 case OPB_GET:
-                        if (isset($_GET[$name])) 
+                        if(isset($method[$name])) 
                         {
-							$this -> data[$name] = $_GET[$name];
+							$this -> data[$name] = $method[$name];
 						}
 						else
 						{
 							$this -> data[$name] = NULL;
-							$this -> ok = 0;
+							$this -> tryUnok($flags);
             				return 0;
 						}
                         break;
@@ -295,15 +311,24 @@
 						else
 						{
 							$this -> data[$name] = NULL;
-							$this -> ok = 0;
+							$this -> tryUnok($flags);
             				return 0;
 						}
                         break;
             }
+
             $this -> ok = $this -> ok && 1;
 
             return 1;
         } // end map();
+        
+        private function tryUnok($flags)
+        {
+        	if($flags & MAP_REQUIRED)
+        	{
+        		$this -> ok = 0;
+        	}        
+        } // end tryUnok();
 
         private function extractType($mapping, &$value, &$extracted_type)
         {
@@ -361,6 +386,14 @@
             {
                 $extracted_type = MAP_DEFAULT;
                 return 1;
+            }
+            elseif($mapping & MAP_ARRAY)
+            {
+            	if(is_array($value))
+            	{
+            		$extracted_type = MAP_ARRAY;
+					return 1;            	
+            	}
             }
             $extracted_type = MAP_DEFAULT;
             return 0;

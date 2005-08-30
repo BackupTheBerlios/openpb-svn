@@ -17,9 +17,8 @@
     try
     {
         $main = OPB::getInstance();
-	
-        $main -> request -> map('act', OPB_GET, MAP_STRING);
-        if($main -> request -> act == NULL)
+
+        if(!$main -> request -> map('act', OPB_GET, MAP_STRING))
         {
             $act = 'index';	
         }
@@ -28,6 +27,7 @@
 	        // temporary
             $act = $main -> request -> act;
         }
+
         $main -> execute($act);
     }
     catch (OPBException $e)

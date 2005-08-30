@@ -21,7 +21,7 @@
 			$tpl = opbTemplate::getInstance();
 			$tpl -> http_headers(OPT_HTML);
 			
-			$api = api::getInstance();
+/*			$api = api::getInstance();
 			$api -> import('forum');
 
 			$forum_manager = new apiForumManager;
@@ -51,7 +51,7 @@
 			}
 			$tpl -> assign('categories', $categories);
 			$tpl -> assign('forums', $forums);
-			
+*/
 			$display = new opbDisplayBoard('indexmodule', 'index.tpl');
 			$this -> display($display);		
 		} // end run();	

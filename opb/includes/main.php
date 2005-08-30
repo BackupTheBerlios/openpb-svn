@@ -107,6 +107,9 @@
                 case 'nice':
                     $this->router = new opbNiceRouter;
                     break;
+                case 'value':
+                	$this->router = new opbValueRouter;
+                	break;
                 default:
                     $this->router = new opbDefaultRouter;
             }

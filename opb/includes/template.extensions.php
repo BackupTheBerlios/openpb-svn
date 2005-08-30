@@ -39,6 +39,7 @@
             // Template initialization
             $this -> conf = $opb->config->get('OPT');
             $this -> conf['root'] = OPB_TPL.'devView/';
+            $this -> conf['plugins'] = OPB_INC.'opt/plugins/';
             $this -> conf['cache'] = OPB_TPL_CACHE;
             
             $this->set_custom_i18n('$i18n->put(\'%s\', \'%s\')', '$i18n', 'template');

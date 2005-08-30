@@ -20,7 +20,7 @@
 			$tpl -> http_headers(OPT_HTML);
 			$opb -> lang -> load('viewforum');
 			
-			$api = api::getInstance();
+/*			$api = api::getInstance();
 			$api -> import('forum');
 			if($opb -> request -> map('fid', OPB_GET, MAP_REQUIRED | MAP_INTEGER | MAP_GT, 0))
 			{
@@ -42,10 +42,10 @@
 				}
 				$tpl -> assign('topics', $topics);
 				$tpl -> assign('fid', $opb -> request -> fid);
-				
+*/
 				$display = new opbDisplayBoard('viewforummodule', 'viewforum.tpl');
 				$this -> display($display);	
-			}
+		//	}
 		} // end run();	
 	}
 	

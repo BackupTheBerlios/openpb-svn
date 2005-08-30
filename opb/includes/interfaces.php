@@ -38,6 +38,7 @@
     interface iOpbRouter
     {
         public function __construct();
+        public function handleData($name);
         public function createURL($file, $variables);	
     }
     

@@ -21,6 +21,15 @@
         {
 		
         } // end __construct();
+        
+        public function handleData($name)
+        {
+        	if(isset($_GET[$name]))
+        	{
+        		return $_GET[$name];
+			}
+			return NULL;   
+        } // end handleData();
 
         public function createURL($file, $variables)
         {
@@ -48,6 +57,8 @@
      */
     class opbNiceRouter implements iOpbRouter
     {
+    	private $dataBuffer;
+    
         public function __construct()
         {
             if(!empty($_SERVER['PATH_INFO']))
@@ -62,11 +73,20 @@
 					}
                     else
                     {
-                        $_GET[$namebuffer] = $item;
+                        $this -> dataBuffer[$namebuffer] = $item;
                     }			
                 }
             }
         } // end __construct();
+        
+        public function handleData($name)
+        {
+        	if(isset($this -> dataBuffer[$name]))
+        	{
+        		return $this -> dataBuffer[$name];
+			}
+			return NULL;   
+        } // end handleData();
 
         public function createURL($file, $variables)
         {
@@ -88,5 +108,74 @@
         } // end createURL();
     
     } // end opbNiceRouter;
+    
+    class opbValueRouter implements iOpbRouter
+    {
+    	private $dataBuffer;
+    	private $i = 0;
+    	private $from;
+    	private $goto;
+    
+        public function __construct()
+        {
+            if(!empty($_SERVER['PATH_INFO']))
+            {
+                $this -> dataBuffer = explode('/', substr($_SERVER['PATH_INFO'], 1));
+                // handle "from" and "goto" parameters for pagination system
+
+                foreach($this -> dataBuffer as &$value)
+                {
+                	if(preg_match('/(p|g)([0-9]+)/', $value, $found))
+                	{
+                		if($found[1] == 'p')
+                		{
+                			$this -> from = $found[2];
+                		}
+                		else
+                		{
+                			$this -> goto = $found[2];
+                		}            	
+                	}               
+                }
+            }
+        } // end __construct();
+        
+        public function handleData($name)
+        {
+        	switch($name)
+        	{
+        		case 'from':
+        			return $this -> from;
+        		case 'goto':
+        			return $this -> goto;
+        		default:
+        			if(isset($this -> dataBuffer[$this->i]))
+        			{
+        				return $this -> dataBuffer[$this->i++];
+        			}
+        			$i++;
+        			return NULL;        	
+        	}
+        } // end handleData();
+
+        public function createURL($file, $variables)
+        {
+            $url = $file;
+            if(($i = count($variables)) > 0)
+            {
+                $url .= '/';
+                foreach($variables as $name => $value)
+                {
+                    $i--;
+                    $url .= $value;
+                    if($i > 0)
+                    {
+                        $url .= '/';
+                    }
+                }
+            }
+            return $url;
+        } // end createURL();
+    } // end opbValueRouter;
 
 ?>
