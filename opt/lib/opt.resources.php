@@ -11,7 +11,7 @@
   //  --------------------------------------------------------------------  //
   //
   // $Id$
-
+/*
 	interface iopt_resource
 	{
 		public function __construct(opt_template $tpl);
@@ -23,8 +23,8 @@
 		public function compile_cache_reset($filename);
 		public function set_tests_status($status);
 	}
-
-	class opt_resource_files implements iopt_resource
+*/
+	class opt_resource_files //implements iopt_resource
 	{
 		private $tpl;
 		private $status;

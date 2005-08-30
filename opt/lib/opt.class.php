@@ -34,23 +34,55 @@
 	define('OPT_VERSION', '1.0.0');
 
 	require('opt.error.php');
-	require('opt.functions.php');
-	require('opt.components.php');
-	require('opt.filters.php');
+//	require('opt.functions.php');
+//	require('opt.components.php');
+//	require('opt.filters.php');
 	require('opt.resources.php');
 
 	class opt_template
 	{
-		public $data;
-		public $vars;
-		public $conf;
+		public $data = array();
+		public $vars = array();
+		public $conf = array();
 		public $res;
 		public $compiler;
-		public $functions;
-		public $php_functions;
-		public $control;
-		public $components;
-		public $delimiters;
+		public $functions = array(
+								'parse_int' => 'predef_parse_int',
+								'wordwrap' => 'predef_wordwrap',
+								'apply' => 'predef_apply',
+								'cycle' => 'predef_cycle'			
+							);
+		public $php_functions = array(
+								'upper' => 'strtoupper',
+								'lower' => 'strtolower',
+								'capitalize' => 'ucfirst',
+								'trim' => 'trim',
+								'length' => 'strlen',
+								'count_words' => 'str_word_count',
+								'count' => 'count',
+								'date' => 'date'			
+							);
+		public $control = array(0 =>
+								'opt_section',
+								'opt_include',
+								'opt_var',
+								'opt_if',
+								'opt_php',
+								'opt_for',
+								'opt_foreach',
+								'opt_capture',
+								'opt_dynamic',
+								'opt_default'
+							);
+		public $components = array(
+								'selectComponent' => 1,
+								'textInputComponent' => 1,
+								'textLabelComponent' => 1,
+								'formActionsComponent' => 1			
+							);
+		public $delimiters = array(0 => 
+								'\{(\/?)(.*?)\}'
+							);
 
 		public $lang;
 		public $i18n_type;
@@ -58,7 +90,11 @@
 		protected $init;
 		protected $gzip_compression;
 
-		public $code_filters;
+		public $code_filters = array(
+								'pre' => array('trim'),
+								'post' => NULL,
+								'output' => NULL
+							);
 		public $capture;
 		public $capture_to = 'echo';
 		public $capture_def = 'echo';
@@ -82,41 +118,42 @@
 		private $cache_header;
 		# /OUTPUT_CACHING
 		
-		public $compile_code;
+		public $compile_code = '';
 		private $included_files;
 		private $test_included_files;
 		
 		public function __construct()
 		{
-			$this -> data = array();
+		/*	$this -> data = array();
 			$this -> conf = array();
 			$this -> vars = array();
 			$this -> capture = array();
-			$this -> included_files = array();
-			$this -> compiler = NULL;
-			$this -> res = NULL;
-			$this -> cache_test = 0;
-			$this -> compile_code = '';
+			$this -> included_files = array(); */
 
 			// registering predefined elements
-			$this -> functions['parse_int'] = 'predef_parse_int';
-			$this -> functions['wordwrap'] = 'predef_wordwrap';
-			$this -> functions['apply'] = 'predef_apply';
-			$this -> functions['cycle'] = 'predef_cycle';
-
-			$this -> php_functions['upper'] = 'strtoupper';
-			$this -> php_functions['lower'] = 'strtolower';
-			$this -> php_functions['capitalize'] = 'ucfirst';
-			$this -> php_functions['trim'] = 'trim';
-			$this -> php_functions['length'] = 'strlen';
-			$this -> php_functions['count_words'] = 'str_word_count';
-			$this -> php_functions['count'] = 'count';
-			$this -> php_functions['date'] = 'date';
+		/*	$this -> functions = array(
+				'parse_int' => 'predef_parse_int',
+				'wordwrap' => 'predef_wordwrap',
+				'apply' => 'predef_apply',
+				'cycle' => 'predef_cycle'			
+			);
+			$this -> php_functions = array(
+				'upper' => 'strtoupper',
+				'lower' => 'strtolower',
+				'capitalize' => 'ucfirst',
+				'trim' => 'trim',
+				'length' => 'strlen',
+				'count_words' => 'str_word_count',
+				'count' => 'count',
+				'date' => 'date'			
+			);
 			
-			$this -> components['selectComponent'] = 1;
-			$this -> components['textInputComponent'] = 1;
-			$this -> components['textLabelComponent'] = 1;
-			$this -> components['formActionsComponent'] = 1;
+			$this -> components = array(
+				'selectComponent' => 1,
+				'textInputComponent' => 1,
+				'textLabelComponent' => 1,
+				'formActionsComponent' => 1			
+			);
 
 			$this -> control = array(
 				'opt_section',
@@ -138,6 +175,7 @@
 				'post' => NULL,
 				'output' => NULL
 			);
+		*/
 		} // end __construct();
 
 		public function __destruct()

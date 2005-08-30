@@ -12,7 +12,7 @@
   //
   // $Id$
 	 
-	function opt_predef_parse_int(opt_template $tpl, $bigint)
+	function opt_predef_parse_int($tpl, $bigint)
 	{
 		if(!isset($tpl -> conf['parse_int_separator']))
 		{
@@ -22,7 +22,7 @@
 		{
 			$sep = $tpl -> conf['parse_int_separator'];
 		}
-	
+
 		$bigint = (string)$bigint;
 		for($i = strlen($bigint) - 1, $x = 0; $i >= 0; $i--, $x++)
 		{
@@ -36,7 +36,7 @@
 		return strrev($ret);
 	} // end opt_predef_parse_int();
 	
-	function opt_predef_wordwrap(opt_template $tpl, $text, $width, $break = 0)
+	function opt_predef_wordwrap($tpl, $text, $width, $break = 0)
 	{
 		if(is_string($break))
 		{
@@ -50,7 +50,7 @@
 		return wordwrap($text, $width, $break);
 	} // end opt_predef_wordwrap();
 	
-	function opt_predef_apply(opt_template $tpl, $group, $item)
+	function opt_predef_apply($tpl, $group, $item)
 	{
 		$args = func_get_args();
 		unset($args[0]);
@@ -59,7 +59,7 @@
 		$tpl -> lang[$group][$item] = vsprintf($tpl -> lang[$group][$item], $args);
 	} // end opt_predef_apply();
 	
-	function opt_predef_cycle(opt_template $tpl)
+	function opt_predef_cycle($tpl)
 	{
 		$args = func_get_args();
 	
