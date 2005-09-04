@@ -19,16 +19,16 @@
     {
         public function __construct()
         {
-		
+        
         } // end __construct();
         
         public function handleData($name)
         {
-        	if(isset($_GET[$name]))
-        	{
-        		return $_GET[$name];
-			}
-			return NULL;   
+            if(isset($_GET[$name]))
+            {
+                return $_GET[$name];
+            }
+            return NULL;   
         } // end handleData();
 
         public function createURL($file, $variables)
@@ -50,15 +50,15 @@
             return $url;
         } // end createURL();
     } // end opbDefaultRouter;
-	
+    
     /**
      *
      *
      */
     class opbNiceRouter implements iOpbRouter
     {
-    	private $dataBuffer;
-    
+        private $dataBuffer;
+
         public function __construct()
         {
             if(!empty($_SERVER['PATH_INFO']))
@@ -70,22 +70,22 @@
                     if($i % 2 == 0)
                     {
                         $namebuffer = $item;
-					}
+                    }
                     else
                     {
                         $this -> dataBuffer[$namebuffer] = $item;
-                    }			
+                    }            
                 }
             }
         } // end __construct();
-        
+
         public function handleData($name)
         {
-        	if(isset($this -> dataBuffer[$name]))
-        	{
-        		return $this -> dataBuffer[$name];
-			}
-			return NULL;   
+            if(isset($this -> dataBuffer[$name]))
+            {
+                return $this -> dataBuffer[$name];
+            }
+            return NULL;   
         } // end handleData();
 
         public function createURL($file, $variables)
@@ -106,56 +106,60 @@
             }
             return $url;
         } // end createURL();
-    
+
     } // end opbNiceRouter;
-    
+
     class opbValueRouter implements iOpbRouter
     {
-    	private $dataBuffer;
-    	private $i = 0;
-    	private $from;
-    	private $goto;
-    
+        private $dataBuffer;
+        private $i = 0;
+        private $page;
+        private $goto;
+
         public function __construct()
         {
             if(!empty($_SERVER['PATH_INFO']))
             {
-                $this -> dataBuffer = explode('/', substr($_SERVER['PATH_INFO'], 1));
+                $dataBuffer = explode('/', substr($_SERVER['PATH_INFO'], 1));
                 // handle "from" and "goto" parameters for pagination system
 
-                foreach($this -> dataBuffer as &$value)
+                foreach($dataBuffer as $id => &$value)
                 {
-                	if(preg_match('/(p|g)([0-9]+)/', $value, $found))
-                	{
-                		if($found[1] == 'p')
-                		{
-                			$this -> from = $found[2];
-                		}
-                		else
-                		{
-                			$this -> goto = $found[2];
-                		}            	
-                	}               
+                    if(preg_match('/(p|g)([0-9]+)/', $value, $found))
+                    {
+                        if($found[1] == 'p')
+                        {
+                            $this -> page = $found[2];
+                        }
+                        else
+                        {
+                            $this -> goto = $found[2];
+                        }
+                    }
+					else
+					{
+						$this -> dataBuffer[] = $value;
+					}              
                 }
             }
         } // end __construct();
-        
+
         public function handleData($name)
         {
-        	switch($name)
-        	{
-        		case 'from':
-        			return $this -> from;
-        		case 'goto':
-        			return $this -> goto;
-        		default:
-        			if(isset($this -> dataBuffer[$this->i]))
-        			{
-        				return $this -> dataBuffer[$this->i++];
-        			}
-        			$i++;
-        			return NULL;        	
-        	}
+            switch($name)
+            {
+                case 'p':
+                    return $this -> page;
+                case 'goto':
+                    return $this -> goto;
+                default:
+                    if(isset($this -> dataBuffer[$this->i]))
+                    {
+                        return $this -> dataBuffer[$this->i++];
+                    }
+                    $this -> i++;
+                    return NULL;            
+            }
         } // end handleData();
 
         public function createURL($file, $variables)
@@ -167,8 +171,15 @@
                 foreach($variables as $name => $value)
                 {
                     $i--;
+                    if($name == 'p')
+                    {
+                    	$url .= 'p'.$value;
+                    }
+                    else
+                    {
                     $url .= $value;
-                    if($i > 0)
+                    }
+					if($i > 0)
                     {
                         $url .= '/';
                     }

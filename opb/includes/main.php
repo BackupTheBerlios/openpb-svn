@@ -193,6 +193,11 @@
                 return new $classname();
             }
         } // end moduleFactory();
+        
+        public function loadLibrary($lib)
+        {
+            require(OPB_INC.'lib.'.$lib.'.php');
+        } // end loadLibrary();
     }
 
 ?>

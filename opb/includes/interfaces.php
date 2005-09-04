@@ -42,4 +42,13 @@
         public function createURL($file, $variables);	
     }
     
+    interface iOpbLimiter
+    {
+    	public function getLimitClause();    
+    }
+    
+    interface iOpbSelector
+    {
+    	public function getCondition();    
+    }    
 ?>

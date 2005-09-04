@@ -27,6 +27,8 @@
     class opbTemplate extends opt_template
     {
         static private $instance;
+        
+        private $templateInfo;
 		
         public function __construct()
         {
@@ -46,6 +48,13 @@
             $this->init();
 			
             $this->assign('address', $opb -> config -> get('MAIN', 'address'));
+            
+            $templateInfo = @file_get_contents($this -> conf['root'].'templateInfo.ini');
+            
+            if($templateInfo != NULL)
+            {
+            	$this -> templateInfo = unserialize($templateInfo);
+            }
         } // end __construct();
 		
         static public function getInstance()
@@ -55,7 +64,47 @@
                 self::$instance = new opbTemplate;
             }
             return self::$instance;
-        } // end getInstance();	
+        } // end getInstance();
+        
+        public function getInfo($name)
+        {
+			if(!isset($this -> templateInfo[$name]))
+			{
+				return NULL;
+			}
+			return str_replace(
+				array(
+					'&lt;',
+					'&gt;',
+					'&quot;',
+					'&amp;'
+				
+				),
+				array(
+					'<',
+					'>',
+					'"',
+					'&'
+				)			
+			,$this -> templateInfo[$name]);        
+        } // end getInfo();
+        
+        public function buildTemplateInfo($tpl, $data)
+        {
+        	if(is_array($data))
+        	{
+        		// make sure the data will not break the serialization
+        		foreach($data as &$value)
+        		{
+        			$value = htmlspecialchars($value);        		
+        		}        	
+        	
+        		file_put_contents(OPB_TPL.$tpl.'/templateinfo.ini', serialize($data));
+				return 1;        	
+        	}
+			return 0;   
+        } // end buildTemplateInfo();
+
     } // end opbTemplate;
     
 ?>

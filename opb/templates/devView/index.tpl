@@ -25,4 +25,5 @@
 	{/section}
 </div>
 
-
+<p>Strona {$page} z {$total}</p>
+<p>{$pages}</p>

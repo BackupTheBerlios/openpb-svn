@@ -17,7 +17,7 @@
 					{$viewforum@views}<strong>244</strong>
 				</div>
 			</div>
-			{/section}	
+			{/section}
 	</div>
 	<div class="buttons">
 		<a href="{url file="`index.php`" act="NewTopic" tid="$f_id"}">{$viewforum@new_topic}</a> | <a href="{url file="`index.php`" act="NewTopic" add="Poll" tid="$f_id"}">{$viewforum@new_poll}</a>
