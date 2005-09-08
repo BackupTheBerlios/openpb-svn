@@ -370,6 +370,7 @@ CREATE TABLE `opb_users` (
   `uid` int(11) unsigned NOT NULL auto_increment,
   `user_profile_uid` int(10) unsigned NOT NULL default '0',
   `nick` varchar(10) default NULL,
+  `login` varchar(10) default NULL,
   `pass` varchar(40) default NULL,
   `email` varchar(64) NOT NULL default '',
   `joined` int(10) unsigned default NULL,
