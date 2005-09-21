@@ -16,7 +16,7 @@
  * 
  * @package OPB
  */
-class opbSession 
+class opbSession
 {
     /**
      * @var string $sessionId
@@ -227,7 +227,7 @@ class opbSession
         
         $stmt->bindParam(':sid', $this->sessionId);
         $stmt->bindParam(':stype', $this->sessionType);
-        $stmt->bindParam(':stime', time(), PDO_PARAM_INT);
+        $stmt->bindParam(':stime', $this->sessionTime, PDO_PARAM_INT);
         $stmt->bindParam(':sbrowser', $this->sessionBrowser);
         $stmt->bindParam(':sIP', $this->sessionIp);
         
@@ -252,7 +252,7 @@ class opbSession
              WHERE session_id = :sid'
         );
         
-        $stmt->bindParam(':stime', time(), PDO_PARAM_INT);
+        $stmt->bindParam(':stime', $this->sessionTime, PDO_PARAM_INT);
         $stmt->bindParam(':suser', $this->sessionUser);
         $stmt->bindParam(':suserid', $this->sessionUserId);
         $stmt->bindParam(':sid', $this->sessionId);    
