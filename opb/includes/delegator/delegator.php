@@ -47,7 +47,9 @@ class Delegator implements IHandler
     public function __construct($task_name)
     {
         $stmt = $db->prepare(
-           'SELECT h.handler_class FROM opb_handlers LEFT JOIN opb_task_handlers WHERE task_name = :name'
+           'SELECT h.handler_class FROM opb_handlers h 
+            LEFT JOIN opb_delegation_handlers dh ON h.handler_id = dh.handler_id 
+            LEFT JOIN opb_delegations d ON d.delegation_id = dh.delegation_id WHERE delegation_name = :name'
         );
         $stmt->execute(array(':name' => $task_name));
         while ($row = $stmt->fetch(PDO_FETCH_ASSOC))
