@@ -12,7 +12,7 @@
   //
   // $Id$
 
-	function opt_prefilter_cw(&$text, opt_template $opt)
+	function optPrefilterCw(&$text, optClass $opt)
 	{
 		$regex = array(
 			'/[\s]+/',
@@ -23,9 +23,9 @@
 			''
 		);
 		return preg_replace($regex, $replacements, $text);
-	} // end opt_prefilter_cw();
+	} // end optPrefilterCw();
 	
-	function opt_postfilter_optimize($code, opt_template $opt)
+	function optPostfilterOptimize($code, optClass $opt)
 	{
 		$patterns = array(
 			'/echo \'\s+\'\./',
@@ -38,5 +38,5 @@
 			''
 		);
 		return preg_replace($patterns, $replacements, $code);	
-	} // opt_postfilter_optimize();
+	} // optPostfilterOptimize();
 ?>

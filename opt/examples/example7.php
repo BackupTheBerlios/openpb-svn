@@ -1,17 +1,14 @@
-<?php 
+<?php
+	define('OPT_DIR', '../lib/');
 	require('../lib/opt.class.php');
  
 	try{ 
-		$tpl = new opt_template; 
-		$config = array( 
-			// store the templates in this directory 
-			'root' => 'templates/', 
-			// the directory for the opt usage 
-			'compile' => 'templates_c/', 
-			'gzip_compression' => 1, 
-			'debug_console' => 0, 
-			'trace' => 1 
-		);
+		$tpl = new optClass; 
+		$tpl -> root = './templates/';
+		$tpl -> compile = './templates_c/';
+		$tpl -> gzipCompression = 1;
+		$tpl -> compileCacheDisabled = 1;
+		$tpl -> httpHeaders(OPT_HTML); 
 		
 		require('db_connect.php'); 
 		$r = mysql_query('SELECT id, name FROM categories ORDER BY id'); 
@@ -30,10 +27,6 @@
 			);
 		}
 
-		$tpl -> conf_load_array($config); 
-		$tpl -> init(); 
-		$tpl -> http_headers(OPT_HTML);
-
 		if(isset($_GET['selected']))
 		{
 			$tpl -> assign('selected', $_GET['selected']);
@@ -51,7 +44,7 @@
 
 		$tpl -> parse('example7.tpl');
 		mysql_close();
-	}catch(opt_exception $exception){ 
-		opt_error_handler($exception); 
+	}catch(optException $exception){ 
+		optErrorHandler($exception); 
 	}
 ?>

@@ -12,15 +12,15 @@
   //
   // $Id$
 	 
-	function opt_predef_parse_int($tpl, $bigint)
+	function optPredefParseInt($tpl, $bigint)
 	{
-		if(!isset($tpl -> conf['parse_int_separator']))
+		if(!isset($tpl -> parseintSeparator))
 		{
 			$sep = ',';
 		}
 		else
 		{
-			$sep = $tpl -> conf['parse_int_separator'];
+			$sep = $tpl -> parseintSeparator;
 		}
 
 		$bigint = (string)$bigint;
@@ -34,9 +34,9 @@
 			}
 		}
 		return strrev($ret);
-	} // end opt_predef_parse_int();
+	} // end optPredefParseInt();
 	
-	function opt_predef_wordwrap($tpl, $text, $width, $break = 0)
+	function optPredefWordwrap($tpl, $text, $width, $break = 0)
 	{
 		if(is_string($break))
 		{
@@ -48,18 +48,18 @@
 		}
  
 		return wordwrap($text, $width, $break);
-	} // end opt_predef_wordwrap();
+	} // end optPredefWordwrap();
 	
-	function opt_predef_apply($tpl, $group, $item)
+	function optPredefApply($tpl, $group, $item)
 	{
 		$args = func_get_args();
 		unset($args[0]);
 		unset($args[1]);
 		unset($args[2]);
 		$tpl -> lang[$group][$item] = vsprintf($tpl -> lang[$group][$item], $args);
-	} // end opt_predef_apply();
+	} // end optPredefApply();
 	
-	function opt_predef_cycle($tpl)
+	function optPredefCycle($tpl)
 	{
 		$args = func_get_args();
 	
@@ -75,5 +75,5 @@
 		}
 		
 		return $args[$i++];
-	} // end opt_predef_cycle();
+	} // end optPredefCycle();
 ?>

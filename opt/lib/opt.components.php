@@ -12,46 +12,57 @@
   //
   // $Id$
 
-	interface iopt_component
+	interface ioptComponent
 	{
 		public function __construct($name = '');
 		public function set($name, $value);
-		public function set_datasource(&$source);
-		public function begin(opt_template $tpl);
-		public function end(opt_template $tpl);
+		public function push($name, $value, $selected = false);
+		public function setDatasource(&$source);
+		public function begin(optClass $tpl);
+		public function end(optClass $tpl);
 	}
-
-	class selectComponent implements iopt_component
+	
+	function generateTagElementList($list)
 	{
-		private $_list;
-		private $name;
-		private $message;
+		$code = '';
+		foreach($list as $name => $value)
+		{
+			$code .= ' '.$name.'="'.htmlspecialchars($value).'"';			
+		}
+		return $code;
+	} // end generateTagElementList();
+
+	class selectComponent implements ioptComponent
+	{
+		protected $_list = array();
+		protected $message = NULL;
+		protected $tagParameters = array();
 
 		public function __construct()
 		{
 			$this -> _list = array();
-			$this -> message = NULL;		
+			$this -> message = NULL;
+			$this -> tagParameters = array();		
 		} // end __construct();
 		
 		public function set($name, $value)
 		{
-			if($name == 'name')
+			switch($name)
 			{
-				$this -> name = $value;
-			}
-			if($name == 'message')
-			{
-				$this -> message = $value;
-			}
-			if($name == 'selected')
-			{
-				foreach($this -> _list as $i => &$item)
-				{
-					if($item['value'] == $value)
+				case 'message':
+					$this -> message = $value;
+					break;
+				case 'selected':
+					foreach($this -> _list as $i => &$item)
 					{
-						$item['selected'] = true;
-					}				
-				}			
+						if($item['value'] == $value)
+						{
+							$item['selected'] = true;
+						}				
+					}
+					break;
+				default:
+					$this -> tagParameters[$name] = $value;		
 			}
 		} // end set();
 		
@@ -64,14 +75,14 @@
 			);
 		} // end push();
 
-		public function set_datasource(&$source)
+		public function setDatasource(&$source)
 		{
 			$this -> _list = $source;		
-		} // end set_datasource();
+		} // end setDatasource();
 
-		public function begin(opt_template $tpl)
-		{
-			$code = '<select name="'.$this->name.'">';
+		public function begin(optClass $tpl)
+		{	
+			$code = '<select'.generateTagElementList($this->tagParameters).'>';
 			$selected = 0;
 			foreach($this -> _list as $item)
 			{
@@ -88,8 +99,8 @@
 			$code .= '</select>';
 			return $code;
 		} // end begin();
-		
-		public function onmessage(opt_template $tpl, $pass_to)
+
+		public function onmessage(optClass $tpl, $pass_to)
 		{
 			if($this -> message == NULL)
 			{
@@ -99,22 +110,19 @@
 			return 1;		
 		} // end onmessage();
 
-		public function end(opt_template $tpl)
+		public function end(optClass $tpl)
 		{
 			return '';		
 		} // end end();
 	}
 
-	class textInputComponent implements iopt_component
+	class textInputComponent implements ioptComponent
 	{
-		protected $name;
-		protected $value;
 		protected $message;
+		protected $tagParameters = array();
 
 		public function __construct()
 		{
-			$this -> name = NULL;
-			$this -> value = NULL;
 			$this -> message = NULL;		
 		} // end __construct();
 
@@ -122,48 +130,44 @@
 		{
 			switch($name)
 			{
-				case 'name':
-					$this -> name = $value;
-					break;
-				case 'value':
-					$this -> value = $value;
-					break;
 				case 'message':
 					$this -> message = $value;
-					break;		
+					break;
+				default:
+					$this -> tagParameters[$name] = $value;		
 			}
 		} // end set();
+		
+		public function push($value, $desc, $selected = false)
+		{
+			$this -> set($value, $desc);
+		} // end push();
 
-		public function set_datasource(&$source)
+		public function setDatasource(&$source)
 		{
 			if(is_array($source))
 			{
 				if(isset($source['name']))
 				{
-					$this -> name = $source['name'];
+					$this -> tagParameters['name'] = $source['name'];
 				}
 				if(isset($source['value']))
 				{
-					$this -> value = $source['value'];
+					$this -> tagParameters['value'] = $source['value'];
 				}
 				if(isset($source['message']))
 				{
-					$this -> name = $source['message'];
+					$this -> message = $source['message'];
 				}
 			}
-		} // end set_datasource();
+		} // end setDatasource();
 
-		public function begin(opt_template $tpl)
+		public function begin(optClass $tpl)
 		{
-			$code = '<input type="text" name="'.$this->name.'"';
-			if($this -> value != NULL)
-			{
-				$code .= ' value="'.htmlspecialchars($this->value).'"';
-			}
-			return $code . ' />';
+			return '<input type="text"'.generateTagElementList($this->tagParameters).' />';
 		} // end begin();
-		
-		public function onmessage(opt_template $tpl, $pass_to)
+
+		public function onmessage(optClass $tpl, $pass_to)
 		{
 			if($this -> message == NULL)
 			{
@@ -173,31 +177,26 @@
 			return 1;
 		} // end onmessage();
 
-		public function end(opt_template $tpl)
+		public function end(optClass $tpl)
 		{
 			return '';		
 		} // end end();
 	}
-	
-	class textLabelComponent extends textinputComponent implements iopt_component
+
+	class textLabelComponent extends textinputComponent implements ioptComponent
 	{
-		public function begin(opt_template $tpl)
+		public function begin(optClass $tpl)
 		{
-			$code = '<input type="hidden" name="'.$this->name.'"';
-			if($this -> value != NULL)
+			$code = '<input type="hidden"'.generateTagElementList($this->tagParameters).' />';
+			if($this -> tagParameters['value'] != NULL)
 			{
-				$code .= ' value="'.htmlspecialchars($this->value).'"';
-			}
-			$code .= ' />';
-			if($this -> value != NULL)
-			{
-				return $code.'<span class="label">'.htmlspecialchars($this->value).'</span>';
+				return $code.'<span class="label">'.htmlspecialchars($this -> tagParameters['value']).'</span>';
 			}
 			return $code;
 		} // end begin();
 	}
-	
-	class formActionsComponent implements iopt_component
+
+	class formActionsComponent implements ioptComponent
 	{
 		private $buttons;
 
@@ -208,6 +207,7 @@
 
 		public function set($name, $value)
 		{
+			$this -> push($name, $value);
 		} // end set();
 		
 		public function push($name, $value, $type = 'submit')
@@ -217,14 +217,14 @@
 				'value' => $value,
 				'type' => $type
 			);		
-		} // end set_datasource();
+		} // end push();
 
-		public function set_datasource(&$source)
+		public function setDatasource(&$source)
 		{
 			$this -> buttons = $source;
-		} // end set_datasource();
+		} // end setDatasource();
 
-		public function begin(opt_template $tpl)
+		public function begin(optClass $tpl)
 		{
 			$code = '';
 			foreach($this -> buttons as $button)
@@ -234,7 +234,7 @@
 			return $code;
 		} // end begin();
 
-		public function end(opt_template $tpl)
+		public function end(optClass $tpl)
 		{
 			return '';		
 		} // end end();

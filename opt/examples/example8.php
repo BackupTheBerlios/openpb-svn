@@ -1,23 +1,15 @@
 <?php 
+	define('OPT_DIR', '../lib/');
 	require('../lib/opt.class.php');
 
 	try{ 
-		$tpl = new opt_template; 
-		$config = array( 
-			// store the templates in this directory 
-			'root' => 'templates/', 
-			// the directory for the opt usage 
-			'compile' => 'templates_c/', 
-			'gzip_compression' => 1, 
-			'debug_console' => 0, 
-			'trace' => 1 
-		);
+		$tpl = new optClass; 
+		$tpl -> root = './templates/';
+		$tpl -> compile = './templates_c/';
+		$tpl -> gzipCompression = 1;
+		$tpl -> httpHeaders(OPT_HTML); 
 
 		require('db_connect.php'); 
-
-		$tpl -> conf_load_array($config); 
-		$tpl -> init(); 
-		$tpl -> http_headers(OPT_HTML);
 
 		$selector = new selectComponent;
 		$selector -> set('name', 'selected');
@@ -48,7 +40,7 @@
 
 		$tpl -> parse('example8.tpl');
 		mysql_close(); 
-	}catch(opt_exception $exception){ 
-		opt_error_handler($exception); 
+	}catch(optException $exception){ 
+		optErrorHandler($exception); 
 	}
 ?>

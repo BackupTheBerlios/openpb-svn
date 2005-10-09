@@ -1,4 +1,5 @@
-<?php 
+<?php
+	define('OPT_DIR', '../lib/');
 	require('../lib/opt.class.php');
   
 	class i18n{
@@ -37,7 +38,7 @@
 			return $this->data[$group][$text_id]; 	
 		} // end put();
 		
-		public function apply(opt_template $tpl, $group, $text_id)
+		public function apply(optClass $tpl, $group, $text_id)
 		{
 			$args = func_get_args();
 			unset($args[0]);
@@ -47,36 +48,28 @@
 		} // end apply();  
 	}
 	
-	function opt_postfilter_i18n($code, opt_template $opt)
+	function optPostfilterI18n($code, optClass $opt)
 	{
 		// pass the instance of i18n system to the processed template
 		return '$i18n = i18n::getInstance(); '.$code;
-	} // end opt_postfilter_i18n();
+	} // end optPostfilterI18n();
  
 	try{ 
-		$tpl = new opt_template; 
-		$config = array( 
-			// store the templates in this directory 
-			'root' => 'templates/', 
-			// the directory for the opt usage 
-			'compile' => 'templates_c/', 
-			'gzip_compression' => 1, 
-			'debug_console' => 0, 
-			'trace' => 1 
-		); 
-		$tpl -> conf_load_array($config); 
-		$tpl -> init(); 
-		$tpl -> http_headers(OPT_HTML);
+		$tpl = new optClass; 
+		$tpl -> root = './templates/';
+		$tpl -> compile = './templates_c/';
+		$tpl -> gzipCompression = 1;
+		$tpl -> httpHeaders(OPT_HTML); 
     
 		// init default i18n system:
 		// 1. language block pattern
 		// 2. object for dedicated "apply" function
 		// 3. postfilter name
-		$tpl -> set_custom_i18n('$i18n->put(\'%s\',\'%s\')', '$i18n', 'i18n');
+		$tpl -> setCustomI18n('$i18n->put(\'%s\',\'%s\')', '$i18n', 'I18n');
 
 		$tpl -> assign('current_date', date('d.m.Y')); 
 		$tpl -> parse('example5.tpl'); 
-	}catch(opt_exception $exception){ 
-		opt_error_handler($exception); 
+	}catch(optException $exception){ 
+		optErrorHandler($exception); 
 	}
 ?>
