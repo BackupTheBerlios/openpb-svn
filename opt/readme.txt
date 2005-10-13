@@ -24,7 +24,8 @@ More info on http://opt.openpb.net/
 ****************************
 *  1.0.0 CHANGELOG         *
 ****************************
-There is a lot of changes, 1.0.0 and 0.1.1 are co
+There is a lot of changes, 1.0.0 and 0.1.1 are completely different scripts.
+
  - [new] New compiler using tree-processing algorithm
  - [new] New instructions 
  - [new] New instruction API
@@ -42,11 +43,15 @@ There is a lot of changes, 1.0.0 and 0.1.1 are co
  - [new] Expression engine
  - [new] OPT Configurator
  - [new] Debug console
+ - [new] UnitTest
+ - [new] New naming style: "nameName()" instead of "name_name()"
+ - [new] Initialization procedure changed
+ - [new] Configuration handler changed
  - [upd] New features for i18n support
  - [upd] Full object support
- - [upd] Heavy OPTimizations for "include" instruction
+ - [upd] Heavy OPTimizations
  - [upd] License change to GNU LGPL
- - [upd] Much more, now I can't remember.
+ - [upd] Much much more.
  - [fix] bug #6
  - [fix] bug #5
 

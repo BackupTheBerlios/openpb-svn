@@ -105,10 +105,10 @@
 				closedir($dir);
 				return 1;
 			}
-			elseif(file_exists($this -> tpl -> compile.$this->parse_name($filename).'.php'))
+			elseif(file_exists($this -> tpl -> compile.$this->parseName($filename).'.php'))
 			{
 
-				unlink($this -> tpl -> compile.$this->parse_name($filename).'.php');
+				unlink($this -> tpl -> compile.$this->parseName($filename).'.php');
 				return 1;				
 			}
 			return 0;

@@ -14,16 +14,7 @@
 	 
 	function optPredefParseInt($tpl, $bigint)
 	{
-		if(!isset($tpl -> parseintSeparator))
-		{
-			$sep = ',';
-		}
-		else
-		{
-			$sep = $tpl -> parseintSeparator;
-		}
-
-		$bigint = (string)$bigint;
+		/* $bigint = (string)$bigint;
 		for($i = strlen($bigint) - 1, $x = 0; $i >= 0; $i--, $x++)
 		{
 			$ret .= $bigint{$i};
@@ -32,8 +23,8 @@
 				$ret .= $sep;
 				$x = -1;
 			}
-		}
-		return strrev($ret);
+		} */
+		return rtrim(number_format($bigint, $tpl -> parseintDecimals, $tpl -> parseintDecPoint, $tpl -> parseintThousands), $tpl->parseintDecPoint.'0');
 	} // end optPredefParseInt();
 	
 	function optPredefWordwrap($tpl, $text, $width, $break = 0)

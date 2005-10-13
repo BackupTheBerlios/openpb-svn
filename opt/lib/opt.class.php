@@ -64,12 +64,13 @@
 		public $includeOptimization = 0;
 		public $xmlsyntaxMode = 0;
 		public $strictSyntax = 0;
-		public $parseintSeparator = ',';
+		public $parseintDecPoint = '.';
+		public $parseintDecimals = 3;
+		public $parseintThousands = ',';
 		
 		// parser data area	
 		public $data = array();
 		public $vars = array();
-//		public $conf = array();
 		public $res;
 		public $compiler;
 		public $functions = array(
@@ -455,7 +456,7 @@
 		{
 			if($this -> init == 0)
 			{
-				include(OPT_DIR.'opt.functions.php');
+				require_once(OPT_DIR.'opt.functions.php');
 
 				if($this -> gzipCompression == 1 && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
 				{
@@ -506,7 +507,7 @@
 				$code = $this -> compiler -> parse($res -> loadSource($file));
 				$ok = 1;
 				# DEBUG_CONSOLE
-				$use_cache = 'no';
+				$useCache = 'no';
 				# /DEBUG_CONSOLE
 			}
 			else
@@ -526,7 +527,7 @@
 					$res -> saveCode($code);
 					$ok = 1;
 					# DEBUG_CONSOLE
-					$use_cache = 'generating';
+					$useCache = 'generating';
 					# /DEBUG_CONSOLE
 				}
 				else
@@ -534,7 +535,7 @@
 					// The file is compiled
 					$code = $res -> loadCode($file);
 					# DEBUG_CONSOLE
-					$use_cache = 'reading';
+					$useCache = 'reading';
 					# /DEBUG_CONSOLE
 					$ok = 1;
 				}
@@ -599,7 +600,7 @@
 				$this -> debugOutput[] = array(
 					'name' => $file,
 					'problems' => $problem,
-					'cache' => $use_cache,
+					'cache' => $useCache,
 					'exec' => round($time, 5)
 				);
 			}
@@ -638,7 +639,7 @@
 				$code = $this -> compiler -> parse($res -> loadSource($file));
 				$ok = 1;
 				# DEBUG_CONSOLE
-				$use_cache = 'no';
+				$useCache = 'no';
 				# /DEBUG_CONSOLE
 			}
 			else
@@ -661,7 +662,7 @@
 						$res -> saveCode($code);
 						$ok = 1;
 						# DEBUG_CONSOLE
-						$use_cache = 'generating';
+						$useCache = 'generating';
 						# /DEBUG_CONSOLE
 					}
 					else
@@ -669,7 +670,7 @@
 						// The file is compiled
 						$code = $res -> loadCode($file);
 						# DEBUG_CONSOLE
-						$use_cache = 'reading';
+						$useCache = 'reading';
 						# /DEBUG_CONSOLE
 						$ok = 1;
 					}
@@ -680,7 +681,7 @@
 					// The file is compiled
 					$code = $res -> loadCode($file);
 					# DEBUG_CONSOLE
-					$use_cache = 'reading';
+					$useCache = 'reading';
 					# /DEBUG_CONSOLE
 					$ok = 1;
 				}
@@ -715,7 +716,7 @@
 				$this -> debugOutput[] = array(
 					'name' => $file,
 					'problems' => $problem,
-					'cache' => $use_cache,
+					'cache' => $useCache,
 					'exec' => round($time, 5)				
 				);
 			}
@@ -879,7 +880,7 @@
 				'root', 'compile', 'cache', 'plugins',
 				'gzipCompression', 'compileCacheDisabled', 'showWarnings', 'showSource', 'charset',
 				'safeMode', 'debugConsole', 'trace', 'rewriteWarnings', 'xmlsyntaxMode',
-				'strictSyntax', 'parseintSeparator'
+				'strictSyntax', 'parseintDecPoint', 'parseintDecimals', 'parseIntThousands'
 			);
 
 			if(is_string($data))
@@ -1286,7 +1287,7 @@
 		{
 			if(!isset($this->resources['file']))
 			{
-				require(OPT_DIR.'opt.resources.php');
+				require_once(OPT_DIR.'opt.resources.php');
 				$this -> resources['file'] = new optResourceFiles($this);
 			}
 			# CUSTOM_RESOURCES
