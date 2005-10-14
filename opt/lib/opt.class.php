@@ -50,15 +50,23 @@
 		// configuration area
 		public $root = './templates/';
 		public $compile = './templates_c/';
+		# OUTPUT_CACHING
 		public $cache = NULL;
+		# /OUTPUT_CACHING
+		# PLUGIN_AUTOLOAD
 		public $plugins = NULL;
+		# /PLUGIN_AUTOLOAD
+		# GZIP_SUPPORT
 		public $gzipCompression = 1;
+		# /GZIP_SUPPORT
 		public $compileCacheDisabled = 0;
 		public $showWarnings = 0;
 		public $showSource = 0;
 		public $charset = 'iso-8859-1';
 		public $safeMode = 0;
+		# DEBUG_CONSOLE
 		public $debugConsole = 0;
+		# /DEBUG_CONSOLE
 		public $trace = 0;
 		public $rewriteWarnings = 0;
 		public $includeOptimization = 0;
@@ -91,6 +99,7 @@
 							);
 		public $control = array(0 =>
 								'optSection',
+								'optShow',
 								'optInclude',
 								'optPlace',
 								'optVar',
@@ -160,7 +169,9 @@
 					array('name' => 'cache', 'value' => $this -> cache),
 					array('name' => 'plugins', 'value' => $this -> plugins),
 					array('name' => 'compileCacheDisabled', 'value' => $this -> compileCacheDisabled),
+					# GZIP_SUPPORT
 					array('name' => 'gzipCompression', 'value' => $this -> gzipCompression),
+					# /GZIP_SUPPORT
 					array('name' => 'charset', 'value' => $this -> charset),
 					array('name' => 'safeMode', 'value' => $this -> safeMode)				
 				);
@@ -457,16 +468,19 @@
 			if($this -> init == 0)
 			{
 				require_once(OPT_DIR.'opt.functions.php');
-
+				# GZIP_SUPPORT
 				if($this -> gzipCompression == 1 && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
 				{
 					ob_start('ob_gzhandler');
 					ob_implicit_flush(0);					
 				}
+				# /GZIP_SUPPORT
+				# PLUGIN_AUTOLOAD
 				if($this -> plugins != NULL)
 				{
 					$this -> loadPlugins();
 				}
+				# /PLUGIN_AUTOLOAD
 				$this -> init = 1;
 			}
 			$res = $this -> getResourceInfo($file, $file);
@@ -544,16 +558,12 @@
 			}
 			# /DISABLED_CC
 
-			# ER_PROTECTION
 			// turn off the notices for the template execution time
 			// and restore the old settings					
 			$this -> oldErrorReporting = ini_get('error_reporting');
 			error_reporting(E_ALL ^ E_NOTICE);
-			# /ER_PROTECTION
 			eval($code);
-			# ER_PROTECTION
 			error_reporting($this -> oldErrorReporting);
-			# /ER_PROTECTION
 
 			// if the programmer wants the template source...
 			if($this -> showSource == 1)
@@ -689,16 +699,12 @@
 			}
 			# /DISABLED_CC
 	
-			# ER_PROTECTION
 			// turn off the notices for the template execution time
 			// and restore the old settings					
 			$this -> oldErrorReporting = ini_get('error_reporting');
 			error_reporting(E_ALL ^ E_NOTICE);
-			# /ER_PROTECTION
 			eval($code);
-			# ER_PROTECTION
 			error_reporting($this -> oldErrorReporting);
-			# /ER_PROTECTION
 			$res -> setTestStatus(1);
 			# DEBUG_CONSOLE
 			if($this -> debugConsole)
@@ -1219,7 +1225,7 @@
 			return 0;		
 		} // end checkExpire();
 		# /OUTPUT_CACHING
-		
+		# PLUGIN_AUTOLOAD
 		private function loadPlugins()
 		{
 			if(file_exists($this -> plugins.'plugins.php'))
@@ -1282,6 +1288,7 @@
 			}
 			return 1;
 		} // end loadPlugins();
+		# /PLUGIN_AUTOLOAD
 		
 		public function getResourceInfo($path, &$file)
 		{

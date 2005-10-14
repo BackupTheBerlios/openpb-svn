@@ -97,8 +97,13 @@
 	
 	class optSection extends optInstruction
 	{
+		private $sectionDirection;
+	
 		public function configure()
 		{
+			$this -> compiler -> nestingNames['section'] = array();
+			$this -> compiler -> nestingLevel['section'] = 0;
+			$this -> sectionDirection = array();
 			return array(
 				// processor name
 				0 => 'section',
@@ -145,13 +150,21 @@
 
 		 	$this -> compiler -> nestingLevel['section']++;
 		 	$this -> compiler -> nestingNames['section'][$this -> compiler -> nestingLevel['section']] = $params['name'];
+		 	$this -> sectionDirection[$this -> compiler -> nestingLevel['section']] = ($params['reversed'] == 'reversed' ? 1 : 0);
 		 	
+		 	// check whether we started "show" instruction
+		 	$id = array_search($params['name'], $this -> compiler -> nestingNames['show']);
+		 	$count = 1;
+			if($id !== FALSE)
+			{
+				$count = 0;		
+			}
 		 	if($params['reversed'] == '')
 		 	{
 		 		// normal direction, use "foreach" to simulate a section
 			 	if($this -> compiler -> nestingLevel['section'] == 1)
 			 	{
-			 		$this -> output .= '\'; if(count($this -> data[\''.$params['name'].'\']) > 0){ foreach($this -> data[\''.$params['name'].'\'] as $__'.$params['name'].'_id => &$__'.$params['name'].'_val){ '.$this -> compiler -> tpl -> captureTo.' \'';
+			 		$this -> output .= '\'; '.($count == 1 ? 'if(count($this -> data[\''.$params['name'].'\']) > 0){' : '').' foreach($this -> data[\''.$params['name'].'\'] as $__'.$params['name'].'_id => &$__'.$params['name'].'_val){ '.$this -> compiler -> tpl -> captureTo.' \'';
 			 	}
 			 	else
 			 	{
@@ -166,7 +179,7 @@
 			 			$i++;
 			 		}
 		
-			 		$this -> output .= '\'; if(count('.$lnk.') > 0){ foreach('.$lnk.' as $__'.$params['name'].'_id => &$__'.$params['name'].'_val){ '.$this -> compiler -> tpl -> captureTo.' \'';
+			 		$this -> output .= '\'; '.($count == 1 ? 'if(count('.$lnk.') > 0){ ' : '').' foreach('.$lnk.' as $__'.$params['name'].'_id => &$__'.$params['name'].'_val){ '.$this -> compiler -> tpl -> captureTo.' \'';
 			 	}
 		 	}
 		 	else
@@ -175,7 +188,7 @@
 		 		// normal direction, use "foreach" to simulate a section
 			 	if($this -> compiler -> nestingLevel['section'] == 1)
 			 	{
-			 		$this -> output .= '\'; if(($__'.$params['name'].'_cnt = count($this -> data[\''.$params['name'].'\'])) > 0){ for($__'.$params['name'].'_id = $__'.$params['name'].'_cnt - 1; $__'.$params['name'].'_id >= 0; $__'.$params['name'].'_id--){ $__'.$params['name'].'_val = &$this -> data[\''.$params['name'].'\'][$__'.$params['name'].'_id]; '.$this -> compiler -> tpl -> captureTo.' \'';
+			 		$this -> output .= '\'; '.($count == 1 ? 'if(($__'.$params['name'].'_cnt = count($this -> data[\''.$params['name'].'\'])) > 0){' : '').' for($__'.$params['name'].'_id = $__'.$params['name'].'_cnt - 1; $__'.$params['name'].'_id >= 0; $__'.$params['name'].'_id--){ $__'.$params['name'].'_val = &$this -> data[\''.$params['name'].'\'][$__'.$params['name'].'_id]; '.$this -> compiler -> tpl -> captureTo.' \'';
 			 	}
 			 	else
 			 	{
@@ -190,22 +203,31 @@
 			 			$i++;
 			 		}
 		
-			 		$this -> output .= '\'; if(($__'.$params['name'].'_cnt = count('.$lnk.')) > 0){ for($__'.$params['name'].'_id = $__'.$params['name'].'_cnt - 1; $__'.$params['name'].'_id >= 0; $__'.$params['name'].'_id--){ $__'.$params['name'].'_val = &'.$lnk.'[$__'.$params['name'].'_id]; '.$this -> compiler -> tpl -> captureTo.' \'';
+			 		$this -> output .= '\'; '.($count == 1 ? 'if(($__'.$params['name'].'_cnt = count('.$lnk.')) > 0){' : '').' for($__'.$params['name'].'_id = $__'.$params['name'].'_cnt - 1; $__'.$params['name'].'_id >= 0; $__'.$params['name'].'_id--){ $__'.$params['name'].'_val = &'.$lnk.'[$__'.$params['name'].'_id]; '.$this -> compiler -> tpl -> captureTo.' \'';
 			 	}
 		 	}
 		} // end sectionBegin();
 		
 		private function sectionElse()
 		{
+		 	$id = array_search($this -> compiler -> nestingNames['section'][$this -> compiler -> nestingLevel['section']], $this -> compiler -> nestingNames['show']);
+			if($id !== FALSE)
+			{
+				$this -> compiler -> tpl -> error(E_USER_ERROR, 'SECTIONELSE not available inside a SHOW+SECTION structure.', 211);	
+			}
 			$this -> output .= '\'; } }else{ '.$this -> compiler -> tpl -> captureTo.' \'';
 		
 		} // end sectionElse();
 		
 		private function sectionEnd($sectionelse)
 		{
+		 	$id = array_search($this -> compiler -> nestingNames['section'][$this -> compiler -> nestingLevel['section']], $this -> compiler -> nestingNames['show']);
+		
 	 		unset($this -> compiler -> nesting_names['section'][$this -> compiler -> nestingLevel['section']]);
+	 		unset($this -> sectionDirection[$this -> compiler -> nestingLevel['section']]);
 	 		$this -> compiler -> nestingLevel['section']--;
-			if($sectionelse == 1)
+	 				
+			if($sectionelse == 1 || $id !== FALSE)
 			{
 				$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';		
 			}
@@ -214,6 +236,110 @@
 				$this -> output .= '\'; } } '.$this -> compiler -> tpl -> captureTo.' \'';
 			}
 		} // end sectionEnd();
+		
+		public function getSectionDirection($name)
+		{
+			$id = array_search($name, $this -> compiler -> nestingNames['section']);
+			if($id !== FALSE)
+			{
+				return $this -> sectionDirection[$id];			
+			}
+			return FALSE;
+		} // end getSectionDirection();
+	}
+	
+	class optShow extends optInstruction
+	{
+	
+		public function configure()
+		{
+			$this -> compiler -> nestingNames['show'] = array();
+			$this -> compiler -> nestingLevel['show'] = 0;
+			$this -> sectionDirection = array();
+			return array(
+				// processor name
+				0 => 'show',
+				// instructions
+				'show' => OPT_MASTER,
+				'showelse' => OPT_ALT,
+				'/show' => OPT_ENDER
+			);
+		} // end configure();
+		
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			foreach($node as $block)
+			{
+				switch($block -> getName())
+				{
+					case 'show':
+							$this -> showBegin($block -> getAttributes());
+							$this -> defaultTreeProcess($block);
+							break;
+					case 'showelse':
+							$this -> showElse();
+							$this -> defaultTreeProcess($block);
+							break;
+					case '/show':
+							$this -> showEnd();
+							break;
+				}
+			}
+		} // end process();
+		
+		private function showBegin($attr)
+		{
+			$params = array(
+				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+				'state' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, '')
+			);
+			$this -> compiler -> parametrizeError('show', $this -> compiler -> parametrize($attr, $params));
+			# NESTING_LEVEL
+		 	$this -> compiler -> checkNestingLevel('show');
+		 	# /NESTING_LEVEL
+
+		 	$this -> compiler -> nestingLevel['show']++;
+		 	$this -> compiler -> nestingNames['show'][$this -> compiler -> nestingLevel['show']] = $params['name'];
+		 	
+		 	$condition = '';
+		 	if($params['state'] != '')
+		 	{
+		 		$condition = ' && '.$params['state'].' == 1';
+		 	}		 	
+
+		 	if($this -> compiler -> nestingLevel['section'] == 0)
+		 	{
+		 		$this -> output .= '\'; if(count($this -> data[\''.$params['name'].'\']) > 0'.$condition.'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+		 	}
+		 	else
+		 	{
+		 		$lnk = '$this -> data[\''.$params['name'].'\']';
+		 		$i = 0;
+		 		foreach($this -> compiler -> nestingNames['section'] as $name)
+		 		{
+		 			if($i <= count($this -> compiler -> nestingNames['section']) - 1)
+		 			{
+		 				$lnk .= '[$__'.$name.'_id]';
+		 			}
+		 			$i++;
+		 		}
+	
+		 		$this -> output .= '\'; if(count('.$lnk.') > 0'.$condition.'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+		 	}
+		} // end showBegin();
+		
+		private function showElse()
+		{
+			$this -> output .= '\'; }else{ '.$this -> compiler -> tpl -> captureTo.' \'';
+		
+		} // end showElse();
+		
+		private function showEnd()
+		{
+	 		unset($this -> compiler -> nesting_names['show'][$this -> compiler -> nestingLevel['show']]);
+	 		$this -> compiler -> nestingLevel['show']--;
+			$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';		
+		} // end showEnd();
 	}
 
 	class optInclude extends optInstruction
@@ -661,7 +787,7 @@
 		 	# nestingLevel
 		 	if($this -> compiler -> nestingLevel['foreach'] == 0)
 		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'FOREACHELSE called when not in FOREACH.', 210);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'FOREACHELSE called when not in FOREACH.', 209);
 		 	}
 		 	# /nestingLevel
 		 	$this -> output .= '\'; } }else{ { '.$this -> compiler -> tpl -> captureTo.' \'';		

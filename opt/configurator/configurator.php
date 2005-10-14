@@ -1,3 +1,8 @@
+<?php require('./directives.php'); ?><html>
+<head>
+<title>OPT Configurator</title>
+</head>
+<body>
 <pre>
                    __
                 __|  |__
@@ -8,39 +13,33 @@
 \______/ |  __/    \___| emplate
          | |
 Open     |_| ower 
-			v. 0.2.0-dev
+			v. <?php echo OPT_VERSION; ?>
 </pre><span style="font-family: Courier;"><?php
 
 	if($_SERVER['REQUEST_METHOD'] == 'POST')
 	{
-		if(is_readable($_POST['src']) && is_writable($_POST['dest']))
+		if($_POST['src'] == $_POST['dest'])
 		{
-			$files = array(
-				'opt.class.php', 'opt.compiler.php', 'opt.instructions.php', 'opt.functions.php', 'opt.error.php',
-				'opt.filters.php', 'opt.api.php'			
-			);
-			
-			$key = array(
-				'AUTOLOAD_MODULES' => 0,
-				'CUSTOM_RESOURCES' => 1,
-				'DEBUG_CONSOLE' => 2,
-				'DISABLED_CC' => 3,
-				'ER_PROTECTION' => 4,
-				'GZIP_SUPPORT' => 5,
-				'NESTING_LEVEL' => 6,
-				'OUTPUT_CACHING' => 7			
-			);
-
-			foreach($files as $file)
+?><span style="font-family: Courier;">
+Please specify DIFFERENT source and destination directory names!
+</span><?php
+		}
+		elseif(is_readable($_POST['src']) && is_writable($_POST['dest']))
+		{
+			foreach($projectFiles as $file)
 			{
 				$src = file($_POST['src'].$file);
+				if($file == 'opt.compiler.php')
+				{
+					echo $src[0].'<br/>';
+				}
 				$cutting = 0;
 				$nesting = 0;
 				foreach($src as $i => $line)
 				{
 					if(preg_match('/# (\/?)([A-Z_]+)/', trim($line), $found))
 					{
-						if(isset($key[$found[2]]) && $_POST['f'][$key[$found[2]]] == 'on')
+						if(isset($availableDirectives[$found[2]]) && !isset($_POST['f'][$found[2]]))
 						{
 							if($found[1] == '/')
 							{
@@ -71,15 +70,15 @@ Open     |_| ower
 				echo $file.' has been successfully rebuild...<br/>';
 			}
 			echo '---------------<br/>Operation completed. Thank you for using OPT!<br/><br/>
-			&nbsp;&nbsp;&nbsp;Open Power Template team (Always on time!)</span>';
+			&nbsp;&nbsp;&nbsp;Open Power Template team</span>';
 		}
 		else
 		{
 ?><span style="font-family: Courier;">
 One of directories you have specified has invalid access rights. Make sure the
 "<?=$_POST['src']?>" is readable and the "<?=$_POST['dest']?>" - writable.
-</span><?php		
-		}	
+</span><?php
+		}
 	}
 	else
 	{
@@ -95,25 +94,12 @@ You must specify three things: 1/ the directory, where the original OPT code is 
 directory, where will be placed "new" OPT; 3/ the features you want to keep. Here are their descriptions:
 
 <ul>
- <li><b>Autoloading modules support</b> - Open Power Template may automatically load and install new functions,
- instructions and filters placed in the "/plugins" directory while running the engine. If you are not loading new
- features in this way, you may disable this option.</li>
- <li><b>Custom resources support</b> - resources allow you to load templates from different sources, such as databases.
-  If you are using the default resource: "file" (templates in files), you may disable this option.</li>
- <li><b>Debug console</b> - when in debug mode, the console shows much useful information about parsed
-  templates, configuration etc. However, if you have already developed the script and you want to upload 
-  it into a webserver, you may remove the console from the code, because now it will be unnecessary.</li>
-  <li><b>Disabled CC support</b> - OPT allows you not to cache the compiled templates on your HDD ("compile_cache_disabled = 1"), although
-   it could be useful only while developing an application. If all your compiled templates are cached, you may
-   disable this option.</li>
-  <li><b>Error reporting protection</b> - if your server error reporting is set to E_ALL & ~E_NOTICE, you may
-  disable this option.</li>
-  <li><b>GZip compression support</b> - if you are not using GZip compression feature (for example because
-  your PHP is not compiled with the Zlib module), you may disable this option.</li>
-  <li><b>Nesting level check</b> - it is strongly recommended NOT TO disable this feature! It checks, whether
-  all the instructions were enclosed etc.</li>
-  <li><b>Output caching support</b> - if you are not using the output caching feature, you may disable this
-  option.</li>
+<?php
+	foreach($availableDirectives as $directive)
+	{
+		echo '<li><b>'.$directive['title'].'</b> - '.$directive['description'].'</li>';
+	}
+?>
 </ul>
 </span>
 <?php
@@ -129,18 +115,18 @@ form:<br/><br/>
 OPT source directory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="src"/><br/>
 OPT destination directory: <input type="text" name="dest"/><br/><br/>
 Features [ <a href="configurator.php?help" target="_blank">Help</a> ]<br/>
-<input type="checkbox" name="f[0]" checked="checked"/> Autoloading modules support<br/>
-<input type="checkbox" name="f[1]" checked="checked"/> Custom resources support<br/>
-<input type="checkbox" name="f[2]" checked="checked"/> Debug console<br/>
-<input type="checkbox" name="f[3]" checked="checked"/> Disabled CC support<br/>
-<input type="checkbox" name="f[4]" checked="checked"/> Error reporting protection<br/>
-<input type="checkbox" name="f[5]" checked="checked"/> GZip compression support<br/>
-<input type="checkbox" name="f[6]" checked="checked"/> Nesting level check<br/>	
-<input type="checkbox" name="f[7]" checked="checked"/> Output caching support<br/><br/>
+<?php
+	foreach($availableDirectives as $id => $directive)
+	{
+		echo '<input type="checkbox" name="f['.$id.']" checked="checked"/> '.$directive['title'].'<br/>';
+	}
+?>
+<br/>
 <input type="submit" value="Build OPT"/></form>	
-
-<?php	
+<?php
 		}
 	}
 
 ?></span>
+</body>
+</html>

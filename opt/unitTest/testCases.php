@@ -48,7 +48,47 @@
 		public function testCompileDirWriteable()
 		{
 			$this -> assertTrue(is_writeable($this->opt->compile));		
-		} // end testCompileDirWriteable();		
+		} // end testCompileDirWriteable();
+		
+		public function testCorrectNewlinesClass()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.class.php')) > 1);		
+		} // end testCorrectNewlinesClass();
+		
+		public function testCorrectNewlinesCompiler()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.compiler.php')) > 1);		
+		} // end testCorrectNewlinesCompiler();
+		
+		public function testCorrectNewlinesInstructions()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.instructions.php')) > 1);		
+		} // end testCorrectNewlinesInstructions();
+		
+		public function testCorrectNewlinesFunctions()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.functions.php')) > 1);		
+		} // end testCorrectNewlinesFunctions();
+		
+		public function testCorrectNewlinesComponents()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.components.php')) > 1);		
+		} // end testCorrectNewlinesComponents();
+		
+		public function testCorrectNewlinesFilters()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.filters.php')) > 1);		
+		} // end testCorrectNewlinesFilters();
+		
+		public function testCorrectNewlinesError()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.error.php')) > 1);		
+		} // end testCorrectNewlinesError();
+		
+		public function testCorrectNewlinesApi()
+		{
+			$this -> assertTrue(count(file(OPT_DIR.'opt.api.php')) > 1);		
+		} // end testCorrectNewlinesApi();
 		
 		public function testMethodParse()
 		{
