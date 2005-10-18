@@ -27,3 +27,5 @@
 
 <p>Strona {$page} z {$total}</p>
 <p>{$pages}</p>
+
+<a href="{url file="`index.php`" forum="1"}">ttt</a>

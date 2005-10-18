@@ -13,22 +13,10 @@
 
     // TODO: add exception handling
     require('common.php');
-	
     try
     {
         $main = OPB::getInstance();
-
-        if(!$main -> request -> map('act', OPB_GET, MAP_STRING))
-        {
-            $act = 'index';	
-        }
-        else
-        {
-	        // temporary
-            $act = $main -> request -> act;
-        }
-
-        $main -> execute($act);
+        $main -> execute();
     }
     catch (OPBException $e)
     {
@@ -38,5 +26,4 @@
     {
         echo $e;
     }
-    
 ?>

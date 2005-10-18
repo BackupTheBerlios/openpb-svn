@@ -23,7 +23,7 @@
 			
 			$opb -> loadLibrary('pagination');
 			
-			$ps = new opbPagination(10, 2734, 'http://localhost/opb/opb/index.php', array());
+			$ps = new opbPagination(10, 2734, 'http://bora.netburg.pl/projekty/OpenPowerBoard/SVN/opb/index.php', array());
 			
 			$tpl -> assign('page', $ps -> getCurrent());
 			$tpl -> assign('total', $ps -> getTotal());

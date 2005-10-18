@@ -23,3 +23,4 @@
 		<a href="{url file="`index.php`" act="NewTopic" tid="$f_id"}">{$viewforum@new_topic}</a> | <a href="{url file="`index.php`" act="NewTopic" add="Poll" tid="$f_id"}">{$viewforum@new_poll}</a>
 	</div>	
 </div>
+

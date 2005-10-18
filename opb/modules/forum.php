@@ -11,7 +11,7 @@
 //
 // $Id$
 
-	class opbViewForum extends opbModule
+	class opbForum extends opbModule
 	{
 		public function run()
 		{
@@ -43,7 +43,7 @@
 				$tpl -> assign('topics', $topics);
 				$tpl -> assign('fid', $opb -> request -> fid);
 */
-				$display = new opbDisplayBoard('viewforummodule', 'viewforum.tpl');
+				$display = new opbDisplayBoard('forummodule', 'forum.tpl');
 				$this -> display($display);	
 		//	}
 		} // end run();	

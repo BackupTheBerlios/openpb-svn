@@ -11,32 +11,32 @@
 //
 // $Id$
         
-	define('CONF_GLOBAL', 3);
-	define('CONF_AREA', 2);
-	define('CONF_FORUM', 1);
-	define('CONF_USER', 0);
+define('CONF_GLOBAL', 3);
+     define('CONF_AREA', 2);
+     define('CONF_FORUM', 1);
+     define('CONF_USER', 0);
 
-	class opbConfig
-	{
-		private $config;
+     class opbConfig
+     {
+          private $config;
 
-		public function __construct($config_file)
-		{
-		    $config_file = OPB_DIR . 'settings/' . $config_file;
-			if(file_exists($config_file))
-			{
-				$this -> config[3] = parse_ini_file($config_file, true);			
-			}
-			else
-			{
-				throw new FileNotFoundException();
-			}
-		} // end __construct();
+          public function __construct($config_file)
+          {
+              $config_file = OPB_DIR . 'settings/' . $config_file;
+               if(file_exists($config_file))
+               {
+                    $this -> config[3] = parse_ini_file($config_file, true);               
+               }
+               else
+               {
+                    throw new FileNotFoundException();
+               }
+          } // end __construct();
 
-		public function addConfig($level, $data)
-		{
-			$this -> config[$level] = $data;		
-		} // end addConfig();
+          public function addConfig($level, $data)
+          {
+               $this -> config[$level] = $data;          
+          } // end addConfig();
 
         public function get($section, $key = false)
         {
@@ -55,9 +55,9 @@
             return $ret;
         }
 
-	} // end opbConfig;
-	
-	
+     } // end opbConfig;
+     
+     
     define('OPB_MOD_MASTER', 0);
     define('OPB_MOD_SLAVE',  1);
 

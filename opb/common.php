@@ -23,9 +23,10 @@
 
     require(OPD_PATH . 'OPD.php');
     require(OPT_PATH . 'opt.class.php');
-    require(OPB_INC . 'dao/MainManager.lib.php'); // edit for DAO
+    //require(OPB_INC . 'dao/MainManager.lib.php'); // edit for DAO
 	
-    require(OPB_INC . 'interfaces.php');
+    require(OPB_INC . 'auth.php');
+	require(OPB_INC . 'interfaces.php');
     require(OPB_INC . 'session.php');
     require(OPB_INC . 'functions.php');
     require(OPB_INC . 'display.php');
