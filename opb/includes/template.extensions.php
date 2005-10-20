@@ -10,12 +10,11 @@
 // +----------------------------------------------------------------------+
 //
 // $Id$
-
     /**
      *
      *
      */
-    function opt_postfilter_template($code, opt_template $opt)
+    function optPostfilterTemplate($code, optClass $opt)
     {
         return '$i18n = opbLanguage::getInstance(); $opb = OPB::getInstance(); '.$code;
     } // end opt_postfilter_template();
@@ -24,7 +23,7 @@
      *
      *
      */
-    class opbTemplate extends opt_template
+    class opbTemplate extends optClass
     {
         static private $instance;
         
@@ -32,24 +31,22 @@
 		
         public function __construct()
         {
-            parent::__construct();
             $this->control['url'] = 'opt_url';
 			
             // Here we add additional functions, control instructions etc.
             $opb = OPB::getInstance();
             
             // Template initialization
-            $this -> conf = $opb->config->get('OPT');
-            $this -> conf['root'] = OPB_TPL.'devView/';
-            $this -> conf['plugins'] = OPB_INC.'opt/plugins/';
-            $this -> conf['cache'] = OPB_TPL_CACHE;
+            $conf = $opb->config->get('OPT');
+            $this -> root = OPB_TPL.'devView/';
+            $this -> plugins = OPB_INC.'opt/plugins/';
+            $this -> cache = OPB_TPL_CACHE;
             
-            $this->set_custom_i18n('$i18n->put(\'%s\', \'%s\')', '$i18n', 'template');
-            $this->init();
+            $this->setCustomI18N('$i18n->put(\'%s\', \'%s\')', '$i18n', 'Template');
 			
             $this->assign('address', $opb -> config -> get('MAIN', 'address'));
             
-            $templateInfo = @file_get_contents($this -> conf['root'].'templateInfo.ini');
+            $templateInfo = @file_get_contents($this -> root.'templateInfo.ini');
             
             if($templateInfo != NULL)
             {

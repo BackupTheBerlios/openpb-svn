@@ -37,6 +37,10 @@
     define('MAP_PASSWORD', 65536);
     define('MAP_BASE64',   131072);
     
+    // array index flags
+    define('MAP_INDEX_NUM', 262144);
+    define('MAP_INDEX_ASSOC', 524288);
+    
     /**
      *
      *
@@ -85,7 +89,7 @@
         
         public function reset()
         {
-        	$this -> ok = 1;
+            $this -> ok = 1;
         } // end reset();
         
         public function isOK()
@@ -100,30 +104,30 @@
         
         public function form($referer)
         {
-        	if($_SERVER['REQUEST_METHOD'] == 'POST' && strpos($_SERVER['HTTP_REFERER'], $referer) !== FALSE)
-			{
-				return 1;
-			}
-			return 0;
+            if($_SERVER['REQUEST_METHOD'] == 'POST' && strpos($_SERVER['HTTP_REFERER'], $referer) !== FALSE)
+            {
+                return 1;
+            }
+            return 0;
         } // end form();
         
         public function map($name, $method_id, $flags)
         {
-        	if($this -> main == NULL)
-        	{
-        		$this -> main = OPB::getInstance();
-        	}
+            if($this -> main == NULL)
+            {
+                $this -> main = OPB::getInstance();
+            }
             switch($method_id)
             {
                 case OPB_POST:
                     $method = &$_POST;
                     break;
                 case OPB_GET:
-                	$getData = $this -> main -> router -> handleData($name);
-                	if($getData !== NULL)
-                	{
-                		$method[$name] = &$getData;
-                	}
+                    $getData = $this -> main -> router -> handleData($name);
+                    if($getData !== NULL)
+                    {
+                        $method[$name] = &$getData;
+                    }
                     break;
                 case OPB_COOKIE:
                     $method = &$_COOKIE;
@@ -132,42 +136,154 @@
                     return 0;
             }
             $arg = func_get_args();
-            $ai = 3;
 
+            // Array or scalar value parsing
+            
+            if($flags & MAP_ARRAY)
+            {
+                if(is_array($method[$name]))
+                {
+                    // do we have to do index tests?
+                    $idTest = 0;
+                    if($flags & MAP_INDEX_NUM || $flags & MAP_INDEX_ASSOC)
+                    {
+                        $idTest = 1;
+                    }
+                
+                    foreach($method[$name] as $id => &$value)
+                    {
+                        if($idTest)
+                        {
+                            if($flags & MAP_INDEX_NUM)
+                            {
+                                if(!ctype_digit($id))
+                                {
+                                    $this -> tryUnok($flags);
+                                    return 0;
+                                }
+                            }
+                            else
+                            {
+                                if(!preg_match('/[a-zA-Z0-9\_]+/', $id))
+                                {
+                                    $this -> tryUnok($flags);
+                                    return 0;
+                                }
+                            }                        
+                        }
+                        // map the value
+                        if(!$this -> valueMapping($value, $flags, $arg))
+                        {
+                            return 0;
+                        }
+                    }
+                }
+                else
+                {
+                    $this -> tryUnok($flags);
+                    return 0;
+                }
+            }
+            else
+            {
+                // scalar value
+                if(!$this -> valueMapping($method[$name], $flags, $arg))
+                {
+                    return 0;
+                }
+            }
+
+            // if we are here, everything is all right
+            switch($method_id)
+            {
+                case OPB_POST:
+                        if (isset($_POST[$name])) 
+                        {
+                            $this -> data[$name] = $_POST[$name];
+                        }
+                        else
+                        {
+                            $this -> data[$name] = NULL;
+                            $this -> tryUnok($flags);
+                            return 0;
+                        }
+                        break;
+                case OPB_GET:
+                        if(isset($method[$name])) 
+                        {
+                            $this -> data[$name] = $method[$name];
+                        }
+                        else
+                        {
+                            $this -> data[$name] = NULL;
+                            $this -> tryUnok($flags);
+                            return 0;
+                        }
+                        break;
+                case OPB_COOKIE:
+                        if (isset($_COOKIE[$name])) 
+                        {
+                            $this -> data[$name] = $_COOKIE[$name];
+                        }
+                        else
+                        {
+                            $this -> data[$name] = NULL;
+                            $this -> tryUnok($flags);
+                            return 0;
+                        }
+                        break;
+            }
+
+            $this -> ok = $this -> ok && 1;
+
+            return 1;
+        } // end map();
+        
+        private function tryUnok($flags)
+        {
+            if($flags & MAP_REQUIRED)
+            {
+                $this -> ok = 0;
+            }        
+        } // end tryUnok();
+        
+        private function valueMapping(&$value, $flags, $arg)
+        {
+            $ai = 3;
             // if MAP_REQUIRED and the field doesn't exist, terminate
-            if(!isset($method[$name]) && $flags & MAP_REQUIRED)
+            if($value == NULL && $flags & MAP_REQUIRED)
             {
                 $this -> ok = 0;
                 return 0;
             }
 
-            if(isset($method[$name]))
+            if($value != NULL)
             {
                 // ok, map the field
                 
                 if($this -> defaultTrim == 1)
                 {
-                	if(!is_array($method[$name]))
-                	{
-                    	$method[$name] = trim($method[$name]);
+                    if(!is_array($value))
+                    {
+                        $value = trim($value);
                     }
                     else
                     {
-                    	foreach($method[$name] as &$value)
-                    	{
-                    		$value = trim($value);
-                    	}                    
+                        foreach($value as &$value)
+                        {
+                            $value = trim($value);
+                        }                    
                     }
                 }
 
                 if($flags & MAP_BASE64)
                 {
-                    $method[$name] = base64_decode($method[$name]);
+                    $value = base64_decode($value);
                 }
 
                 $extype = 0;
 
-                if(!$this -> extractType($flags, $method[$name], $extype))
+                if(!$this -> extractType($flags, $value, $extype))
                 {
                     $this -> tryUnok($flags);
                     return 0;
@@ -175,7 +291,7 @@
 
                 if($extype == MAP_PATTERN)
                 {
-                    if(!preg_match($arg[$ai], $method[$name]))
+                    if(!preg_match($arg[$ai], $value))
                     {
                         $this -> tryUnok($flags);
                         return 0;
@@ -187,7 +303,7 @@
                 {
                     if($extype == MAP_STRING || $extype == MAP_STRING)
                     {
-                        if(!($arg[$ai] < strlen($method[$name]) && strlen($method[$name]) < $arg[$ai+1]))
+                        if(!($arg[$ai] < strlen($value) && strlen($value) < $arg[$ai+1]))
                         {
                             $this -> tryUnok($flags);
                             return 0;
@@ -195,7 +311,7 @@
                     }
                     else
                     {
-                        if(!($arg[$ai] < $method[$name] && $method[$name] < $arg[$ai+1]))
+                        if(!($arg[$ai] < $value && $value < $arg[$ai+1]))
                         {
                             $this -> tryUnok($flags);
                             return 0;
@@ -207,7 +323,7 @@
                 {
                     if($extype == MAP_STRING || $extype == MAP_TEXT)
                     {
-                        if(!($arg[$ai] < strlen($method[$name])))
+                        if(!($arg[$ai] < strlen($value)))
                         {
                             $this -> tryUnok($flags);
                             return 0;
@@ -215,7 +331,7 @@
                     }
                     else
                     {
-                        if(!($arg[$ai] < $method[$name]))
+                        if(!($arg[$ai] < $value))
                         {
                             $this -> tryUnok($flags);
                             return 0;
@@ -227,7 +343,7 @@
                 {
                     if($extype == MAP_STRING || $extype == MAP_TEXT)
                     {
-                        if(!($arg[$ai] > strlen($method[$name])))
+                        if(!($arg[$ai] > strlen($value)))
                         {
                             $this -> tryUnok($flags);
                             return 0;
@@ -235,7 +351,7 @@
                     }
                     else
                     {
-                        if(!($arg[$ai] > $method[$name]))
+                        if(!($arg[$ai] > $value))
                         {
                             $this -> tryUnok($flags);
                             return 0;
@@ -246,7 +362,7 @@
                 
                 if($flags & MAP_PASSWORD && $extype != MAP_TEXT)
                 {
-                    if($method[$name] != $method[$arg[$ai]])
+                    if($value != $method[$arg[$ai]])
                     {
                         $this -> tryUnok($flags);
                         return 0;
@@ -255,7 +371,7 @@
                 }
                 if($flags & MAP_COMPARE && $extype != MAP_TEXT && $extype != MAP_DEFAULT)
                 {
-                    if($method[$name] != $arg[$ai])
+                    if($value != $arg[$ai])
                     {
                         $this -> tryUnok($flags);
                         return 0;
@@ -264,9 +380,9 @@
                 }
                 elseif($flags & MAP_LENGTH && ($extype == MAP_TEXT || $extype != MAP_STRING))
                 {
-                    if(strlen($method[$name]) != $arg[$ai])
+                    if(strlen($value) != $arg[$ai])
                     {
-						$this -> tryUnok($flags);
+                        $this -> tryUnok($flags);
                         return 0;
                     }
                     $ai++;
@@ -274,61 +390,10 @@
             }
             else
             {
-            	return 0;
+                return 0;
             }
-            // if we are here, everything is all right
-            switch($method_id)
-            {
-                case OPB_POST:
-                        if (isset($_POST[$name])) 
-                        {
-							$this -> data[$name] = $_POST[$name];
-						}
-						else
-						{
-							$this -> data[$name] = NULL;
-							$this -> tryUnok($flags);
-            				return 0;
-						}
-                        break;
-                case OPB_GET:
-                        if(isset($method[$name])) 
-                        {
-							$this -> data[$name] = $method[$name];
-						}
-						else
-						{
-							$this -> data[$name] = NULL;
-							$this -> tryUnok($flags);
-            				return 0;
-						}
-                        break;
-                case OPB_COOKIE:
-						if (isset($_COOKIE[$name])) 
-						{
-							$this -> data[$name] = $_COOKIE[$name];
-						}
-						else
-						{
-							$this -> data[$name] = NULL;
-							$this -> tryUnok($flags);
-            				return 0;
-						}
-                        break;
-            }
-
-            $this -> ok = $this -> ok && 1;
-
             return 1;
-        } // end map();
-        
-        private function tryUnok($flags)
-        {
-        	if($flags & MAP_REQUIRED)
-        	{
-        		$this -> ok = 0;
-        	}        
-        } // end tryUnok();
+        } // end valueMapping();
 
         private function extractType($mapping, &$value, &$extracted_type)
         {
@@ -386,14 +451,6 @@
             {
                 $extracted_type = MAP_DEFAULT;
                 return 1;
-            }
-            elseif($mapping & MAP_ARRAY)
-            {
-            	if(is_array($value))
-            	{
-            		$extracted_type = MAP_ARRAY;
-					return 1;            	
-            	}
             }
             $extracted_type = MAP_DEFAULT;
             return 0;

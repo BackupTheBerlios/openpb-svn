@@ -15,14 +15,14 @@
     define('OPB_INC',  OPB_DIR . 'includes/');
     define('OPB_DAO',  OPB_INC . 'dao/');
     define('OPD_PATH', '../opd/');
-    define('OPT_PATH', '../opt/lib/');
     define('OPB_MOD',  OPB_DIR . 'modules/');
     define('OPB_TPL',  OPB_DIR . 'templates/');
     define('OPB_TPL_CACHE', OPB_DIR . 'data/cache/opt/');
     define('OPB_LNG',  OPB_DIR . 'lang/');
+    define('OPT_DIR', '../opt/lib/');
 
     require(OPD_PATH . 'OPD.php');
-    require(OPT_PATH . 'opt.class.php');
+    require(OPT_DIR . 'opt.class.php');
     //require(OPB_INC . 'dao/MainManager.lib.php'); // edit for DAO
 	
     require(OPB_INC . 'auth.php');

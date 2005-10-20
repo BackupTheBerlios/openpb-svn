@@ -12,6 +12,20 @@
 
 -- --------------------------------------------------------
 
+CREATE TABLE `opb_areas` (
+ `id` smallint(8) NOT NULL auto_increment,
+ `name` varchar(30) NOT NULL default '',
+ `desc` varchar(30) NOT NULL default '',
+ `poz` smallint(8) NOT NULL default '0',
+ `conf` text NOT NULL,
+ PRIMARY KEY  (`id`)
+) TYPE=MyISAM CHARSET=latin2 AUTO_INCREMENT=1 ;
+
+INSERT INTO `opb_areas` ( `id` , `name` , `desc` , `poz` , `conf` ) 
+VALUES (
+'', 'Main area', 'Main forum area', '1', ''
+);
+
 -- 
 -- Struktura tabeli dla  `opb_forum_perms`
 -- 
