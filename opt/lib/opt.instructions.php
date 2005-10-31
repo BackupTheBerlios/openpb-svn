@@ -375,7 +375,7 @@
 	
 			if($params['assign'] != NULL)
 			{
-				$this -> output .= '\'; $this -> captureTo = \'$this->vars[\\\''.$params['assign'].'\\\']\'; '.$code.' $this -> captureTo = \''.$this -> compiler -> tpl -> captureTo.'\'; '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> output .= '\'; $this -> captureTo = \'$this->vars[\\\''.$params['assign'].'\\\'].=\'; '.$code.' $this -> captureTo = \''.$this -> compiler -> tpl -> captureTo.'\'; '.$this -> compiler -> tpl -> captureTo.' \'';
 			}
 			else
 			{
@@ -400,22 +400,24 @@
 		{
 			$block = $node -> getFirstBlock();
 			$params = array(
-				'file' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+				'file' => array(OPT_PARAM_REQUIRED, OPT_PARAM_STRING),
 				'assign' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, NULL),
 			);
-			$this -> compiler -> parametrizeError('include', $this -> compiler -> parametrize($block->getAttributes(), $params));
+			$this -> compiler -> parametrizeError('place', $this -> compiler -> parametrize($block->getAttributes(), $params));
 	
 			$file = '';
-			$res = $this -> compiler -> tpl -> getResourceInfo($found[1], $file);
-			$code = $this -> compiler -> parse($res -> loadSource($file));
-	
+			$res = $this -> compiler -> tpl -> getResourceInfo($params['file'], $file);
+			if($params['assign'] != NULL)
+			{	
+				$captureBuffer = $this -> compiler -> tpl -> captureTo;
+				$this -> compiler -> tpl -> captureTo = '$this -> vars[\''.$params['assign'].'\'] .= ';
+				$this -> output .= '\'; '.$this -> compiler -> tpl -> captureTo.' \'';
+			}
+			$this -> compiler -> parse($res -> loadSource($file));
 			if($params['assign'] != NULL)
 			{
-				$this -> output .= '\'; $this -> captureTo = \'$this->vars[\\\''.$params['assign'].'\\\']\'; '.$code.' $this -> captureTo = \''.$this -> compiler -> tpl -> captureTo.'\'; '.$this -> compiler -> tpl -> captureTo.' \'';
-			}
-			else
-			{
-				$this -> output .= '\'; '.$code.' '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> tpl -> captureTo = $captureBuffer;
+				$this -> output .= '\'; '.$this -> compiler -> tpl -> captureTo.' \'';
 			}
 		} // end instructionNodeProcess();
 	}
@@ -897,6 +899,7 @@
 	{
 		public function configure()
 		{
+			$this -> compiler -> nestingLevel['dynamic'] = 0;
 			return array(
 				// processor name
 				0 => 'dynamic',
@@ -959,7 +962,7 @@
 			}
 		} // end dynamicEnd();
 	}
-	
+	# COMPONENTS
 	class optComponent extends optInstruction
 	{
 		public function configure()
@@ -1022,7 +1025,7 @@
 							'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 							'value' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
 						);
-						$this -> compiler -> parametrizeError('component parameter', $this -> parametrize($node -> getFirstBlock()->getAttributes(), $params));
+						$this -> compiler -> parametrizeError('component parameter', $this -> compiler -> parametrize($node -> getFirstBlock()->getAttributes(), $params));
 						$this -> output .= $componentLink.' -> set(\''.$params['name'].'\', '.$params['value'].'); ';
 						break;
 					case 'listItem':
@@ -1101,4 +1104,5 @@
 		} // end compileEvent();
 
 	}
+	# /COMPONENTS
 ?>

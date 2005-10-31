@@ -39,8 +39,11 @@
 	}
 	
 	include_once(OPT_DIR.'opt.error.php');
+	# COMPONENTS
+	# PREDEFINED_COMPONENTS
 	include_once(OPT_DIR.'opt.components.php');
-	
+	# /PREDEFINED_COMPONENTS
+	# /COMPONENTS
 /************************
  *   O P T   C L A S S
  ************************/
@@ -110,13 +113,18 @@
 								'optCapture',
 								'optDynamic',
 								'optDefault'
+			
 							);
+		# COMPONENTS
 		public $components = array(
+							# PREDEFINED_COMPONENTS
 								'selectComponent' => 1,
 								'textInputComponent' => 1,
 								'textLabelComponent' => 1,
-								'formActionsComponent' => 1			
+								'formActionsComponent' => 1
+							# /PREDEFINED_COMPONENTS		
 							);
+		# /COMPONENTS
 		public $delimiters = array(0 => 
 								'\{(\/?)(.*?)(\/?)\}'
 							);
@@ -134,9 +142,7 @@
 		public $capture;
 		public $captureTo = 'echo';
 		public $captureDef = 'echo';
-		# ER_PROTECTION
 		private $oldErrorReporting;
-		# /ER_PROTECTION
 		
 		private $outputBuffer;
 		# DEBUG_CONSOLE
@@ -268,6 +274,7 @@
 			}	
 		} // end error();
 
+		# HTTP_HEADERS
 		public function httpHeaders($content, $cache = OPT_HTTP_CACHE)
 		{
 			if(headers_sent())
@@ -332,6 +339,7 @@
 			}
 			# /DEBUG_CONSOLE
 		} // end httpHeaders();
+		# /HTTP_HEADERS
 
 		public function setDefaultI18n(&$lang)
 		{
@@ -484,12 +492,10 @@
 				$this -> init = 1;
 			}
 			$res = $this -> getResourceInfo($file, $file);
-			# NESTING_LEVEL
 			if($nestingLevel > OPT_MAX_NESTING_LEVEL)
 			{
 				$this -> error(E_USER_ERROR, 'Nesting level too deep.', 3);
 			}
-			# /NESTING_LEVEL
 			$ok = 0;
 			# OUTPUT_CACHING
 			// Output caching enabled
@@ -518,7 +524,9 @@
 					require_once(OPT_DIR.'opt.compiler.php');
 					$this -> compiler = new optCompiler($this);
 				}
+				$res -> setTestStatus(0);
 				$code = $this -> compiler -> parse($res -> loadSource($file));
+				$res -> setTestStatus(1);
 				$ok = 1;
 				# DEBUG_CONSOLE
 				$useCache = 'no';
@@ -536,9 +544,11 @@
 						require_once(OPT_DIR.'opt.compiler.php');
 						$this -> compiler = new optCompiler($this);
 					}
+					$res -> setTestStatus(0);
 					$res -> lockCode($file);
 					$code = $this -> compiler -> parse($res -> loadSource($file));
 					$res -> saveCode($code);
+					$res -> setTestStatus(1);
 					$ok = 1;
 					# DEBUG_CONSOLE
 					$useCache = 'generating';
@@ -621,12 +631,10 @@
 		private function doInclude($file, $nestingLevel)
 		{
 			$res = $this -> getResourceInfo($file, $file);
-			# NESTING_LEVEL
 			if($nestingLevel > OPT_MAX_NESTING_LEVEL)
 			{
 				$this -> error(E_USER_ERROR, 'Nesting level too deep', 3);
 			}
-			# /NESTING_LEVEL
 			$ok = 0;
 
 			// time generating
@@ -745,6 +753,7 @@
 			}
 		} // end checkExistence();
 
+		# REGISTER_FAMILY
 		public function registerFunction($name, $func = '')
 		{
 			if(is_array($name))
@@ -804,6 +813,24 @@
 				}
 			}
 		} // end registerInstruction();
+		
+		# COMPONENTS
+		public function registerComponent($class)
+		{
+			if(is_array($class))
+			{
+				foreach($class as $componentName)
+				{
+					$this -> components[$componentName] = 1;
+				}
+		
+			}
+			else
+			{
+				$this -> components[] = $class;
+			}
+		} // end registerComponent();
+		# /COMPONENTS
 
 		public function registerFilter($type, $callback)
 		{
@@ -879,6 +906,7 @@
 			}
 			return 0;
 		} // end unregisterFilter();
+		# /REGISTER_FAMILY
 
 		public function loadConfig($data)
 		{	
@@ -1250,10 +1278,12 @@
 					{
 						switch($matches[1])
 						{
+							# COMPONENTS
 							case 'component':
 								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
 								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
 								break;
+							# /COMPONENTS
 							case 'instruction':
 								$this -> compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
 								$this -> compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";

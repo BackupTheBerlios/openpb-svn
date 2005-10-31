@@ -101,6 +101,7 @@ directory, where will be placed "new" OPT; 3/ the features you want to keep. Her
 	}
 ?>
 </ul>
+<a href="configurator.php">Back</a>
 </span>
 <?php
 		}
@@ -110,11 +111,12 @@ directory, where will be placed "new" OPT; 3/ the features you want to keep. Her
 
 <form method="post" action="configurator.php">
 Welcome to the Open Power Template configuration tool. Here you may configure, which
-options and features should be available in your OPT version. Please fill in this
+options and features should be available in your OPT version. Please fill in the
 form:<br/><br/>
 OPT source directory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="src"/><br/>
 OPT destination directory: <input type="text" name="dest"/><br/><br/>
 Features [ <a href="configurator.php?help" target="_blank">Help</a> ]<br/>
+Uncheck to remove specified feature.<br/>
 <?php
 	foreach($availableDirectives as $id => $directive)
 	{

@@ -10,6 +10,8 @@ when you have to use the same piece of HTML code in many places.</p>
 <hr/>
 {include="header.tpl"; !x; tralala}
 
+{@tralala}
+
 <i>The body of the page</i>
 
 {include="footer.tpl"}

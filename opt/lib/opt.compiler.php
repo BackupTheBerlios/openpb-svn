@@ -160,12 +160,14 @@
 	{
 		private $name;
 		private $attributes;
+		private $type;
 		private $nodes = array();
 		
-		public function __construct($name, $attributes = NULL)
+		public function __construct($name, $attributes = NULL, $type = OPT_COMMAND)
 		{
 			$this -> name = $name;
-			$this -> attributes = $attributes;		
+			$this -> attributes = $attributes;
+			$this -> type = $type;
 		} // end __construct();
 		
 		public function addNode(ioptNode $node)
@@ -186,6 +188,11 @@
 		public function getAttributes()
 		{
 			return $this -> attributes;
+		} // end getAttributes();
+
+		public function getType()
+		{
+			return $this -> type;
 		} // end getAttributes();
 
 		public function hasChildNodes()
@@ -215,6 +222,7 @@
 		public $nestingLevel;		
 		public $processors;
 		public $translator;
+		public $parseRun;
 
 		public function __construct($tpl)
 		{
@@ -246,7 +254,9 @@
 			}
 			# /PLUGIN_AUTOLOAD
 			$this -> processors['generic'] = new optInstruction($this);
+			# COMPONENTS
 			$this -> processors['component'] = new optComponent($this);
+			# /COMPONENTS
 			// Translate the instructions
 			foreach($this -> tpl -> control as $class)
 			{
@@ -259,6 +269,7 @@
 					$this -> translator[$name] = $type;		
 				}
 			}
+			$this -> parseRun = 0;
 		} // end __construct();
 
 		public function parse($code)
@@ -297,20 +308,26 @@
 					unset($result[$i]);
 				}
 			}
-
 			$output = $this -> tpl -> captureTo.' \'';
-			
-			// register output
-			foreach($this -> processors as $name => $processor)
+			if(!$this -> parseRun)
+			{				
+				// register output
+				foreach($this -> processors as $name => $processor)
+				{
+					$processor -> setOutput($output);
+				}
+				$this -> parseRun = 1;
+			}
+			else
 			{
-				$processor -> setOutput($output);
+				$this -> parseRun = 2;
 			}
 			
 			// initialize the tree
 			$root = $current = new optNode(NULL, OPT_ROOT, NULL);
 			$rootBlock = $currentBlock = new optBlock(NULL);
 			$root -> addItem($rootBlock);
-			$text_assign = 0;
+			$textAssign = 0;
 			$commented = 0;
 			$literal = 0;
 			foreach($result[0] as $i => $item)
@@ -341,7 +358,7 @@
 							);
 						
 							$text -> addItem($item);
-							$text_assign = 1;							
+							$textAssign = 1;							
 						}
 						else
 						{
@@ -356,11 +373,13 @@
 						continue;
 					}
 
-					$text_assign = 0;
+					$textAssign = 0;
 
 					// grep the data
-					$sort_matches = array(0 => '', 1 => '', 2 => '');
+					$sortMatches = array(0 => '', 1 => '', 2 => '');
 					preg_match('/'.$regex.'/', $item, $matches);
+
+					$foundCommand = 0;
 					foreach($matches as $id => $val)
 					{
 						$val = trim($val);
@@ -368,20 +387,27 @@
 						{
 							if($val == '/')
 							{
-								$sort_matches[0] = '/';
+								if(!$foundCommand)
+								{
+									$sortMatches[0] = '/';
+								}
+								else
+								{
+									$sortMatches[2] = '/';
+								}
 							}
 							elseif($id != 0 )
 							{
-								$sort_matches[1] = $val;
+								$sortMatches[1] = $val;
+								$foundCommand = 1;
 							}
 						}
 					}
-
-					if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sort_matches[1], $found))
+					if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sortMatches[1], $found))
 					{
 						// we have an instruction
 						$realname = $found[2];
-						if($sort_matches[0] == '/')
+						if($sortMatches[0] == '/')
 						{					
 							$found[2] = '/'.$found[2];
 						}
@@ -394,32 +420,33 @@
 							{
 								case OPT_COMMAND:
 									$node = new optNode($found[2], OPT_INSTRUCTION, $current);
-									$node -> addItem(new optBlock($found[2], $found));
+									$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
 									$currentBlock -> addNode($node);
 									break;
 								case OPT_MASTER:
 									$current -> storeBlock($currentBlock);
 									$current = new optNode($found[2], OPT_INSTRUCTION, $current);
 									$currentBlock -> addNode($current);
-									$currentBlock = new optBlock($found[2], $found);
+									$currentBlock = new optBlock($found[2], $found, OPT_MASTER);
 									$current -> addItem($currentBlock);
 									break;
 								case OPT_ALT:
-									$currentBlock = new optBlock($found[2], $found);
+									$currentBlock = new optBlock($found[2], $found, OPT_ALT);
 									$current -> addItem($currentBlock);
 									break;
 								case OPT_ENDER:
-									$currentBlock = new optBlock($found[2], $found);
+									$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
 									$current -> addItem($currentBlock);
 									$current = $current -> getParent();
 									$currentBlock = $current -> restoreBlock();
 									break;							
 							}
 						}
+						# COMPONENTS
 						// components, and other shit
 						elseif($realname == 'component' || isset($this -> tpl -> components[$realname]))
 						{
-							if($sort_matches[0] == '/')
+							if($sortMatches[0] == '/')
 							{
 								$currentBlock = new optBlock($found[2], $found);
 								$current -> addItem($currentBlock);
@@ -435,21 +462,40 @@
 								$current -> addItem($currentBlock);
 							}
 						}
+						# /COMPONENTS
 						else
 						{
-							if($sort_matches[0] == '/')
+							// here come the undefined command. The instruction programmer may do with them whatever he wants
+							// the compiler is going to recognize, what sort of command is it.
+							$ending = substr($found[2], strlen($found[2]) - 4, 4);
+							if($sortMatches[0] == '/')
 							{
-								$currentBlock = new optBlock($found[2], $found);
+								// ending command, like in XML: /command
+								$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
 								$current -> addItem($currentBlock);
 								$current = $current -> getParent();
 								$currentBlock = $current -> restoreBlock();
 							}
+							elseif($sortMatches[2] == '/')
+							{
+								// standalone command, like XML: command/ 
+								$node = new optNode($found[2], OPT_UNKNOWN, $current);
+								$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
+								$currentBlock -> addNode($node);
+							}
+							elseif($ending == 'else')
+							{
+								// alternative command, doesn't exist in XML: commandelse
+								$currentBlock = new optBlock($found[2], $found, OPT_ALT);
+								$current -> addItem($currentBlock);
+							}
 							else
 							{
+								// beginning command: command
 								$current -> storeBlock($currentBlock);
 								$current = new optNode($realname, OPT_UNKNOWN, $current);
 								$currentBlock -> addNode($current);
-								$currentBlock = new optBlock($realname, $found);
+								$currentBlock = new optBlock($realname, $found, OPT_MASTER);
 								$current -> addItem($currentBlock);
 							}
 						}
@@ -458,14 +504,14 @@
 					{
 						// we have an expression
 						$node = new optNode(NULL, OPT_EXPRESSION, $current);
-						$node -> addItem(new optBlock(NULL, $sort_matches[1]));
+						$node -> addItem(new optBlock(NULL, $sortMatches[1]));
 						$currentBlock -> addNode($node);
 					}
 				}
 				else
 				{
 					// text item
-					if($text_assign == 0)
+					if($textAssign == 0)
 					{
 						$text = new optTextNode(NULL, OPT_TEXT, $current);
 						$currentBlock -> addNode($text);
@@ -480,14 +526,16 @@
 						$item = '\\\\';
 					}
 					$text -> addItem($item);
-					$text_assign = 1;
+					$textAssign = 1;
 				}
 			
 			}
 			// execute the tree
 			$this -> processors['generic'] -> nodeProcess($root);
-			$code = $output.'\';';
-			
+			if($this->parseRun < 2)
+			{
+				$code = $output.'\';';
+			}
 			// apply postfilters
 			if(count($this -> tpl -> codeFilters['post']) > 0)
 			{
@@ -496,7 +544,7 @@
 					$code = $name($code, $this -> tpl);
 				}
 			}
-			
+			$this -> parseRun--;
 			return $code;
 		} // end parse();
 
@@ -832,24 +880,34 @@
 								$this -> tpl -> error(E_USER_ERROR, 'Unknown block type: '.$token, 103);
 							}
 							$token = $data;
-						}else{
+						}
+						else
+						{
 							// constant value, maybe it's a part of a table block name...
 							if($state['prev'] == '.')
 							{
-								$token = '[\''.$token.'\']';
+								if((!preg_match('/^((0[xX][0-9a-fA-F]+)|[0-9 \-\.]*)$/', (string)$token)) && $token{0} != '"' && $token{strlen($token) - 1} != '"')
+								{
+									$token = '[\''.$token.'\']';
+								}
+								else
+								{
+									$token = '['.$token.']';
+								}
 							}
 							elseif($state['prev'] == '->')
 							{
 								$token = $token;
-							}							
-							elseif((!preg_match('/([0-9 \-\.]+?)/', (string)$token)) && $token{0} != '"' && $token{strlen($token) - 1} != '"')
-							{
-								$token = '\''.$token.'\'';
 							}
 							elseif($token{0} == '`' && $token{strlen($token) - 1} == '`')
 							{
-								$token = '\''.trim($token, '`').'\'';
+								$token = '\''.str_replace('\\`', '`',trim($token, '`')).'\'';
+							}					
+							elseif((!preg_match('/^((0[xX][0-9a-fA-F]+)|[0-9 \-\.]*)$/', (string)$token)) && $token{0} != '"' && $token{strlen($token) - 1} != '"')
+							{
+								$token = '\''.$token.'\'';
 							}
+
 						}
 						if($state['function_opened'] == -1)
 						{
@@ -882,7 +940,7 @@
 			{
 				return array(0 => implode(' ', $tokens), $state['assignment']);
 			}
-			return implode(' ', $tokens);
+			return implode('', $tokens);
 		} // end compileExpression();
 
 		private function compileOpt($namespace)
@@ -986,8 +1044,8 @@
 		{
 			if(!isset($matches[4]))
 			{
-				$config = array();
-				return 1;
+				$matches[4] = '';
+				$matches[3] = '=';
 			}
 
 			if($matches[3]{0} == '=')
@@ -1003,14 +1061,14 @@
 				elseif(count($config) == 1)
 				{
 					// only one parameter needed, take all the string as it
-					$params[0] = $matches;
+					$params[0] = $matches[4];
 				}
 				else
 				{
 					// split the param string into parameters
 					$quotes = 0;
 					$pi = 0;
-					$params[$pi] = '';
+					$buffer = '';
 					$test = 1;
 					for($i = 0; $i < strlen($matches[4]); $i++)
 					{				
@@ -1018,20 +1076,34 @@
 						{
 							$test = $matches[4]{$i - 1} != '\\';
 						}						
-						if($matches[4]{$i} == '"' &&  $test)
+						if($matches[4]{$i} == '"' && $test)
 						{
 							$quotes = !$quotes;
 						}
 						if($matches[4]{$i} == ';' && $quotes == 0)
 						{
+							$params[$pi] = trim($buffer);
+							$buffer = '';
 							$pi++;
-							$params[$pi] = '';
 							continue;
 						}
-						$params[$pi] .= $matches[4]{$i};
+						$buffer .= $matches[4]{$i};
+					}
+					if($buffer != '')
+					{
+						$params[$pi] = trim($buffer);
 					}
 				}
-				
+				$first = reset($config);
+				if(count($params) == 0 && $first[0] == OPT_PARAM_OPTIONAL)
+				{
+					foreach($config as $name => $par)
+					{
+						$config[$name] = $par[2];
+					}
+					return NULL;
+				}
+
 				$pi = 0;
 				$optional = 0;
 				// process everything
@@ -1048,24 +1120,28 @@
 						if($optional == 1)
 						{
 							// pass the default value
-							$config[$name] = $par[2];						
+							$config[$name] = $par[2];
+				
 						}
 						else
 						{
-							return -1;						
+							return -1;
 						}		
 					}
 					else
 					{
-						// parameter set
-						$params[$pi] = trim($params[$pi]);
 						if($params[$pi] == '!x')
 						{
+							if($optional == 0)
+							{
+								$this -> tpl -> error(E_USER_ERROR, 'Cannot use !x marker for a required parameter.', 112);							
+							}
 							// force the default value
-							$config[$name] == $par[2];
+							$config[$name] = $par[2];
 							$pi++;
 							continue;
 						}
+
 						// check the format of the parameter
 						switch($par[1])
 						{
@@ -1076,7 +1152,7 @@
 								}
 								else
 								{
-									return $pi;
+									return $pi+1;
 								}
 								break;
 							case OPT_PARAM_EXPRESSION:
@@ -1097,7 +1173,7 @@
 								}
 								else
 								{
-									return $pi;
+									return $pi+1;
 								}
 								break;
 							case OPT_PARAM_NUMBER:
@@ -1107,7 +1183,7 @@
 								}
 								else
 								{
-									return $pi;
+									return $pi+1;
 								}
 								break;
 							case OPT_PARAM_VARIABLE:
@@ -1117,7 +1193,7 @@
 								}
 								else
 								{
-									return $pi;
+									return $pi+1;
 								}
 								break;
 							default:

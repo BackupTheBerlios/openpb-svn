@@ -45,8 +45,13 @@
 		public function isModified($name)
 		{
 			$cname = $this -> tpl -> compile.$this->parseName($name).'.php';
+
 			if($this -> status == 1)
 			{
+				if(!file_exists($this -> tpl -> root.$name))
+				{
+					$this -> tpl -> error(E_USER_ERROR, '`'.$name.'` not found in '.$this->tpl->root.' directory.', 9);
+				}
 				if(!file_exists($cname))
 				{
 					return 1;

@@ -37,7 +37,6 @@
 		}
 
 		$tpl -> assign('selector', $selector);
-
 		$tpl -> parse('example8.tpl');
 		mysql_close(); 
 	}catch(optException $exception){ 
