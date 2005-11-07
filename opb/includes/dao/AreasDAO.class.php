@@ -1,14 +1,6 @@
 <?php
-  
-/**
- * 
- *
- * @version $Id$
- * @copyright 2005 
- */
 
-  
-   #zarzadzanie aranami
+   #zarzadzanie sferami
    class areasDAO extends OPBDAO
    {
       
@@ -99,18 +91,5 @@
          return true;       
       }
    }
-
-
-   #wszystko co zwiazane z pobieraniem danych
-   class areasValuesDAO extends OPBDAO
-   { 
-      public function byForumID($iForumID)
-      {
-      }
-      
-      public function byAreaID($iAreaID)
-      {
-      }
-   }
-
+   
 ?>
