@@ -38,6 +38,10 @@
 			'title' => 'registerXXX() methods',
 			'description' => 'Removes such methods, as registerInstruction() or registerComponent().'
 		),
+		'OBJECT_I18N' => array(
+			'title' => 'Objective I18n',
+			'description' => 'Removes setObjectI18n() method and ioptI18n interface.'
+		),
 		'HTTP_HEADERS' => array(
 			'title' => 'httpHeaders() methods',
 			'description' => 'Removes httpHeaders() method.'

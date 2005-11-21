@@ -399,6 +399,30 @@ ENDER: /sect1 ()(sect1)
 END COMPILER SESSION\';';
 			$this -> assertEquals($result, $this->opt->compiler->parse($template));		
 		} // end testCompilerMegadeath();
+		
+		public function testCompilerInvalidTree()
+		{
+$template = '{sect1=test}
+	{sect2=hope}
+		{thereishope=miracle/}
+	{/sect2}
+	{/sect1}
+	{/alaa}
+';
+
+			try
+			{
+				$parsingResult = $this->opt->compiler->parse($template);
+			}
+			catch(optException $exception)
+			{
+				if($exception -> getCode() == 113)
+				{
+					return 1;
+				}
+			}
+			$this -> fail('Exception not returned!');	
+		} // end testCompilerInvalidTree();
 
 	}
 

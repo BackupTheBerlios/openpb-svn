@@ -37,7 +37,7 @@ Please specify DIFFERENT source and destination directory names!
 				$nesting = 0;
 				foreach($src as $i => $line)
 				{
-					if(preg_match('/# (\/?)([A-Z_]+)/', trim($line), $found))
+					if(preg_match('/# (\/?)([A-Z_0-9]+)/', trim($line), $found))
 					{
 						if(isset($availableDirectives[$found[2]]) && !isset($_POST['f'][$found[2]]))
 						{

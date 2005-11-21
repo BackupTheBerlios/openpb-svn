@@ -150,6 +150,16 @@
 			return 0;
 		} // end getBlockCount();
 
+		public function storeBlock(optBlock $block)
+		{
+			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 113);
+		} // end storeBlock();
+		
+		public function restoreBlock()
+		{
+			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 113);
+		} // end restoreBlock();
+
 		public function __toString()
 		{
 			return $this -> text;
@@ -219,7 +229,8 @@
 	{
 		public $tpl;
 		public $nestingNames;
-		public $nestingLevel;		
+		public $nestingLevel;
+		public $genericBuffer;		
 		public $processors;
 		public $translator;
 		public $parseRun;
@@ -438,6 +449,10 @@
 									$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
 									$current -> addItem($currentBlock);
 									$current = $current -> getParent();
+									if(!is_object($current))
+									{
+										$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+									}
 									$currentBlock = $current -> restoreBlock();
 									break;							
 							}
@@ -451,6 +466,10 @@
 								$currentBlock = new optBlock($found[2], $found);
 								$current -> addItem($currentBlock);
 								$current = $current -> getParent();
+								if(!is_object($current))
+								{
+									$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+								}
 								$currentBlock = $current -> restoreBlock();
 							}
 							else
@@ -474,6 +493,10 @@
 								$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
 								$current -> addItem($currentBlock);
 								$current = $current -> getParent();
+								if(!is_object($current))
+								{
+									$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+								}
 								$currentBlock = $current -> restoreBlock();
 							}
 							elseif($sortMatches[2] == '/')

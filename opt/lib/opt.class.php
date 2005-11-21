@@ -44,6 +44,19 @@
 	include_once(OPT_DIR.'opt.components.php');
 	# /PREDEFINED_COMPONENTS
 	# /COMPONENTS
+	
+	# OBJECT_I18N
+/************************
+ *   O P T   I 1 8 N    *
+ ************************/
+ 
+	interface ioptI18n
+	{
+		public function put($group, $id);
+		public function apply(optClass $tpl, $group, $id);	
+	}
+	# /OBJECT_I18N
+
 /************************
  *   O P T   C L A S S
  ************************/
@@ -82,7 +95,6 @@
 		// parser data area	
 		public $data = array();
 		public $vars = array();
-		public $res;
 		public $compiler;
 		public $functions = array(
 								'parse_int' => 'PredefParseInt',
@@ -131,6 +143,7 @@
 
 		public $lang;
 		public $i18nType;
+		public $i18n = NULL;
 
 		protected $init = 0;
 
@@ -367,6 +380,17 @@
 				$this -> registerFilter(OPT_POSTFILTER, $postfilter);			
 			}
 		} // setCustomI18n();
+		# OBJECT_I18N
+		public function setObjectI18n(ioptI18n $i18n)
+		{
+			$this -> i18nType = 1;
+			$this -> lang = array(
+				'template' => '$this->i18n->put(\'%s\',\'%s\')',
+				'applyClass' => '$this->i18n'
+			);
+			$this -> i18n = $i18n;
+		} // setObjectI18n();
+		# /OBJECT_I18N
 
 		public function assign($name, $value, $forceRewrite = 0)
 		{
