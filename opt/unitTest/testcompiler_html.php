@@ -1,13 +1,16 @@
 <?php
 define('OPT_DIR', '../lib/');
 set_include_path('./PHPUnit/');
+require('./PHPUnit/PHPUnit/GUI/HTML.php');
 require('./PHPUnit/PHPUnit.php');
 require(OPT_DIR.'opt.api.php');
 require(OPT_DIR.'opt.compiler.php');
 require('./compilerTestCases.php');
 
-$suite = new PHPUnit_TestSuite('optCompilerTest');
-$result = PHPUnit::run($suite);
+$html = new PHPUnit_GUI_HTML();
 
-echo $result -> toHtml();
+$suite = new PHPUnit_TestSuite('optCompilerTest');
+$html -> addSuites(array($suite));
+
+echo $html -> show();
 ?>

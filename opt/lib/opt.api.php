@@ -55,40 +55,45 @@
 		public $parseintDecPoint = '.';
 		public $parseintDecimals = 3;
 		public $parseintThousands = ',';
-		
+
 		// parser data area	
 		public $data = array();
 		public $vars = array();
-		public $res;
 		public $compiler;
 		public $functions = array();
 		public $phpFunctions = array();
 		public $control = array();
+		# COMPONENTS
 		public $components = array();
-		public $delimiters = array(0 => '\{(\/?)(.*?)(\/?)\}');
+		# /COMPONENTS
+		public $delimiters = array(0 => 
+								'\{(\/?)(.*?)(\/?)\}'
+							);
 
 		public $lang;
 		public $i18nType;
+		public $i18n = NULL;
 
 		protected $init = 0;
-
+		
+		public $resources = array();
 		public $codeFilters = array(
 								'pre' => NULL,
 								'post' => NULL,
 								'output' => NULL
 							);
+							
+		public $instructionFiles = array();
 		public $capture;
 		public $captureTo = 'echo';
 		public $captureDef = 'echo';
-		# ER_PROTECTION
 		private $oldErrorReporting;
-		# /ER_PROTECTION
-		
 		private $outputBuffer;
-	
+		
 		public $compileCode = '';
 		private $includedFiles = array();
 		private $testIncludedFiles;
+
 		
 		public function __construct()
 		{

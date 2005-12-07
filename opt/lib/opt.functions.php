@@ -14,16 +14,7 @@
 	 
 	function optPredefParseInt($tpl, $bigint)
 	{
-		/* $bigint = (string)$bigint;
-		for($i = strlen($bigint) - 1, $x = 0; $i >= 0; $i--, $x++)
-		{
-			$ret .= $bigint{$i};
-			if($x == 2 && $i != 0)
-			{
-				$ret .= $sep;
-				$x = -1;
-			}
-		} */
+		//return number_format($bigint, $tpl -> parseintDecimals, $tpl -> parseintDecPoint, $tpl -> parseintThousands);
 		return rtrim(number_format($bigint, $tpl -> parseintDecimals, $tpl -> parseintDecPoint, $tpl -> parseintThousands), $tpl->parseintDecPoint.'0');
 	} // end optPredefParseInt();
 	

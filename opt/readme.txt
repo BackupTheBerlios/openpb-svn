@@ -51,6 +51,7 @@ There is a lot of changes, 1.0.0 and 0.1.1 are completely different scripts.
  - [upd] Full object support
  - [upd] Heavy OPTimizations
  - [upd] License change to GNU LGPL
+ - [fix] many problems with output cache (thanks to normanos)
  - [fix] bug #6
  - [fix] bug #5
  - [fix] bug #7
@@ -62,6 +63,9 @@ There is a lot of changes, 1.0.0 and 0.1.1 are completely different scripts.
  - [fix] bug #15
  - [fix] bug #16
  - [fix] bug #17
+ - [fix] bug #18
+ - [fix] bug #19
+ - [fix] bug #21
 
 ****************************
 *  0.1.1 CHANGELOG         *

@@ -40,6 +40,18 @@
 	
 	include_once(OPT_DIR.'opt.error.php');
 	# COMPONENTS
+	
+	interface ioptComponent
+	{
+		public function __construct($name = '');
+		public function setOptInstance(optClass $tpl);
+		public function set($name, $value);
+		public function push($name, $value, $selected = false);
+		public function setDatasource(&$source);
+		public function begin();
+		public function end();
+	}
+
 	# PREDEFINED_COMPONENTS
 	include_once(OPT_DIR.'opt.components.php');
 	# /PREDEFINED_COMPONENTS
@@ -52,8 +64,9 @@
  
 	interface ioptI18n
 	{
+		public function setOptInstance(optClass $tpl);
 		public function put($group, $id);
-		public function apply(optClass $tpl, $group, $id);	
+		public function apply($group, $id);	
 	}
 	# /OBJECT_I18N
 
@@ -124,8 +137,9 @@
 								'optForeach',
 								'optCapture',
 								'optDynamic',
-								'optDefault'
-			
+								'optDefault',
+								'optBind',
+								'optInsert'			
 							);
 		# COMPONENTS
 		public $components = array(
@@ -146,12 +160,15 @@
 		public $i18n = NULL;
 
 		protected $init = 0;
-
+		
+		public $resources = array();
 		public $codeFilters = array(
 								'pre' => NULL,
 								'post' => NULL,
 								'output' => NULL
 							);
+							
+		public $instructionFiles = array();
 		public $capture;
 		public $captureTo = 'echo';
 		public $captureDef = 'echo';
@@ -271,6 +288,16 @@
 			}
 			elseif($type == E_USER_ERROR)
 			{
+				// Close the io connections
+				foreach($this -> resources as $resource)
+				{
+					if($resource -> getIoStatus() == OPT_IO_LOCKED)
+					{
+						// remove the file, if possible
+						$resource -> saveCode(NULL);
+					}
+				}
+			
 				// Send the exception
 				$exception = new optException($msg, $code, $n_type, $dFile, $dLine, $dFunction, $this -> trace);
 				
@@ -389,6 +416,7 @@
 				'applyClass' => '$this->i18n'
 			);
 			$this -> i18n = $i18n;
+			$this -> i18n -> setOptInstance($this);
 		} // setObjectI18n();
 		# /OBJECT_I18N
 
@@ -520,18 +548,7 @@
 			{
 				$this -> error(E_USER_ERROR, 'Nesting level too deep.', 3);
 			}
-			$ok = 0;
-			# OUTPUT_CACHING
-			// Output caching enabled
-			if($this -> cacheStatus == true)
-			{
-				if($this -> cacheProcess($file))
-				{
-					return 1;
-				}
-			}
-			# /OUTPUT_CACHING
-
+			$status = 0; // whether the code was
 			// time generating
 			# DEBUG_CONSOLE
 			if($this -> debugConsole)
@@ -551,7 +568,7 @@
 				$res -> setTestStatus(0);
 				$code = $this -> compiler -> parse($res -> loadSource($file));
 				$res -> setTestStatus(1);
-				$ok = 1;
+				$status = 0;
 				# DEBUG_CONSOLE
 				$useCache = 'no';
 				# /DEBUG_CONSOLE
@@ -573,19 +590,29 @@
 					$code = $this -> compiler -> parse($res -> loadSource($file));
 					$res -> saveCode($code);
 					$res -> setTestStatus(1);
-					$ok = 1;
+					$status = 1;
 					# DEBUG_CONSOLE
 					$useCache = 'generating';
 					# /DEBUG_CONSOLE
 				}
 				else
 				{
+					# OUTPUT_CACHING
+					// Output caching enabled
+					if($this -> cacheStatus == true)
+					{
+						if($this -> cacheProcess($file))
+						{
+							return 1;
+						}
+					}
+					# /OUTPUT_CACHING
+
 					// The file is compiled
 					$code = $res -> loadCode($file);
 					# DEBUG_CONSOLE
 					$useCache = 'reading';
 					# /DEBUG_CONSOLE
-					$ok = 1;
 				}
 			
 			# DISABLED_CC
@@ -611,7 +638,7 @@
 				echo '</table>';
 			}
 			# OUTPUT_CACHING
-			if($this -> cacheStatus == true)
+			if($this -> cacheStatus == true && $status == 1)
 			{
 				if(count($this -> cacheOutput) == 0)
 				{
@@ -649,7 +676,7 @@
 				);
 			}
 			# /DEBUG_CONSOLE
-			return $ok;
+			return 1;
 		} // end doParse();
 		
 		private function doInclude($file, $nestingLevel)
@@ -931,6 +958,11 @@
 			return 0;
 		} // end unregisterFilter();
 		# /REGISTER_FAMILY
+		
+		public function registerInstructionFile($file)
+		{
+			$this -> instructionFiles[] = $file;
+		} // end registerInstructionFile();
 
 		public function loadConfig($data)
 		{	
@@ -983,9 +1015,9 @@
 			else
 			{
 				$this -> cacheExpires = $expires;
-			}		
+			}
 		} // end cacheStatus();
-		
+
 		public function getStatus()
 		{
 			return $this -> cacheStatus;
@@ -993,45 +1025,161 @@
 
 		public function cacheUnique($id = NULL)
 		{
-			$this -> cacheId = str_replace('/', '^', $id);
+			$this -> cacheId = $id;
 		} // end cacheUnique();
 
 		public function isCached($filename, $id = NULL)
 		{
-			$buf = $this -> cacheId;
-			if($id != NULL)
-			{				
-				$this -> cacheId = $id;
-			}
-			else
+			$hashed = $this->cd($filename, $id);
+			$hashedPath = $this->cache.$hashed;
+			if(file_exists($hashedPath))
 			{
-				$this -> cacheId = NULL;
-			}
-			$c = $this->cd($filename);
-			if(file_exists($c))
-			{
-
-				$ok = $this -> cacheTest($c, $filename);
-				if($ok == 1)
+				$ok = $this -> cacheRead($hashedPath, $hashed, $filename);
+				if($ok != 1)
 				{
-					$this -> cacheTestResult = 1;
-				}
-				else
-				{
-					fclose($this -> cacheResource);
-					unlink($c);
-					$this -> cacheTestResult = 1;
+					unlink($hashedPath);
 				}
 			}
 			else
 			{
 				$ok = 0;
 			}
-
-			$this -> cacheId = $buf;
-			return $ok;			
+			return $ok;
 		} // end isCached();
 
+		private function cacheProcess($filename)
+		{
+			$hashed = $this -> cd($filename, $this -> cacheId);
+			$hashedPath = $this -> cache.$hashed;
+			$this -> cacheOutput = array();
+			if(file_exists($hashedPath))
+			{
+				if(filemtime($hashedPath) < (time() - $this -> cacheExpires))
+				{
+					// recompilation
+					ob_start();
+					return 0;
+				}
+				else
+				{
+					if(!isset($this -> cacheHeader[$hashed]))
+					{
+						if(!$this -> cacheRead($hashedPath, $hashed, $filename))
+						{
+							// recompilation
+							return 0;
+						}
+					}
+					// we can read it					
+					if($this -> cacheHeader[$hashed]['dynamic'] == true)
+					{
+						// there is some dynamic stuff.
+						eval($this -> cacheHeader[$hashed]['content']);
+					}
+					else
+					{
+						// whole file is static
+						echo $this -> cacheHeader[$hashed]['content'];
+					}
+					$this -> cacheId = NULL;
+					return 1;			
+				}
+			}
+			ob_start();
+			return 0;
+		} // end cacheProcess();
+
+		private function cacheWrite($filename, $code = NULL)
+		{
+			$c = $this -> cache.$this->cd($filename, $this -> cacheId);
+			$this -> cacheId = NULL;
+			$content = 'echo(\'Unknown content!\');';
+			if(count($this -> cacheOutput) == 0)
+			{
+				// ok, the content is static!
+				$dynamic = false;
+				$content = ob_get_contents();
+				ob_start();
+			}
+			else
+			{
+				// the content is dynamic
+				$dynamic = true;
+				if(preg_match_all('#\/\* \#\@\#DYNAMIC\#\@\# \*\/(.+)\/\* \#\@\#END DYNAMIC\#\@\# \*\/#si', $code, $blocks))
+				{
+					$content = $this -> captureDef.' \'';
+					for($i = 0; $i < count($this -> cacheOutput); $i++)
+					{
+						$content .= str_replace(array(
+							'\\',
+							'\''
+						),
+						array(
+							'\\\\',
+							'\\\''
+						), $this->cacheOutput[$i]);
+						$content .= '\'; ';
+						$content .= $blocks[1][$i];
+						$content .= ' '.$this -> captureDef.' \'';					
+					}
+					$content .= str_replace(array(
+						'\\',
+						'\''
+					),
+					array(
+						'\\\\',
+						'\\\''
+					), ob_get_contents()).'\';';
+				}
+				else
+				{
+					$this -> error(E_USER_ERROR, 'Critical caching system error: invalid dynamic delimiters!', 7);
+				}
+			}
+			
+			// generate the file
+			$header = array(
+				'timestamp' => time(),
+				'copyVersion' => filemtime($this->root.$filename),
+				'dynamic' => $dynamic,
+				'expire' => $this -> cacheExpires
+			);
+			file_put_contents($c, serialize($header)."\n".$content);		
+		} // end cacheWrite();
+		
+		private function cacheRead($hashedPath, $hashed, $filename)
+		{
+			$resource = fopen($hashedPath, 'r');
+			$this -> cacheHeader[$hashed] = unserialize(fgetss($resource));
+			
+			if(!is_array($this -> cacheHeader[$hashed]))
+			{
+				// the cache is broken, recompile
+				return 0;
+			}
+
+			// one more time we will control the timestamp
+			if($this -> cacheHeader[$hashed]['timestamp'] < (time() - (int)$this -> cacheHeader[$hashed]['expire']))
+			{
+				// ok, the filesystem was wrong, we should recompile this...
+				return 0;
+			}
+
+			$this -> cacheHeader[$hashed]['content'] = fread($resource, filesize($hashedPath));
+			fclose($resource);
+			return 1;
+		} // end cacheTest();
+
+		private function cd($filename, $id = '')
+		{
+			return str_replace(array('|', '/'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
+		} // end cd();
+		
+		private function base64Name($filename)
+		{
+			return base64_encode(dirname($filename)).basename($filename);
+		} // end base64Name();
+		
 		public function cacheReset($filename = NULL, $id = NULL, $expire_time = NULL)
 		{
 			if($filename == NULL && $id == NULL)
@@ -1119,146 +1267,6 @@
 			
 			}
 		} // end cacheReset();
-
-		private function cacheProcess($filename)
-		{
-			$c = $this->cd($filename);
-			$this -> cacheOutput = array();
-			if(file_exists($c))
-			{
-				$mod = filemtime($c);
-				if($mod < (time() - $this -> cacheExpires))
-				{
-					// recompilation
-					ob_start();
-					return 0;				
-				}
-				else
-				{
-					if($this -> cacheTestResult == 0)
-					{
-						$result = $this -> cacheTest($c, $filename);
-						if($result == 0)
-						{
-							// recompilation
-							return 0;
-						}
-					}
-					else
-					{
-						$this -> cacheTestResult = 0;
-					}
-					
-					// ok, all tests passed, read
-					// read the stuff
-					$content = fread($this -> cacheResource, filesize($c));
-					
-					if($this -> cacheHeader['dynamic'] == true)
-					{
-						// there is some dynamic stuff.
-						eval($content);
-					}
-					else
-					{
-						// whole file is static
-						echo $content;
-					}
-					fclose($this -> cacheResource);
-					return 1;			
-				}			
-			}
-			ob_start();
-			return 0;		
-		} // end cacheProcess();
-
-		private function cacheWrite($filename, $code = NULL)
-		{
-			$c = $this->cd($filename);
-			$content = 'echo(\'Unknown content!\');';
-			if(count($this -> cacheOutput) == 0)
-			{
-				// ok, the content is static!
-				$dynamic = false;
-				$content = ob_get_contents();
-				ob_start();
-			}
-			else
-			{
-				// the content is dynamic
-				$dynamic = true;
-
-				if(preg_match_all('#\/\* \#\@\#DYNAMIC\#\@\# \*\/(.+)\/\* \#\@\#END DYNAMIC\#\@\# \*\/#si', $code, $blocks))
-				{
-					$content = $this -> captureDef.' \'';
-					for($i = 0; $i < count($this -> cacheOutput); $i++)
-					{
-						$content .= addslashes($this->cacheOutput[$i]);
-						$content .= '\'; ';
-						$content .= $blocks[1][$i];
-						$content .= ' '.$this -> captureDef.' \'';					
-					}
-					$content .= addslashes(ob_get_clean()).'\';';
-				}
-				else
-				{
-					$this -> error(E_USER_ERROR, 'Critical caching system error: invalid dynamic delimiters!', 7);
-				}
-			}
-			
-			// generate the file
-			$header = array(
-				'timestamp' => time(),
-				'copy_version' => filemtime($this->root.$filename),
-				'dynamic' => $dynamic			
-			);
-			
-			file_put_contents($c, serialize($header)."\n".$content);		
-		} // end cacheWrite();
-		
-		private function cacheTest($c, $filename)
-		{
-			$this -> cacheResource = fopen($c, 'r');
-			$this -> cacheHeader = unserialize(fgetss($this -> cacheResource));
-			
-			if(!is_array($this -> cacheHeader))
-			{
-				// the cache is broken, recompile
-				return 0;
-			}
-			
-			// one more time we will control the timestamp
-			if($this -> cacheHeader['timestamp'] < (time() - (int)$this -> cacheExpires))
-			{
-				// ok, the filesystem was wrong, we should recompile this...
-				return 0;
-			}
-			
-			// is the original template unchanged?
-			if($this -> cacheHeader['copy_version'] != filemtime($this->root.$filename))
-			{
-				// there are some differences, recompile
-				return 0;
-			}
-			return 1;
-		} // end cacheTest();
-
-		private function cd($filename, $raw = 0)
-		{
-			if($raw == 1)
-			{
-				return base64_encode(dirname($filename)).basename($filename);
-			}
-			// cache filename hashing
-			if($this -> cacheId == NULL)
-			{
-				$id = '';
-			}
-			else
-			{
-				$id = $this -> cacheId;
-			}
-			return $this -> cache.str_replace('|','^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
-		} // end cd();
 		
 		private function checkExpire($file, $time)
 		{
@@ -1369,6 +1377,7 @@
 			{
 			# /CUSTOM_RESOURCES
 				$file = $path;
+				
 				return $this->resources['file'];
 			# CUSTOM_RESOURCES
 			}

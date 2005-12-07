@@ -60,8 +60,10 @@
 						// we have an assignment, so we must build different code
 						$this -> output .= '\'; '.$result[0].'; '.$this -> compiler -> tpl -> captureTo.' \'';
 					}
-		
-					$this -> output .= '\'.(string)('.$result[0].').\'';
+					else
+					{		
+						$this -> output .= '\'.(string)('.$result[0].').\'';
+					}
 					break;
 				case OPT_INSTRUCTION:
 					$this -> instructionProcess($node);
@@ -366,7 +368,7 @@
 	
 			if($params['default'] != NULL)
 			{
-				$code = ' if($this->checkExistence('.$params['file'].'){ $this -> doInclude('.$params['file'].', $nestingLevel + 1); }else{ $this -> doInclude('.$params['default'].', $nestingLevel + 1); } ';
+				$code = ' if($this->checkExistence('.$params['file'].')){ $this -> doInclude('.$params['file'].', $nestingLevel + 1); }else{ $this -> doInclude('.$params['default'].', $nestingLevel + 1); } ';
 			}
 			else
 			{
@@ -617,7 +619,7 @@
 				{
 					case 'capture':
 							$this -> captureBegin($block -> getAttributes());
-							$this -> defaultTreeProcess();
+							$this -> defaultTreeProcess($block);
 							break;
 					case '/capture':
 							$this -> captureEnd();
@@ -962,6 +964,75 @@
 			}
 		} // end dynamicEnd();
 	}
+	
+	class optBind extends optInstruction
+	{
+		public function configure()
+		{
+			$this -> compiler -> genericBuffer['bind'] = array();
+			return array(
+				// processor name
+				0 => 'bind',
+				// instructions
+				'bind' => OPT_MASTER,
+				'/bind' => OPT_ENDER
+			);
+		} // end configure();
+
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			foreach($node as $block)
+			{
+				switch($block -> getName())
+				{
+					case 'bind':
+							$this -> compiler -> genericBuffer['bind'][$this->getName($block->getAttributes())] = $block;
+							break;
+				}
+			}
+		} // end instructionNodeProcess();
+		
+		public function getName($attributes)
+		{
+			$params = array(
+				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
+			);
+			$this -> compiler -> parametrizeError('opfBind', $this -> compiler -> parametrize($attributes, $params));
+			return $params['name'];
+		} // end getName();
+	} // end optBind;
+	
+	class optInsert extends optInstruction
+	{
+		public function configure()
+		{
+			return array(
+				// processor name
+				0 => 'insert',
+				// instructions
+				'insert' => OPT_COMMAND
+			);
+		} // end configure();
+
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			$block = $node -> getFirstBlock();
+			$params = array(
+				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
+			);
+			$this -> compiler -> parametrizeError('insert', $this -> compiler -> parametrize($block -> getAttributes(), $params));
+			
+			if(isset($this -> compiler -> genericBuffer['bind'][$params['name']]))
+			{
+				$this -> defaultTreeProcess($this -> compiler -> genericBuffer['bind'][$params['name']]);
+			}
+			else
+			{
+				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Unknown bind identifier: `'.$params['name'].'`.', 209);
+			}
+		} // end instructionNodeProcess();
+	} // end optInsert;
+	
 	# COMPONENTS
 	class optComponent extends optInstruction
 	{
@@ -999,16 +1070,25 @@
 			else
 			{
 				$params = array(
+					'name' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, NULL),
 					'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
 				$this -> compiler -> parametrizeError($block -> getName(), $this -> compiler -> parametrize($block->getAttributes(), $params));
-				$this -> output .= '\'; $__component_'.$cid.' = new '.$block -> getName().'(); ';
+				if($params['name'] != NULL)
+				{
+					$this -> output .= '\'; $__component_'.$cid.' = new '.$block -> getName().'('.$params['name'].'); ';
+				}
+				else
+				{
+					$this -> output .= '\'; $__component_'.$cid.' = new '.$block -> getName().'(); ';
+				}
 				if($params['datasource'] != NULL)
 				{
 						$this -> output .= ' $__component_'.$cid.' -> setDatasource('.$params['datasource'].'); ';
 				}
 				$componentLink = '$__component_'.$cid;	
 			}
+			$this -> output .= $componentLink.' -> setOptInstance($this); ';
 			
 			// let's see, what do we have inside the block
 			
@@ -1069,12 +1149,12 @@
 			{
 				$this -> compileEvent($componentLink, $nodeData);
 			}
-			$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' '.$componentLink.' -> begin($this); ';
+			$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' '.$componentLink.' -> begin(); ';
 			foreach($events[1] as $name => $nodeData)
 			{
 				$this -> compileEvent($componentLink, $nodeData);
 			}
-			$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' '.$componentLink.' -> end($this); ';
+			$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' '.$componentLink.' -> end(); ';
 			foreach($events[2] as $name => $nodeData)
 			{
 				$this -> compileEvent($componentLink, $nodeData);
@@ -1095,7 +1175,7 @@
 		{
 			$node = $eventNode[0];
 			$message = $eventNode[1];
-			$this -> output .= ' if('.$componentId.' -> '.$node->getName().'($this, \''.$eventNode[1].'\')) { '.($capture = $this -> compiler -> tpl -> captureTo).' \'';
+			$this -> output .= ' if('.$componentId.' -> '.$node->getName().'(\''.$eventNode[1].'\')) { '.($capture = $this -> compiler -> tpl -> captureTo).' \'';
 			foreach($node as $block)
 			{
 				$this -> defaultTreeProcess($block);

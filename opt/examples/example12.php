@@ -23,7 +23,7 @@
 				$username = new textLabelComponent;
 				$username -> set('name', 'username');
 				$username -> set('value', $_POST['username']);
-				$username -> set('message', 'Is this correct?');		
+				$username -> set('message', 'Is this correct?');	
 
 				$actions = array(0 =>
 					array(

@@ -11,16 +11,6 @@
   //  --------------------------------------------------------------------  //
   //
   // $Id$
-
-	interface ioptComponent
-	{
-		public function __construct($name = '');
-		public function set($name, $value);
-		public function push($name, $value, $selected = false);
-		public function setDatasource(&$source);
-		public function begin(optClass $tpl);
-		public function end(optClass $tpl);
-	}
 	
 	function generateTagElementList($list)
 	{
@@ -37,6 +27,8 @@
 		protected $_list = array();
 		protected $message = NULL;
 		protected $tagParameters = array();
+		
+		protected $tpl;
 
 		public function __construct()
 		{
@@ -44,6 +36,11 @@
 			$this -> message = NULL;
 			$this -> tagParameters = array();		
 		} // end __construct();
+		
+		public function setOptInstance(optClass $tpl)
+		{
+			$this -> tpl = $tpl;
+		} // end setOptInstance();
 		
 		public function set($name, $value)
 		{
@@ -80,7 +77,7 @@
 			$this -> _list = $source;		
 		} // end setDatasource();
 
-		public function begin(optClass $tpl)
+		public function begin()
 		{	
 			$code = '<select'.generateTagElementList($this->tagParameters).'>';
 			$selected = 0;
@@ -100,17 +97,17 @@
 			return $code;
 		} // end begin();
 
-		public function onmessage(optClass $tpl, $pass_to)
+		public function onmessage($pass_to)
 		{
 			if($this -> message == NULL)
 			{
 				return 0;
 			}
-			$tpl -> vars[$pass_to] = $this -> message;
+			$this -> tpl -> vars[$pass_to] = $this -> message;
 			return 1;		
 		} // end onmessage();
 
-		public function end(optClass $tpl)
+		public function end()
 		{
 			return '';		
 		} // end end();
@@ -118,13 +115,19 @@
 
 	class textInputComponent implements ioptComponent
 	{
-		protected $message;
+		protected $message = NULL;
 		protected $tagParameters = array();
+		protected $tpl;
 
 		public function __construct()
 		{
 			$this -> message = NULL;		
 		} // end __construct();
+		
+		public function setOptInstance(optClass $tpl)
+		{
+			$this -> tpl = $tpl;
+		} // end setOptInstance();
 
 		public function set($name, $value)
 		{
@@ -162,22 +165,22 @@
 			}
 		} // end setDatasource();
 
-		public function begin(optClass $tpl)
+		public function begin()
 		{
 			return '<input type="text"'.generateTagElementList($this->tagParameters).' />';
 		} // end begin();
 
-		public function onmessage(optClass $tpl, $pass_to)
+		public function onmessage($pass_to)
 		{
 			if($this -> message == NULL)
 			{
 				return 0;
 			}
-			$tpl -> vars[$pass_to] = $this -> message;
+			$this -> tpl -> vars[$pass_to] = $this -> message;
 			return 1;
 		} // end onmessage();
 
-		public function end(optClass $tpl)
+		public function end()
 		{
 			return '';		
 		} // end end();
@@ -185,7 +188,7 @@
 
 	class textLabelComponent extends textinputComponent implements ioptComponent
 	{
-		public function begin(optClass $tpl)
+		public function begin()
 		{
 			$code = '<input type="hidden"'.generateTagElementList($this->tagParameters).' />';
 			if($this -> tagParameters['value'] != NULL)
@@ -199,11 +202,17 @@
 	class formActionsComponent implements ioptComponent
 	{
 		private $buttons;
+		protected $tpl;
 
 		public function __construct()
 		{
 			$this -> buttons = array();
 		} // end __construct();
+		
+		public function setOptInstance(optClass $tpl)
+		{
+			$this -> tpl = $tpl;
+		} // end setOptInstance();
 
 		public function set($name, $value)
 		{
@@ -224,7 +233,7 @@
 			$this -> buttons = $source;
 		} // end setDatasource();
 
-		public function begin(optClass $tpl)
+		public function begin()
 		{
 			$code = '';
 			foreach($this -> buttons as $button)
@@ -234,7 +243,7 @@
 			return $code;
 		} // end begin();
 
-		public function end(optClass $tpl)
+		public function end()
 		{
 			return '';		
 		} // end end();

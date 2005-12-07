@@ -35,6 +35,24 @@
 	define('OPT_ENDER', 2);
 	define('OPT_COMMAND', 3);
 	
+	define('OPCODE_NULL', -1);
+	define('OPCODE_STRING', 0);
+	define('OPCODE_NUMBER', 1);
+	define('OPCODE_LANGUAGE', 2);
+	define('OPCODE_VARIABLE', 3);
+	define('OPCODE_CONFIG', 4);
+	define('OPCODE_PARENTHESIS', 5);
+	define('OPCODE_FUNCTION', 6);
+	define('OPCODE_METHOD', 7);
+	define('OPCODE_OPERATOR', 8);
+	define('OPCODE_OBJECT_CALL', 9);
+	define('OPCODE_IDENTIFIER', 10);
+	define('OPCODE_SEPARATOR', 11);
+	define('OPCODE_ASSIGN', 12);
+	define('OPCODE_APPLY', 13);
+	define('OPCODE_EXPRESSION', 14);
+	define('OPCODE_BRACKET', 15);
+	
 	interface ioptNode
 	{
 		public function __construct($name, $type, $parent);
@@ -230,10 +248,21 @@
 		public $tpl;
 		public $nestingNames;
 		public $nestingLevel;
-		public $genericBuffer;		
+		public $genericBuffer;	
 		public $processors;
 		public $translator;
 		public $parseRun;
+		
+		// EXPRESSION REGEX		
+		private $rDoubleQuoteString = '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"';
+		private $rReversedQuoteString = '`[^`\\\\]*(?:\\\\.[^`\\\\]*)*`';
+		private $rSingleQuoteString = '\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'';
+		private $rHexadecimalNumber = '\-?0[xX][0-9a-fA-F]+';
+		private $rDecimalNumber = '[0-9]+\.?[0-9]*';
+		private $rLanguageBlock = '\$[a-zA-Z0-9\_]+@[a-zA-Z0-9\_]+';
+		private $rVariableBlock = '(\$|@)[a-zA-Z0-9\_\.]+';
+		private $rOperators = '\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+|\-|\*|\/|\[|\]|\.|\:\:|';
+		private $rConfiguration = '\#?[a-zA-Z0-9\_]+';
 
 		public function __construct($tpl)
 		{
@@ -261,6 +290,15 @@
 				if($this -> tpl -> plugins != NULL)
 				{
 					require($this -> tpl -> plugins.'compile.php');				
+				}
+			}
+			
+			// Load compiler files
+			if(count($this -> tpl -> instructionFiles) > 0)
+			{
+				foreach($this -> tpl -> instructionFiles as $file)
+				{
+					require_once($file);
 				}
 			}
 			# /PLUGIN_AUTOLOAD
@@ -571,49 +609,22 @@
 			return $code;
 		} // end parse();
 
-		public function compileBlock($name)
-		{		
-			if(is_array($name))
-			{
-				$cnt = count($name);
-				return '$__'.$name[$cnt-2].'_val[\''.$name[$cnt-1].'\']';			
-			}
-			$value = substr($name, 1, strlen($name) - 1);
-			if($name{0} == '#')
-			{
-				// configuration blocks				
-				return '$this -> '.$value;
-			}
-			elseif($name{0} == '@')
-			{
-				// variables
-				return '$this -> vars[\''.$value.'\']';
-			}
-			else
-			{
-				return '$this->data[\''.$name.'\']';
-			}
-			return FALSE;
-		} // end compileBlock();
-
 		public function compileExpression($expr, $allowAssignment=0)
 		{
-			/* Based on Smarty */
-			preg_match_all('/(?:
-        			"[^"\\\\]*(?:\\\\.[^"\\\\]*)*" |
-        			`[^`\\\\]*(?:\\\\.[^`\\\\]*)*` |
-					\-?0[xX][0-9a-fA-F]+			|
-					[0-9]+\.?[0-9]+					|
-					\$opt\.[a-zA-Z0-9\_\.]+				|
-					\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+|\-|\/	|\[|\]|\.|\:\:|
-					[\$\#\@]?[a-zA-Z0-9\_\@]+		
-					)/x', $expr, $match);
-
-			$tokens = $match[0];
-			$brackets = 0;
+			preg_match_all('/(?:'.
+	       			$this->rDoubleQuoteString.'|'.
+	       			$this->rSingleQuoteString.'|'.
+	       			$this->rReversedQuoteString.'|'.
+					$this->rHexadecimalNumber.'|'.
+					$this->rDecimalNumber.'|'.
+					$this->rLanguageBlock.'|'.
+					$this->rVariableBlock.'|'.
+					$this->rOperators.'|'.
+					$this->rConfiguration.')/x', $expr, $match);
 			
-			// word tokens conversion table
-			$wordTokens = array(
+			$tokens = &$match[0];
+			
+			$wordOperators = array(
 				'eq' => '==',
 				'ne' => '!=',
 				'neq' => '!=',
@@ -626,7 +637,10 @@
 				'and' => '&&',
 				'or' => '||',
 				'xor' => 'xor',
-				'not' => '!',
+				'not' => '!'
+			);
+			
+			$wordNumericOperators = array(
 				'mod' => '%',
 				'div' => '/',
 				'add' => '+',
@@ -635,45 +649,43 @@
 			);
 			
 			$state = array(
-				// previous token
-				'prev' => NULL,
-				// temporary previous token
-				'pb' => 0,
-				// brackets nesting
-				'brackets' => 0,
-				// quad brackets nesting
-				'qbrackets' => 0,
-				// have we opened a function?
-				'function_opened' => 0,
-				// quad bracket constant token conversion
-				'qbc'	=> 0,
-				// where has the section block begun?
-				'sstart' => -1,
-				// what sort of section token should be next?
-				'spt' => 1,
-				// section block buffer
-				'sb' => '',
-				// is the assignment made
-				'assignment' => 0,
-				// is special function "apply" began?
-				'apply_began' => 0
+				// square parenthesis counters
+				'parenthesis' => 0,
+				// previous token type
+				'prev' => OPCODE_NULL,
+				'prevToken' => '',
+				'apply' => 0,	
+				// assignment control
+				'first' => 1,
+				'assigned' => 0
 			);
-			$qbc = 0;
+			// parenthesis stack
+			$phs = array();
+			$pi = 0;
+			// parenthesis stack
+			$bhs = array();
+			$bi = 0;
+
 			foreach($tokens as $i => &$token)
 			{
-				if(!isset($tokens[$i]))
+				$storedToken = $token;
+				if($token == ' ')
 				{
+					if($state['prevToken'] == ' ')
+					{
+						unset($tokens[$i]);
+					}
 					continue;
 				}
-				$state['pb'] = $token;
-				/*
-					expression blocks parsing
-				*/
+				if($token == '')
+				{
+					unset($tokens[$i]);
+					continue;
+				}
+				$token = trim($token);
 				switch($token)
 				{
-				// Non-word tokens
 					case '!':
-					case '%':
 					case '!==':
 					case '==':
 					case '===':
@@ -687,56 +699,80 @@
 					case '>=':
 					case '&&':
 					case '||':
+						if($state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_NULL)
+						{
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
+						}
+						$state['prev'] = OPCODE_OPERATOR;
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
+						break;
+					case '::':
+						if($state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_NULL)
+						{
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
+						}
+						$state['prev'] = OPCODE_OPERATOR;
+						$token = '.';
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
+						break;			
 					case '|':
 					case '^':
 					case '&':
 					case '~':
-					case ',':
 					case '+':
-					case '-':
 					case '*':
 					case '/':
+					case '%':
 					case 'xor':
-						break;
-					case '.':
-						$token = '';
-						break;
-					case '[':
-						$state['qbrackets']++;
-						$qbc = 1;
-						break;
-					case ']':
-						$state['qbrackets']--;
-						break;
-					case ')':
-						$state['brackets']--;
-						if($state['function_opened'] == -1)
+						if($state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_STRING)
 						{
-							$state['function_opened'] = 0;
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
+						}
+						$state['prev'] = OPCODE_OPERATOR;
+						if($bi == 0)
+						{
+							$state['first'] = 0;
 						}
 						break;
-					case '(':
-						if($state['function_opened'] == 1)
+					case '-':
+						// signed values support, less restrictions
+						if($state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_STRING)
 						{
-							$token = '($this ';
-							$state['function_opened'] = -1;
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
 						}
-						elseif($state['function_opened'] == 2)
+						$state['prev'] = OPCODE_OPERATOR;
+						if($bi == 0)
 						{
-							$token = '(';
-							$state['function_opened'] = 0;
+							$state['first'] = 0;
 						}
-						$state['brackets']++;
 						break;
-					case '->':
+					case ',':
+						$pi--;
+						if(@($phs[$pi] != OPCODE_METHOD && $phs[$pi] != OPCODE_FUNCTION && $phs[$pi] != OPCODE_APPLY))
+						{
+							$this -> expressionError('OPCODE_SEPARATOR', $token, $expr);
+						}
+						$pi++;
+						$state['prev'] = OPCODE_SEPARATOR;
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
 						break;
-					case '.':
-						unset($tokens[$i]);
+					case 'true':
+					case 'false':
+						$state['prev'] = OPCODE_NUMBER;
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
 						break;
-					case '::':
-						$token = '.';
-						break;
-				// Word tokens
 					case 'eq':
 					case 'ne':
 					case 'neq':
@@ -748,223 +784,378 @@
 					case 'gte':
 					case 'and':
 					case 'or':
+						if($state['prev'] == OPCODE_OBJECT_CALL && $token != 'and' && $token != 'or')
+						{
+							$state['prev'] = OPCODE_VARIABLE;
+							break;
+						}
+						if($state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_NULL)
+						{
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
+						}
+						$state['prev'] = OPCODE_OPERATOR;
+						$token = $wordOperators[$token];
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
+						break;
 					case 'not':
-					case 'mod':			
+						// parenthesis control
+						$state['prev'] = OPCODE_OPERATOR;
+						$token = $wordOperators[$token];
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
+						break;
+					case 'mod':
 					case 'div':					
 					case 'add':						
-					case 'sub':				
+					case 'sub':		
 					case 'mul':
-						$token = $wordTokens[$token];
-						break;
-					// IS EXPRESSION
-					case '=':
-					case 'is':
-						if($allowAssignment)
+						if($state['prev'] == OPCODE_OBJECT_CALL)
 						{
-							$state['assignment'] = 1;
-							$token = '=';
+							// this is a part of an object call...
+							$state['prev'] = OPCODE_VARIABLE;
+						}
+						elseif($state['prev'] == OPCODE_NUMBER || $state['prev'] == OPCODE_VARIABLE || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_FUNCTION)
+						{
+							$token = $wordNumericOperators[$token];
+							$state['prev'] = OPCODE_OPERATOR;
 						}
 						else
 						{
-							$this -> tpl -> error(E_USER_ERROR, 'Assignment operators not allowed in '.$expr, 101);
+							$token = $this -> compileString($token);
+							$state['prev'] = OPCODE_STRING;
+						}
+						if($bi == 0)
+						{
+							$state['first'] = 0;
 						}
 						break;
-					// variables, blocks, functions etc. parsing
-					default:
-						if(@(trim($tokens[$i+1]) == '('))
+					case '(':
+						// store the previous state in order to know, what we open it for.
+						if($state['prev'] == OPCODE_NUMBER || $state['prev'] == OPCODE_STRING || $state['prev'] == OPCODE_LANGUAGE || $state['prev'] == OPCODE_CONFIG || $state['prev'] == OPCODE_VARIABLE)
 						{
-							$token = trim($token);
-							if($token == 'apply' && $this -> tpl -> i18nType == 1)
+							$this -> expressionError('OPCODE_PARENTHESIS', $token, $expr);
+						}
+
+						if($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_APPLY)
+						{
+							// this token has been already added, skip
+							$token = '';
+							$phs[$pi] = $state['prev'];
+						}
+						elseif($state['prev'] == OPCODE_METHOD)
+						{
+							$phs[$pi] = OPCODE_METHOD;
+						}
+						else
+						{
+							$phs[$pi] = OPCODE_PARENTHESIS;
+						}
+						$state['prev'] = OPCODE_PARENTHESIS;
+						$pi++;
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
+						break;
+					case ')':
+						$pi--;
+						if($pi < 0)
+						{
+							$this -> expressionError('OPCODE_PARENTHESIS', $token, $expr);
+						}
+						$state['prev'] = $phs[$pi];
+						break;
+					case '[':
+						
+						// store the previous state in order to know, what we open it for.
+						if($state['prev'] != OPCODE_VARIABLE && $state['prev'] != OPCODE_BRACKET)
+						{
+							$this -> expressionError('OPCODE_BRACKET', $token, $expr);
+						}
+						$bhs[$bi] = OPCODE_VARIABLE;
+						$state['prev'] = OPCODE_BRACKET;
+						$bi++;
+						break;
+					case ']':
+						$bi--;
+						if($bi < 0)
+						{
+							$this -> expressionError('OPCODE_BRACKET', $token, $expr);
+						}
+						$state['prev'] = $bhs[$bi];
+						break;
+					case '->':
+						if($state['prev'] == OPCODE_VARIABLE || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_FUNCTION)
+						{
+							$state['prev'] = OPCODE_OBJECT_CALL;
+							break;
+						}
+						$this -> expressionError('OPCODE_OBJECT_CALL', $token, $expr);		
+						break;
+					case '=':
+					case 'is':
+						if($allowAssignment == 1)
+						{
+							if($bi == 0 && $state['first'] == 1)
 							{
-								if($this -> tpl -> lang['applyClass'] != NULL)
-								{
-									$token = $this -> tpl -> lang['applyClass'].'->apply';								
-								}
-								else
-								{
-									$token = 'opt'.$this -> tpl -> functions[$token];
-								}
-								$state['apply_began'] = 1;
-								$state['function_opened'] = 1;
+								$token = '=';
+								$state['assigned'] = 1;
 							}
-							elseif(function_exists('opt'.(@$this -> tpl -> functions[$token])))
+							else
+							{
+								$this -> expressionError('OPCODE_ASSIGN', $token, $expr);
+							}
+							break;						
+						}
+					default:
+						if(preg_match('/^'.$this->rLanguageBlock.'$/', $token))
+						{
+							$token = $this -> compileLanguageBlock($token, $state['prev'], @($phs[$pi]));
+							$state['prev'] = OPCODE_LANGUAGE;
+							if($bi == 0)
+							{
+								$state['first'] = 0;
+							}
+						}
+						elseif(preg_match('/^'.$this->rVariableBlock.'$/', $token))
+						{
+							$token = $this -> compileBlock($token);
+							$state['prev'] = OPCODE_VARIABLE;
+							$state['first'] == $state['first'] && 1;
+						}
+						elseif(preg_match('/^'.$this->rDecimalNumber.'$/', $token))
+						{
+							$state['prev'] = OPCODE_NUMBER;
+							if($bi == 0)
+							{
+								$state['first'] = 0;
+							}
+						}
+						elseif(preg_match('/^'.$this->rHexadecimalNumber.'$/', $token))
+						{
+							$state['prev'] = OPCODE_NUMBER;
+							if($bi == 0)
+							{
+								$state['first'] = 0;
+							}
+						}
+						elseif(preg_match('/^'.$this->rDoubleQuoteString.'$/', $token))
+						{
+							$token = $this -> compileString($token);
+							$state['prev'] = OPCODE_STRING;
+							if($bi == 0)
+							{
+								$state['first'] = 0;
+							}
+						}
+						elseif(preg_match('/^'.$this->rSingleQuoteString.'$/', $token))
+						{
+							$token = $this -> compileString($token);
+							$state['prev'] = OPCODE_STRING;
+							if($bi == 0)
+							{
+								$state['first'] = 0;
+							}
+						}
+						elseif(preg_match('/^'.$this->rReversedQuoteString.'$/', $token))
+						{
+							$token = $this -> compileString($token);
+							$state['prev'] = OPCODE_STRING;
+							if($bi == 0)
+							{
+								$state['first'] = 0;
+							}
+						}
+						elseif($tokens[$i+1] == '(')
+						{
+							if($state['prev'] == OPCODE_OBJECT_CALL)
+							{
+								$state['prev'] = OPCODE_METHOD;
+							}
+							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL)
 							{
 								if($token == 'apply')
 								{
-									$token = 'optPredefApply';
-									$state['apply_began'] = 1;
+									$state['prev'] = OPCODE_APPLY;
 								}
 								else
 								{
-									$token = 'opt'.$this -> tpl -> functions[$token];
+									$state['prev'] = OPCODE_FUNCTION;
 								}
-								$state['function_opened'] = 1;
-							}
-							elseif(isset($this -> tpl -> phpFunctions[$token]))
-							{
-								$token = $this -> tpl -> phpFunctions[$token];
-								$state['function_opened'] = 2;
-							}
-							elseif(@(trim($tokens[$i-1]) == '->'))
-							{
-								// we have a method
-								$state['function_opened'] = 2;
+								$token = $this -> compileFunction($token, $tokens[$i+2]);								
 							}
 							else
 							{
-								$this -> tpl -> error(E_USER_ERROR, 'Function '.$token.' not defined in expression '.$expr, 102);
+								$this -> expressionError('OPCODE_FUNCTION', $token, $expr);
+							}
+							if($bi == 0)
+							{
+								$state['first'] = 0;
 							}
 						}
-						elseif($token{0} == '$')
+						elseif($state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_BRACKET)
 						{
-							$token = substr($token, 1, strlen($token) - 1);
-
-							// is it a language block?
-							if(strpos($token, '@') !== FALSE)
+							$token = $this -> compileString($token);
+							$state['prev'] = OPCODE_STRING;
+							if($bi == 0)
 							{
-								$ns = explode('@', $token);
-
-								if($this -> tpl -> showWarnings == 1)
-								{
-									if(!isset($this -> tpl -> lang[$ns[0]][$ns[1]]))
-									{
-										$this -> tpl -> error(E_USER_WARNING, 'The language block {'.$name.'} does not exist.', 151);
-									}
-								}
-
-								if($state['apply_began'] == 1)
-								{
-									$token = '\''.$ns[0].'\',\''.$ns[1].'\'';
-									$state['apply_began'] = 0;								
-								}
-								else
-								{
-									// custom block
-									if($this -> tpl -> i18nType == 1)
-									{
-										$token = sprintf($this -> tpl -> lang['template'], $ns[0], $ns[1]);									
-									}
-									else
-									{
-										$token = '$this -> lang[\''.$ns[0].'\'][\''.$ns[1].'\']';
-									}
-								}
-							}
-							// or maybe an $opt block?
-							elseif(preg_match('/opt\.[a-zA-Z0-9\_\.]+/', $token))
-							{
-								$token = $this -> compileOpt(explode('.', $token));
-							}
-							else
-							{
-							// or sth else?							
-								if(@($this -> nestingLevel['section'] > 0 && $tokens[$i+1] == '.'))
-								{
-									// this must be a section block
-									$itr = $i+1;
-									$supposed = 0;
-									$section = array(0 => ltrim($token, '$'));
-									while(1)
-									{
-										if(!isset($tokens[$itr]))
-										{
-											break;										
-										}
-										if($tokens[$itr] == '.' && $supposed == 0)
-										{
-											$supposed = 1;
-											unset($tokens[$itr]);
-										}
-										elseif(preg_match('/([a-zA-Z0-9\_]+?)/', $tokens[$itr]) && $supposed == 1)
-										{
-											$section[] = $tokens[$itr];
-											$supposed = 0;
-											unset($tokens[$itr]);
-										}
-										else
-										{
-											break;
-										}
-										$itr++;
-									}
-									$token = $this -> compileBlock($section);
-								}
-								else
-								{
-									$token = '$this -> data[\''.$token.'\']';
-								}
+								$state['first'] = 0;
 							}
 						}
-						elseif($token{0} == '#' || $token{0} == '@')
+						elseif($state['prev'] == OPCODE_OBJECT_CALL)
 						{
-							$data = $this -> compileBlock($token);
-							if($data === FALSE)
-							{
-								$this -> tpl -> error(E_USER_ERROR, 'Unknown block type: '.$token, 103);
-							}
-							$token = $data;
+							$state['prev'] = OPCODE_VARIABLE;
 						}
 						else
 						{
-							// constant value, maybe it's a part of a table block name...
-							if($state['prev'] == '.')
-							{
-								if((!preg_match('/^((0[xX][0-9a-fA-F]+)|[0-9 \-\.]*)$/', (string)$token)) && $token{0} != '"' && $token{strlen($token) - 1} != '"')
-								{
-									$token = '[\''.$token.'\']';
-								}
-								else
-								{
-									$token = '['.$token.']';
-								}
-							}
-							elseif($state['prev'] == '->')
-							{
-								$token = $token;
-							}
-							elseif($token{0} == '`' && $token{strlen($token) - 1} == '`')
-							{
-								$token = '\''.str_replace('\\`', '`',trim($token, '`')).'\'';
-							}					
-							elseif((!preg_match('/^((0[xX][0-9a-fA-F]+)|[0-9 \-\.]*)$/', (string)$token)) && $token{0} != '"' && $token{strlen($token) - 1} != '"')
-							{
-								$token = '\''.$token.'\'';
-							}
-
+							$this -> expressionError('OPCODE_UNKNOWN', $token, $expr);
 						}
-						if($state['function_opened'] == -1)
-						{
-							// we have an OPT function, which passes the parser as the first parameter...
-							$token = ', '.$token;
-							$state['function_opened'] = 0;
-						}
-						
-        		} // end of switch();
-        		if($qbc == 1)
-        		{
-        			$qbc++;
-        		}
-        		else
-        		{
-        			$qbc = 0;
-        		}
-        		// loop end, save recent state as previous
-        		$state['prev'] = $state['pb'];
-        		$tokens[$i] = $token;
+				}
+				$state['prevToken'] = $storedToken;
+			}
+			if($pi > 0)
+			{
+				$this -> expressionError('OPCODE_PARENTHESIS', $token, $expr);
 			}
 			
-			// if the section token was the last part of the block...
-
-			if($state['brackets'] != 0)
+			if($bi > 0)
 			{
-				$this -> tpl -> error(E_USER_ERROR, 'Expression syntax error in '.$expr.': brackets not closed.', 104);
+				$this -> expressionError('OPCODE_BRACKET', $token, $expr);
 			}
-			if($allowAssignment)
+			if($allowAssignment == 0)
 			{
-				return array(0 => implode(' ', $tokens), $state['assignment']);
+				return implode('', $tokens);
 			}
-			return implode('', $tokens);
+			return array(implode('', $tokens), $state['assigned']);
 		} // end compileExpression();
+
+		private function compileBlock($name)
+		{
+			$value = substr($name, 1, strlen($name) - 1);
+			$result = '';
+			
+			if(strpos($value, '.') !== FALSE)
+			{
+				$ns = explode('.', $value);
+			}
+			else
+			{
+				$ns = array(0 => $value);
+			}
+			
+			if($name{0} == '@')
+			{
+				$result = '$this->vars';
+			}
+			else
+			{
+				// $opt match
+				if($ns[0] == 'opt')
+				{
+					return $this -> compileOpt($ns);
+				}
+				// section match
+				if($this -> nestingLevel['section'] > 0)
+				{
+					$cnt = count($ns);
+					if($cnt >= 2)
+					{
+						return '$__'.$ns[$cnt-2].'_val[\''.$ns[$cnt-1].'\']';
+					}
+				}
+				$result = '$this->data';
+			}
+			
+			foreach($ns as $item)
+			{
+				if(ctype_digit($item))
+				{
+					$result .= '['.$item.']';
+				}
+				else
+				{
+					$result .= '[\''.$item.'\']';
+				}
+			}
+			return $result;
+		} // end compileBlock();
+		
+		private function compileLanguageBlock($block, $state, $heap)
+		{
+			$ns = explode('@', ltrim($block, '$'));
+			if($this -> tpl -> showWarnings == 1)
+			{
+				if(!isset($this -> tpl -> lang[$ns[0]][$ns[1]]) && $this -> tpl -> i18nType == 0)
+				{
+					$this -> tpl -> error(E_USER_WARNING, 'The language block {'.$name.'} does not exist.', 151);
+				}
+			}
+			if($state != OPCODE_PARENTHESIS && $heap != OPCODE_APPLY)
+			{
+				if($this -> tpl -> i18nType == 1)
+				{
+					return sprintf($this -> tpl -> lang['template'], $ns[0], $ns[1]);									
+				}
+				else
+				{
+					return '$this->lang[\''.$ns[0].'\'][\''.$ns[1].'\']';
+				}
+			}
+			else
+			{
+				return '\''.$ns[0].'\',\''.$ns[1].'\'';
+			}
+		} // end compileLanguageBlock();
+
+		private function compileConfiguration($block)
+		{
+			return '$this -> '.ltrim($block, '#');		
+		} // end compileConfiguration();
+		
+		private function compileString($str)
+		{
+			switch($str{0})
+			{
+				case '\'':
+					return $str;
+				case '"':
+					return '"'.str_replace('"', '\\"', stripslashes(trim($str, '"'))).'"';
+				case '`':
+					return '\''.str_replace('\'', '\\\'', stripslashes(trim($str, '`'))).'\'';
+					
+				default:
+					return '\''.$str.'\'';	
+			}
+		} // end compileString();
+		
+		private function compileFunction($function, $nextToken)
+		{
+			if($function == 'apply')
+			{
+				if($this -> tpl -> i18nType == 1)
+				{
+					return $this -> tpl -> lang['applyClass'].'->apply(';
+				}
+				else
+				{
+					return 'optPredefApply($this,';
+				}
+			}
+			elseif(isset($this -> tpl -> functions[$function]))
+			{
+				return 'opt'.$this -> tpl -> functions[$function].'($this'.($nextToken != ')' ? ',' : '');	
+			}
+			elseif(isset($this -> tpl -> phpFunctions[$function]))
+			{
+				return $this -> tpl -> phpFunctions[$function].'(';
+			}
+			$this -> tpl -> error(E_USER_ERROR, 'Call to undefined function: '.$function, 112);
+		} // end compileString();
 
 		private function compileOpt($namespace)
 		{
@@ -1032,6 +1223,11 @@
 					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT command: '.$namespace[1], 107);	
 			}
 		} // end compileOpt();
+		
+		private function expressionError($tokenType, $token, $expression)
+		{
+			$this -> tpl -> error(E_USER_ERROR, 'Unexpected token: '.$tokenType.' ('.$token.') in expression '.$expression, 108);
+		} // end expressionError();
 		
 		/*
 		 * INSTRUCTION WRITING TOOLS

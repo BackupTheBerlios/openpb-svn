@@ -77,6 +77,8 @@
 		public function __construct()
 		{
 			$this -> control = array(0 => 'optCompilerTester');
+			$this -> functions['checkrole'] = 'checkrole';
+			$this -> functions['menuperms'] = 'menuperms';
 			$this -> compiler = new optCompiler($this);
 		} // end __construct();
 	
@@ -114,52 +116,132 @@
 		
 		public function testExpressionStrings()
 		{
-			$this -> assertEquals('"A string"', $this->opt->compiler->compileExpression('"A string"'));		
+			try
+			{
+				$this -> assertEquals('"A string"', $this->opt->compiler->compileExpression('"A string"'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionStrings();
 		
 		public function testExpressionEscapedStrings()
 		{
-			$this -> assertEquals('"A \"string"', $this->opt->compiler->compileExpression('"A \"string"'));		
+			try
+			{
+				$this -> assertEquals('"A \"string"', $this->opt->compiler->compileExpression('"A \"string"'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}			
 		} // end testExpressionEscapedStrings();
 		
 		public function testExpressionRAStrings()
 		{
-			$this -> assertEquals('\'A string\'', $this->opt->compiler->compileExpression('`A string`'));		
+			try
+			{
+				$this -> assertEquals('\'A string\'', $this->opt->compiler->compileExpression('`A string`'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}			
 		} // end testExpressionRAStrings();
 		
 		public function testExpressionRAEscapedStrings()
 		{
-			$this -> assertEquals('\'A "string\'', $this->opt->compiler->compileExpression('`A "string`'));		
+			try
+			{
+				$this -> assertEquals('\'A "string\'', $this->opt->compiler->compileExpression('`A "string`'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
 		} // end testExpressionRAEscapedStrings();
 		
 		public function testExpressionRAEscapedStringsRA()
 		{
-			$this -> assertEquals('\'A `string\'', $this->opt->compiler->compileExpression('`A \`string`'));		
+			try
+			{
+				$this -> assertEquals('\'A `string\'', $this->opt->compiler->compileExpression('`A \`string`'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}			
 		} // end testExpressionRAEscapedStrings();
 		
 		public function testExpressionNonOperatorStrings()
 		{
-			$this -> assertEquals('\'edit\'', $this->opt->compiler->compileExpression('edit'));		
+			try
+			{
+				$this -> assertEquals('\'edit\'', $this->opt->compiler->compileExpression('edit'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
 		} // end testExpressionNonOperatorStrings();
 		
 		public function testExpressionOperatorStrings()
 		{
-			$this -> assertEquals('+', $this->opt->compiler->compileExpression('add'));		
+			try
+			{
+				$this -> assertEquals('5+3', $this->opt->compiler->compileExpression('5 add 3'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionOperatorStrings();
 		
 		public function testExpressionNumbers()
 		{
-			$this -> assertEquals('12345', $this->opt->compiler->compileExpression('12345'));		
+			try
+			{
+				$this -> assertEquals('12345', $this->opt->compiler->compileExpression('12345'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionNumbers();
 		
 		public function testExpressionFloatNumbers()
 		{
-			$this -> assertEquals('12345.67', $this->opt->compiler->compileExpression('12345.67'));		
+			try
+			{
+				$this -> assertEquals('12345.67', $this->opt->compiler->compileExpression('12345.67'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionFloatNumbers();
 		
 		public function testExpressionHexadecimalNumbers()
 		{
-			$this -> assertEquals('0x54A6B', $this->opt->compiler->compileExpression('0x54A6B'));		
+			try
+			{
+				$this -> assertEquals('0x54A6B', $this->opt->compiler->compileExpression('0x54A6B'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionHexadecimalNumbers();
 		
 		public function testExpressionLostBracketTest()
@@ -175,22 +257,282 @@
 			$this -> fail('Lost bracket exception not returned!');
 		} // end testExpressionLostBracketTest();
 		
+		public function testExpressionNullFunction()
+		{
+			try
+			{
+				$this -> assertEquals('optcheckrole($this)', $this->opt->compiler->compileExpression('checkrole()'));
+			}
+			catch(optException $exception)
+			{
+				optErrorHandler($exception);
+				$this -> fail('Exception returned');
+			}			
+		} // end testExpressionNullFunction();
+
+		public function testExpressionFunctionWithParams()
+		{
+			try
+			{
+				$this -> assertEquals('optcheckrole($this,$this->data[\'a\'],$this->data[\'b\'])', $this->opt->compiler->compileExpression('checkrole($a, $b)'));
+			}
+			catch(optException $exception)
+			{
+				optErrorHandler($exception);
+				$this -> fail('Exception returned');
+			}
+		} // end testExpressionFunctionWithParams();
+
+		public function testExpressionNullMethod()
+		{
+			try
+			{
+				$this -> assertEquals('$this->data[\'a\']->checkrole()', $this->opt->compiler->compileExpression('$a->checkrole()'));
+			}
+			catch(optException $exception)
+			{
+				optErrorHandler($exception);
+				$this -> fail('Exception returned');
+			}			
+		} // end testExpressionNullMethod();
+
+		public function testExpressionMethodWithParams()
+		{
+			try
+			{
+				$this -> assertEquals('$this->data[\'a\']->checkrole($this->data[\'a\'],$this->data[\'b\'])', $this->opt->compiler->compileExpression('$a->checkrole($a, $b)'));
+			}
+			catch(optException $exception)
+			{
+				optErrorHandler($exception);
+				$this -> fail('Exception returned');
+			}
+		} // end testExpressionMethodWithParams();
+		
 		public function testExpressionTablePHPSyntax()
 		{
-			$this -> assertEquals('$this -> data[\'block\'][5][$this -> data[\'b\']]', $this->opt->compiler->compileExpression('$block[5][$b]'));		
+			try
+			{
+				$this -> assertEquals('$this->data[\'block\'][5][$this->data[\'b\']]', $this->opt->compiler->compileExpression('$block[5][$b]'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}			
 		} // end testExpressionTablePHPSyntax();
 		
 		public function testExpressionTableAlternativeSyntax()
 		{
-			$this -> assertEquals('$this -> data[\'block\'][5][$this -> data[\'b\']]', $this->opt->compiler->compileExpression('$block.5.[$b]'));		
+			try
+			{
+				$this -> assertEquals('$this->data[\'block\'][5][$this->data[\'b\']]', $this->opt->compiler->compileExpression('$block.5[$b]'));		
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionTablePHPSyntax();
 		
 		public function testExpressionSectionSyntax()
 		{
-			$this -> opt -> compiler -> nestingLevel['section'] = 1;
-			$this -> assertEquals('$__section_val[\'block\']', $this->opt->compiler->compileExpression('$section.block'));		
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('$__section_val[\'block\']', $this->opt->compiler->compileExpression('$section.block'));		
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
 		} // end testExpressionTablePHPSyntax();
 		
+		public function testExpressionAssignmentBasic()
+		{
+			try
+			{
+				$result = $this->opt->compiler->compileExpression('$a = 17', 1);
+				$this -> assertEquals('$this->data[\'a\']=17', $result[0]);
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testExpressionAssignmentBasic();
+		
+		public function testExpressionMultiAssignment()
+		{
+			try
+			{
+				$result = $this->opt->compiler->compileExpression('$a = $b = $c = 17', 1);
+				$this -> assertEquals('$this->data[\'a\']=$this->data[\'b\']=$this->data[\'c\']=17', $result[0]);
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testExpressionMultiAssignment();
+		
+		public function testExpressionExtendedAssignment()
+		{
+			try
+			{
+				$result = $this->opt->compiler->compileExpression('$a[$b + $c] = 17', 1);
+				$this -> assertEquals('$this->data[\'a\'][$this->data[\'b\']+$this->data[\'c\']]=17', $result[0]);
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testExpressionExtendedAssignment();
+		
+		public function testExpressionInvalidAssignment()
+		{
+			try
+			{
+				$this->opt->compiler->compileExpression('$b + $c = 17', 1);
+			}
+			catch(optException $exc)
+			{
+				return 1;
+			}
+			$this -> fail('Invalid assignment exception not returned!');
+		} // end testExpressionInvalidAssignment();
+
+		public function testRealExpression1()
+		{
+			// Expression sent by eXtreme (http://exsite.edigo.pl)
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('!$__Posts_val[\'is_topic_start\']&&((optcheckrole($this,"board_delete_own_posts")&&$this->'.
+'vars[\'timeFromPosting\']<=2&&$__Posts_val[\'user_id\']==$this->'.
+'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||(optcheckrole($this,'.
+'"board_delete_all_time_own_posts")&&$__Posts_val[\'user_id\']==$this->'.
+'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||optcheckrole($this,"board_can_moderate"))',
+					$this->opt->compiler->compileExpression('not $Posts.is_topic_start && ((checkrole("board_delete_own_posts") && @timeFromPosting <= 2 && $Posts.user_id == $UserData[id] && not $Posts.is_moderated) || (checkrole("board_delete_all_time_own_posts") && $Posts.user_id == $UserData[id] && not $Posts.is_moderated) || checkrole("board_can_moderate"))'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression1();
+
+		public function testRealExpression2()
+		{
+			// Expression sent by eXtreme (http://exsite.edigo.pl)
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('$this->data[\'ReadTopics\'][$__Topics_val[\'id\']]&&$this->'.
+'data[\'ReadTopics\'][$__Topics_val[\'id\']][\'content\']==$this->data[\'Forum\'][\'id\'].":1"',
+					$this->opt->compiler->compileExpression('$ReadTopics[$Topics.id] && $ReadTopics[$Topics.id][content] == $Forum[id]::":1"'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression2();
+
+		public function testRealExpression3()
+		{
+			// Expression sent by eXtreme (http://exsite.edigo.pl)
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('(optcheckrole($this,"board_edit_own_posts")&&$this->'.
+'vars[\'timeFromPosting\']<=5&&$__Posts_val[\'user_id\']==$this->'.
+'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||(optcheckrole($this,'.
+'"board_edit_all_time_own_posts")&&$__Posts_val[\'user_id\']==$this->'.
+'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||optcheckrole($this,"board_can_moderate")',
+					$this->opt->compiler->compileExpression('(checkrole("board_edit_own_posts") && @timeFromPosting <= 5 && $Posts.user_id == $UserData[id] && not $Posts.is_moderated) || (checkrole("board_edit_all_time_own_posts") && $Posts.user_id == $UserData[id] && not $Posts.is_moderated) || checkrole("board_can_moderate")'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression3();
+		
+		public function testRealExpression4()
+		{
+			// Expression sent by eXtreme (http://exsite.edigo.pl)
+			try
+			{
+				$this -> assertEquals('($this->vars[\'Mval\']->positions->item&&($this->'.
+'vars[\'Mval\']->positions[\'show\']==\'yes\'||($this->vars[\'Mval\']->'.
+'positions[\'show\']==\'selected\'&&$this->data[\'ExpandMenuId\']==$this->'.
+'vars[\'Mval\'][\'id\']))&&(!$this->vars[\'Mval\']->positions[\'logged_in\']||($this->'.
+'vars[\'Mval\']->positions[\'logged_in\']=="no"&&$this->data[\'UserNotLoggedIn\'])||($this->'.
+'vars[\'Mval\']->positions[\'logged_in\']=="yes"&&$this->data[\'UserLoggedIn\'])||$this->'.
+'vars[\'Mval\']->positions[\'logged_in\']=="all"))&&((!$this->vars[\'Mval\']->positions->'.
+'checkperms)||($this->vars[\'Mval\']->positions->checkperms&&optmenuperms($this,$this->'.
+'vars[\'Mval\']->positions->checkperms)))',
+					$this->opt->compiler->compileExpression('(@Mval->positions->item && (@Mval->positions[show] == \'yes\' || (@Mval->positions[show] == \'selected\' && $ExpandMenuId == @Mval[id])) && (not @Mval->positions[logged_in] || (@Mval->positions[logged_in] == "no" && $UserNotLoggedIn) || (@Mval->positions[logged_in] == "yes" && $UserLoggedIn) || @Mval->positions[logged_in] == "all")) && ((not @Mval->positions->checkperms) || (@Mval->positions->checkperms && menuperms(@Mval->positions->checkperms)))'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression4();
+		
+		public function testRealExpression5()
+		{
+			// Expression sent by Denver
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('$this->vars[\'prank\']==$__ranks_val[\'id\']',
+					$this->opt->compiler->compileExpression('@prank==$ranks.id'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression5();
+		
+		public function testRealExpression6()
+		{
+			// Expression sent by Denver
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('$__ranks_val[\'id\']==$this->vars[\'prank\']',
+					$this->opt->compiler->compileExpression('$ranks.id==@prank'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression6();
+
+
+		public function testRealExpression7()
+		{
+			// Expression sent by eXtreme (http://exsite.edigo.pl)
+			try
+			{
+				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> assertEquals('($this->vars[\'gmttime\']-$__Posts_val[\'date\'])/60',
+					$this->opt->compiler->compileExpression('(@gmttime-$Posts.date)/60'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}		
+		} // end testRealExpression7();
+
 		public function testParametrizeNoParamsNoMatches()
 		{
 			$params = array();

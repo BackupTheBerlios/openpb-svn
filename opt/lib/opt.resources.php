@@ -12,6 +12,9 @@
   //
   // $Id$
 
+	define('OPT_IO_FREE', 0);
+	define('OPT_IO_LOCKED', 1);
+
 	interface ioptResource
 	{
 		public function __construct(optClass $tpl);
@@ -23,17 +26,21 @@
 		public function saveCode($code);
 		public function compileCacheReset($filename);
 		public function setTestStatus($status);
+		public function getIoStatus();
 	}
 
 	class optResourceFiles implements ioptResource
 	{
 		private $tpl;
 		private $status;
+		private $handler;
+		private $filename;
 
 		public function __construct(optClass $tpl)
 		{
 			$this -> tpl = $tpl;
-			$this -> connection = NULL;
+			$this -> handler = NULL;
+			$this -> filename = '';
 			$this -> status = 1; // do the file existence checking
 		} // end __construct();
 
@@ -79,15 +86,26 @@
 
 		public function lockCode($name)
 		{
-			$this -> handler = fopen($this -> tpl -> compile.$this->parseName($name).'.php', 'w');
+			$this -> filename = $this -> tpl -> compile.$this->parseName($name).'.php';
+			$this -> handler = fopen($this -> filename, 'w');
 			flock($this -> handler, LOCK_EX);
 		} // end lockCode();
 
 		public function saveCode($code)
 		{
-			fwrite($this -> handler, $code);
-			flock($this -> handler, LOCK_UN);
-			fclose($this -> handler);
+			if($code == NULL)
+			{
+				// Remove this file, some errors occured
+				flock($this -> handler, LOCK_UN);
+				fclose($this -> handler);
+				unlink($this -> filename);
+			}
+			else
+			{
+				fwrite($this -> handler, $code);
+				flock($this -> handler, LOCK_UN);
+				fclose($this -> handler);
+			}
 		} // end saveCode();
 
 		private function parseName($name)
@@ -123,5 +141,14 @@
 		{
 			return file_exists($this -> tpl -> root.$name);	
 		} // end templateExists();
+		
+		public function getIoStatus()
+		{
+			if(is_resource($this -> handler))
+			{
+				return OPT_IO_LOCKED;
+			}
+			return OPT_IO_FREE;
+		} // end getIoStatus();
 	}
 ?>

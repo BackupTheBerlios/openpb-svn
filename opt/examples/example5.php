@@ -38,12 +38,11 @@
 			return $this->data[$group][$text_id]; 	
 		} // end put();
 		
-		public function apply(optClass $tpl, $group, $text_id)
+		public function apply($group, $text_id)
 		{
 			$args = func_get_args();
 			unset($args[0]);
 			unset($args[1]);
-			unset($args[2]);
 			$this -> replacements[$group][$text_id] = vsprintf($this -> data[$group][$text_id], $args);
 		} // end apply();  
 	}
