@@ -9,6 +9,8 @@
   //  published by the Free Software Foundation; either version 2.1 of the  //
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
+  //
+  // $Id$ $Author$ $Date$ $Revision$
 
 	if(!defined('OPD_DIR'))
 	{
@@ -108,6 +110,10 @@
 			if(isset($config['cache']))
 			{
 				$opd -> setCacheDirectory($config['cache']);
+			}
+			if(isset($config['debugConsole']))
+			{
+				$opd -> debugConsole = $config['debugConsole'];
 			}
 			return $opd;
 		} // end create();
