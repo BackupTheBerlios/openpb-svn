@@ -71,12 +71,58 @@
 			}
 		} // end defaultTreeProcess();	
 	}
+	
+	class optEscaper extends optInstruction
+	{
+		public function configure()
+		{
+			return array(
+				// processor name
+				0 => 'escaper',
+				// instructions
+				'escaper' => OPT_MASTER,
+				'/escaper' => OPT_ENDER
+			);
+		} // end configure();
+		
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			foreach($node as $block)
+			{
+				switch($block -> getName())
+				{
+					case 'escaper':
+							$this -> start($block);
+							$this -> defaultTreeProcess($block);
+							break;
+					case '/escaper':
+							$this -> stop();
+							break;
+				}
+			}
+		} // end process();
+		
+		public function start($block)
+		{
+			$params = array(
+				'par1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION, NULL)			
+			);
+		
+			$this -> compiler -> parametrize('escaper', $block->getAttributes(), $params);
+			$this -> output .= ' Escaper started: '.$params['par1'].'<br/>';	
+		} // end start();
+		
+		public function stop()
+		{	
+			$this -> output .= ' Escaper stopped<br/>';
+		} // end stop();
+	}
 
 	class optTestParser extends optApi
 	{
 		public function __construct()
 		{
-			$this -> control = array(0 => 'optCompilerTester');
+			$this -> control = array(0 => 'optCompilerTester', 'optEscaper');
 			$this -> functions['checkrole'] = 'checkrole';
 			$this -> functions['menuperms'] = 'menuperms';
 			$this -> compiler = new optCompiler($this);
@@ -339,7 +385,8 @@
 		{
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('$__section_val[\'block\']', $this->opt->compiler->compileExpression('$section.block'));		
 			}
 			catch(optException $exc)
@@ -409,7 +456,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('!$__Posts_val[\'is_topic_start\']&&((optcheckrole($this,"board_delete_own_posts")&&$this->'.
 'vars[\'timeFromPosting\']<=2&&$__Posts_val[\'user_id\']==$this->'.
 'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||(optcheckrole($this,'.
@@ -429,7 +477,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('$this->data[\'ReadTopics\'][$__Topics_val[\'id\']]&&$this->'.
 'data[\'ReadTopics\'][$__Topics_val[\'id\']][\'content\']==$this->data[\'Forum\'][\'id\'].":1"',
 					$this->opt->compiler->compileExpression('$ReadTopics[$Topics.id] && $ReadTopics[$Topics.id][content] == $Forum[id]::":1"'));
@@ -446,7 +495,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('(optcheckrole($this,"board_edit_own_posts")&&$this->'.
 'vars[\'timeFromPosting\']<=5&&$__Posts_val[\'user_id\']==$this->'.
 'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||(optcheckrole($this,'.
@@ -489,7 +539,8 @@
 			// Expression sent by Denver
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('$this->vars[\'prank\']==$__ranks_val[\'id\']',
 					$this->opt->compiler->compileExpression('@prank==$ranks.id'));
 			}
@@ -505,7 +556,8 @@
 			// Expression sent by Denver
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('$__ranks_val[\'id\']==$this->vars[\'prank\']',
 					$this->opt->compiler->compileExpression('$ranks.id==@prank'));
 			}
@@ -522,7 +574,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> nestingLevel['section'] = 1;
+				$this -> opt -> compiler -> processors['section'] = new stdClass;
+				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
 				$this -> assertEquals('($this->vars[\'gmttime\']-$__Posts_val[\'date\'])/60',
 					$this->opt->compiler->compileExpression('(@gmttime-$Posts.date)/60'));
 			}
@@ -535,135 +588,208 @@
 
 		public function testParametrizeNoParamsNoMatches()
 		{
-			$params = array();
-			
-			$matches = array();
-
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && count($params) == 0);		
+			try
+			{
+				$params = array();
+				
+				$matches = array();
+	
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue($parsingResult == array() && count($params) == 0);
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}	
 		} // end testParametrizeNoParamsNoMatches();
 		
 		public function testParametrizeNoParamsYesMatchesUnnamed()
 		{
-			$params = array();
-			
-			$matches = array(
-				3 => '=blablabla; trelele;',
-				4 => 'blablabla; trelele;'			
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && count($params) == 0);		
+			try
+			{
+				$params = array();
+				
+				$matches = array(
+					3 => '=blablabla; trelele;',
+					4 => 'blablabla; trelele;'			
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue($parsingResult == array() && count($params) == 0);
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}	
 		} // end testParametrizeNoParamsYesMatchesUnnamed();
 		
 		public function testParametrizeNoParamsYesMatchesNamed()
 		{
-			$params = array();
-			
-			$matches = array(
-				3 => ' param1="blablabla" param2="trelele"',
-				4 => 'param1="blablabla" param2="trelele"'			
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && count($params) == 0);		
+			try
+			{
+				$params = array();
+				
+				$matches = array(
+					3 => ' param1="blablabla" param2="trelele"',
+					4 => 'param1="blablabla" param2="trelele"'			
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue($parsingResult == array() && count($params) == 0);
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}	
 		} // end testParametrizeNoParamsYesMatchesNamed();
 		
 		public function testParametrizeYesOptionalParamsNoMatches()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'abc'),
-				'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd')
-			);
-			
-			$matches = array();
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && $params == array('param1' => 'abc', 'param2' => 'bcd'));	
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'abc'),
+					'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd')
+				);
+				
+				$matches = array();
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue($parsingResult == array() && $params == array('param1' => 'abc', 'param2' => 'bcd'));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}	
 		} // end testParametrizeYesOptionalParamsNoMatches();
 		
 		public function testParametrizeYesRequiredParamsNoMatches()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
-			);
-			
-			$matches = array();
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertEquals(1, $parsingResult);	
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
+				);
+				
+				$matches = array();
+				$this->opt->compiler->parametrize('testCase', $matches, $params);
+			}
+			catch(optException $exception)
+			{
+				if($exception -> getCode() == 110)
+				{
+					return 1;
+				}
+			}
+			$this -> fail('Exception not returned');
 		} // end testParametrizeYesOptionalParamsNoMatches();
 		
 		public function testParametrizeYesRequiredParamsYesMatchesUnnamed()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-				'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
-			);
-			
-			$matches = array(
-				3 => '=abc; bcd',
-				4 => 'abc; bcd'
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && $params == array('param1' => 'abc', 'param2' => 'bcd'));		
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
+				);
+				
+				$matches = array(
+					3 => '=abc; bcd',
+					4 => 'abc; bcd'
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(count($parsingResult) == 0 && $params == array('param1' => 'abc', 'param2' => 'bcd'));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}		
 		} // end testParametrizeYesRequiredParamsYesMatchesUnnamed();
 		
 		public function testParametrizeYesRequiredParamsYesMatchesNamed()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-				'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
-			);
-			
-			$matches = array(
-				3 => ' param1="abc" param2="bcd"',
-				4 => 'param1="abc" param2="bcd"'	
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && $params == array('param1' => 'abc', 'param2' => 'bcd'));		
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
+				);
+				
+				$matches = array(
+					3 => ' param1="abc" param2="bcd"',
+					4 => 'param1="abc" param2="bcd"'	
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue($parsingResult == array() && $params == array('param1' => 'abc', 'param2' => 'bcd'));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}		
 		} // end testParametrizeYesRequiredParamsYesMatchesNamed();
 		
 		public function testParametrizeYesRequiredAndOptionalParamsYesMatchesUnnamed()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-				'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd')
-			);
-			
-			$matches = array(
-				3 => '=abc; def',
-				4 => 'abc; def'			
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && $params == array('param1' => 'abc', 'param2' => 'def'));		
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd')
+				);
+				
+				$matches = array(
+					3 => '=abc; def',
+					4 => 'abc; def'			
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(count($parsingResult) == 0 && $params == array('param1' => 'abc', 'param2' => 'def'));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}		
 		} // end testParametrizeYesRequiredAndRequiredParamsYesMatchesUnnamed();
 
 		public function testParametrizeYesRequiredAndOptionalParamsYesIncompleteMatchesUnnamed()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-				'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd')
-			);
-			
-			$matches = array(
-				3 => '=abc',
-				4 => 'abc'			
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && $params == array('param1' => 'abc', 'param2' => 'bcd'));		
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd')
+				);
+				
+				$matches = array(
+					3 => '=abc',
+					4 => 'abc'			
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(count($parsingResult) == 0 && $params == array('param1' => 'abc', 'param2' => 'bcd'));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}		
 		} // end testParametrizeYesRequiredAndRequiredParamsYesIncompleteMatchesUnnamed();
 		
 		public function testParametrizeOptionalJump()
 		{
-			$params = array(
-				'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-				'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd'),
-				'param3' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'cde')
-			);
-			
-			$matches = array(
-				3 => '=abc; !x; def',
-				4 => 'abc; !x; def'	
-			);
-			$parsingResult = $this->opt->compiler->parametrize($matches, $params);
-			$this -> assertTrue($parsingResult == NULL && $params == array('param1' => 'abc', 'param2' => 'bcd', 'param3' => 'def'));		
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'param2' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'bcd'),
+					'param3' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'cde')
+				);
+				
+				$matches = array(
+					3 => '=abc; !x; def',
+					4 => 'abc; !x; def'	
+				);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(count($parsingResult) == 0 && $params == array('param1' => 'abc', 'param2' => 'bcd', 'param3' => 'def'));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}		
 		} // end testParametrizeOptionalJump();
 		
 		public function testParametrizeOptionalJumpAtRequired()
@@ -679,7 +805,7 @@
 					3 => '=abc; !x; def',
 					4 => 'abc; !x; def'	
 				);
-				$parsingResult = $this->opt->compiler->parametrize($matches, $params);
+				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
 			}
 			catch(optException $exception)
 			{
@@ -691,6 +817,166 @@
 			$this -> fail('Invalid marker exception not returned!');
 		} // end testParametrizeOptionalJump();
 		
+		public function testParametrizeEscapingUnnamed1()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
+				);
+				
+				$matches = array(
+					3 => '=$abc + $cba; $bcb + 8',
+					4 => '$abc + $cba; $bcb + 8'
+				);
+				$this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(
+					$params['param1'] == '$this->data[\'abc\']+$this->data[\'cba\']' &&
+					$params['param2'] == '$this->data[\'bcb\']+8'
+				);				
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}
+		} // end testParametrizeEscapingUnnamed1();
+		
+		public function testParametrizeEscapingUnnamed2()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
+				);
+				
+				$matches = array(
+					3 => '=$abc::`Text with ; semicolon`; $bcb + 8',
+					4 => '$abc::`Text with ; semicolon`; $bcb + 8'
+				);
+				$this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(
+					$params['param1'] == '$this->data[\'abc\'].\'Text with ; semicolon\'' &&
+					$params['param2'] == '$this->data[\'bcb\']+8'
+				);				
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}
+		} // end testParametrizeEscapingUnnamed2();
+
+		public function testParametrizeEscapingUnnamed3()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
+				);
+				
+				$matches = array(
+					3 => '=$abc::\'Text with ; semicolon\'; $bcb + 8',
+					4 => '$abc::\'Text with ; semicolon\'; $bcb + 8'
+				);
+				$this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue(
+					$params['param1'] == '$this->data[\'abc\'].\'Text with ; semicolon\'' &&
+					$params['param2'] == '$this->data[\'bcb\']+8'
+				);				
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}
+		} // end testParametrizeEscapingUnnamed3();
+		
+		public function testParametrizeEscapingNamed()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
+				);
+				
+				$matches = array(
+					3 => ' param1="$abc::\"Sample text\""',
+					4 => 'param1="$abc::\"Sample text\""'
+				);
+				$this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertEquals($params['param1'], '$this->data[\'abc\']."Sample text"');				
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned: '.$exception->getCode().' ('.$exception->getMessage().')');
+			}
+		} // end testParametrizeEscapingNamed();
+		
+		public function testParametrizeUndefinedParameters()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'__UNKNOWN__' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+				);
+				
+				$matches = array(
+					3 => ' param1="value 1" param2="value 2" param3="value 3"',
+					4 => 'param1="value 1" param2="value 2" param3="value 3"'
+				);
+				$undef = $this->opt->compiler->parametrize('testCase', $matches, $params);
+				$this -> assertTrue($params['param1'] == 'value 1' && $undef['param2'] == 'value 2' && $undef['param3'] == 'value 3');				
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned: '.$exception->getCode().' ('.$exception->getMessage().')');
+			}
+		} // end testParametrizeEscapingNamed();
+		
+		public function testParametrizeInvalidStyleTest1()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+				);
+				
+				$matches = array(
+					3 => ' param1="value 1"',
+					4 => 'param1="value 1"'
+				);
+				$this->opt->compiler->parametrize('testCase', $matches, $params, OPT_STYLE_OPT);
+			}
+			catch(optException $exception)
+			{
+				return 1;
+			}
+			$this -> fail('Exception not returned');
+		} // end testParametrizeInvalidStyleTest1();
+		
+		public function testParametrizeInvalidStyleTest2()
+		{
+			try
+			{
+				$params = array(
+					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+				);
+				
+				$matches = array(
+					3 => '=value 1',
+					4 => 'value 1'
+				);
+				$this->opt->compiler->parametrize('testCase', $matches, $params, OPT_STYLE_XML);
+			}
+			catch(optException $exception)
+			{
+				return 1;
+			}
+			$this -> fail('Exception not returned');
+		} // end testParametrizeInvalidStyleTest2();
+
 		public function testCompilerSimple()
 		{
 $template = '{compiler}
@@ -758,14 +1044,30 @@ $template = '{sect1=test}
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 113)
+				if($exception -> getCode() == 115)
 				{
 					return 1;
 				}
 			}
 			$this -> fail('Exception not returned!');	
 		} // end testCompilerInvalidTree();
-
+/*
+		This test is not yet supported... and probably never will.	
+		public function testCompilerEscaping()
+		{
+			try
+			{
+				$template = '{escaper=$a+"foo } bar"}{/escaper}';
+				$result = 'echo \' Escaper started: $this->data[\'a\']+\'foo } bar\'<br/>Escaper stopped<br/>\';';
+				$this -> assertEquals($result, $this->opt->compiler->parse($template));	
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned: '.$exception->getCode().' ('.$exception -> getMessage().')!');
+			}
+			return 1;			
+		} // end testCompilerEscaping();
+*/
 	}
 
 ?>

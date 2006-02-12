@@ -10,7 +10,7 @@ PHP-defined components feature demonstrated in example 8.</p>
 <hr/>
 <form method="post" action="example12.php">
 <b>Your name:</b>
-{component id="name"}
+{component id="$name"}
 	{onmessage message="msg" position="down"}
 		<br/><font color="blue">{@msg}</font>
 	{/onmessage}

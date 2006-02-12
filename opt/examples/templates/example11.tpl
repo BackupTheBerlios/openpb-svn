@@ -20,7 +20,7 @@ also invalid XML content and doesn't generate an error.</p>
  <tr>
   <td width="30">{$products.id}</td>
   <td width="20%">{$products.name}</td>
-  <td width="*">{$products.description}</td> 
+  <td width="*">{$products.description}</td>
  </tr>
  </opt:section>
 </table>

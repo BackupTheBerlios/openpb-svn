@@ -30,6 +30,12 @@
 	define('OPT_PREFILTER', 0);
 	define('OPT_POSTFILTER', 1);
 	define('OPT_OUTPUTFILTER', 2);
+	
+	define('OPT_SECTION_MULTI', 0);
+	define('OPT_SECTION_SINGLE', 1);
+	define('OPT_PRIORITY_NORMAL', 0);
+	define('OPT_PRIORITY_HIGH', 1);
+
 
 	define('OPT_VERSION', '1.0.0');
 	
@@ -101,6 +107,8 @@
 		public $includeOptimization = 0;
 		public $xmlsyntaxMode = 0;
 		public $strictSyntax = 0;
+		public $sectionStructure = OPT_SECTION_MULTI;
+		public $statePriority = OPT_PRIORITY_NORMAL;
 		public $parseintDecPoint = '.';
 		public $parseintDecimals = 3;
 		public $parseintThousands = ',';
@@ -127,7 +135,6 @@
 							);
 		public $control = array(0 =>
 								'optSection',
-								'optShow',
 								'optInclude',
 								'optPlace',
 								'optVar',
@@ -492,7 +499,12 @@
 		{
 			if(is_array($values))
 			{
+				if(!is_array($this -> data[$name]))
+				{
+					$this -> data[$name] = array();
+				}
 				$this -> data[$name][] = $values;
+				return 1;
 			}
 			else
 			{
@@ -630,7 +642,7 @@
 			if($this -> showSource == 1)
 			{
 				$source = explode("\n", htmlspecialchars($code));
-				echo '<hr/><b>Template Source:</b><br/><table style="width: 70%; border: 1px solid #000000;">';
+				echo '<hr/><b>Template Source:</b><br/><table style="width: 100%; border: 1px solid #000000;">';
 				foreach($source as $num => $lineCode)
 				{
 					echo '<tr><td bgcolor="#DDDDDD" width="30">'.($num+1).'</td><td><pre>'.wordwrap($lineCode, 100, "\n").'</pre></td></tr>';						

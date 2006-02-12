@@ -15,6 +15,11 @@
 	// parameter flags
 	define('OPT_PARAM_REQUIRED', 0);
 	define('OPT_PARAM_OPTIONAL', 1);
+	
+	// parameter styles
+	define('OPT_STYLE_BOTH', 0);
+	define('OPT_STYLE_OPT', 1);
+	define('OPT_STYLE_XML', 2);
 	// parameter types
 	define('OPT_PARAM_ID', 2);
 	define('OPT_PARAM_EXPRESSION', 3);
@@ -170,12 +175,12 @@
 
 		public function storeBlock(optBlock $block)
 		{
-			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 113);
+			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 116);
 		} // end storeBlock();
 		
 		public function restoreBlock()
 		{
-			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 113);
+			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 116);
 		} // end restoreBlock();
 
 		public function __toString()
@@ -246,10 +251,8 @@
 	final class optCompiler
 	{
 		public $tpl;
-		public $nestingNames;
-		public $nestingLevel;
-		public $genericBuffer;	
 		public $processors;
+		public $mapper;
 		public $translator;
 		public $parseRun;
 		
@@ -315,7 +318,11 @@
 				
 				foreach($data as $name => $type)
 				{
-					$this -> translator[$name] = $type;		
+					$this -> translator[$name] = $type;
+					if($type == OPT_MASTER || $type == OPT_COMMAND)
+					{
+						$this -> mapper[$name] = $instruction;
+					}
 				}
 			}
 			$this -> parseRun = 0;
@@ -522,7 +529,7 @@
 						# /COMPONENTS
 						else
 						{
-							// here come the undefined command. The instruction programmer may do with them whatever he wants
+							// here comes the undefined command. The instruction programmer may do with them whatever he wants
 							// the compiler is going to recognize, what sort of command is it.
 							$ending = substr($found[2], strlen($found[2]) - 4, 4);
 							if($sortMatches[0] == '/')
@@ -531,9 +538,9 @@
 								$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
 								$current -> addItem($currentBlock);
 								$current = $current -> getParent();
-								if(!is_object($current))
+								if(!($current instanceof ioptNode))
 								{
-									$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+									$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 115);
 								}
 								$currentBlock = $current -> restoreBlock();
 							}
@@ -1060,12 +1067,15 @@
 					return $this -> compileOpt($ns);
 				}
 				// section match
-				if($this -> nestingLevel['section'] > 0)
+				if(isset($this -> processors['section']))
 				{
-					$cnt = count($ns);
-					if($cnt >= 2)
+					if($this -> processors['section'] -> nesting > 0)
 					{
-						return '$__'.$ns[$cnt-2].'_val[\''.$ns[$cnt-1].'\']';
+						$cnt = count($ns);
+						if($cnt >= 2)
+						{
+							return '$__'.$ns[$cnt-2].'_val[\''.$ns[$cnt-1].'\']';
+						}
 					}
 				}
 				$result = '$this->data';
@@ -1092,7 +1102,7 @@
 			{
 				if(!isset($this -> tpl -> lang[$ns[0]][$ns[1]]) && $this -> tpl -> i18nType == 0)
 				{
-					$this -> tpl -> error(E_USER_WARNING, 'The language block {'.$name.'} does not exist.', 151);
+					$this -> tpl -> error(E_USER_WARNING, 'The language block `'.$name.'` does not exist.', 151);
 				}
 			}
 			if($state != OPCODE_PARENTHESIS && $heap != OPCODE_APPLY)
@@ -1161,37 +1171,6 @@
 		{
 			switch($namespace[1])
 			{
-				case 'section':
-					$sectionDirection = $this -> processors['section'] -> getSectionDirection($namespace[2]);
-					if($sectionDirection === FALSE)
-					{
-						$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT section in $'.implode('.', $namespace), 112);
-					}
-					switch($namespace[3])
-					{
-						case 'count':
-							return 'count('.'$this -> data[\''.$namespace[2].'\'])';
-						case 'id':
-							return '$__'.$namespace[2].'_id';
-						case 'size':
-							return 'count($__'.$namespace[2].'_val)';
-						case 'first':
-							if($sectionDirection == 0)
-							{
-								return '($__'.$namespace[2].'_id == 0)';
-							}
-							return '($__'.$namespace[2].'_id == count($this -> data[\''.$namespace[2].'\']) - 1)';
-						case 'last':
-							if($sectionDirection == 0)
-							{
-								return '($__'.$namespace[2].'_id == count($this -> data[\''.$namespace[2].'\']) - 1)';
-							}
-							return '($__'.$namespace[2].'_id == 0)';
-						default:
-							$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT section command: '.$namespace[3], 105);
-					}
-				case 'capture':				
-					return '$this -> capture[\''.$namespace[2].'\']';
 				case 'get':
 					return '$_GET[\''.$namespace[2].'\']';
 				case 'post':
@@ -1220,6 +1199,10 @@
 				case 'version':
 					return 'OPT_VERSION';
 				default:
+					if(isset($this -> processors[$namespace[1]]))
+					{
+						return $this -> processors[$namespace[1]] -> processOpt($namespace);
+					}
 					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT command: '.$namespace[1], 107);	
 			}
 		} // end compileOpt();
@@ -1233,16 +1216,11 @@
 		 * INSTRUCTION WRITING TOOLS
 		 */
 
-		public function checkNestingLevel($name)
+		public function checkNestingLevel($level, $maxLevel = OPT_MAX_NESTING_LEVEL)
 		{
-			if(!isset($this -> nestingLevel[$name]))
+			if($level > $maxLevel)
 			{
-				$this -> nestingLevel[$name] = 0;
-			}
-		
-			if($this -> nestingLevel[$name] > OPT_MAX_NESTING_LEVEL)
-			{
-				$this -> tpl -> error(E_USER_ERROR, 'Nesting level too deep for '.$name.' element (max level: '.OPT_MAX_NESTING_LEVEL.')', 108);
+				$this -> tpl -> error(E_USER_ERROR, 'Nesting level too deep for '.$name.' element (max level: '.$maxLevel.')', 108);
 			}
 		} // end checkNestingLevel();
 
@@ -1259,60 +1237,55 @@
 			# /OUTPUT_CACHING
 		} // end getDynamic();
 
-		public function parametrize($matches, &$config)
+		public function parametrize($instruction, $matches, &$config, $style = OPT_STYLE_BOTH)
 		{
 			if(!isset($matches[4]))
 			{
 				$matches[4] = '';
 				$matches[3] = '=';
 			}
+			$matches[3] = trim($matches[3]);
+			$unknown = array();
+			
+			if(count($config) == 0)
+			{
+				// no parameters passed. Now the script wonders, why someone has called this method.
+				$config = array();
+				return $unknown;
+			}
 
 			if($matches[3]{0} == '=')
 			{
+				if($style == OPT_STYLE_XML)
+				{
+					$this -> parametrizeError($instruction, 7, 'OPT_STYLE_OPT');
+				}
+			
 				// use non-named parameter parsing
 				$params = array();
-				if(count($config) == 0)
-				{
-					// no parameters passed. Now the script wonders, why someone has called this method.
-					$config = array();
-					return NULL;
-				}
-				elseif(count($config) == 1)
-				{
-					// only one parameter needed, take all the string as it
-					$params[0] = $matches[4];
-				}
-				else
+				if($matches[3] != '=')
 				{
 					// split the param string into parameters
-					$quotes = 0;
-					$pi = 0;
-					$buffer = '';
-					$test = 1;
-					for($i = 0; $i < strlen($matches[4]); $i++)
-					{				
-						if($i - 1 >= 0)
-						{
-							$test = $matches[4]{$i - 1} != '\\';
-						}						
-						if($matches[4]{$i} == '"' && $test)
-						{
-							$quotes = !$quotes;
-						}
-						if($matches[4]{$i} == ';' && $quotes == 0)
-						{
-							$params[$pi] = trim($buffer);
-							$buffer = '';
-							$pi++;
-							continue;
-						}
-						$buffer .= $matches[4]{$i};
-					}
-					if($buffer != '')
+					preg_match_all('/(?:'.
+						$this -> rDoubleQuoteString.'|'.
+						$this -> rSingleQuoteString.'|'.
+						$this -> rReversedQuoteString.'|;|[^"\'`;]*)/x', $matches[4], $found);
+					$params = array(0 => '');
+					$i = 0;
+					foreach($found[0] as $item)
 					{
-						$params[$pi] = trim($buffer);
+						if($item == ';')
+						{
+							$i++;
+							$params[$i] = '';
+						}
+						else
+						{
+							$params[$i] .= trim($item);
+						}
 					}
 				}
+				// All parameters are optional
 				$first = reset($config);
 				if(count($params) == 0 && $first[0] == OPT_PARAM_OPTIONAL)
 				{
@@ -1320,7 +1293,7 @@
 					{
 						$config[$name] = $par[2];
 					}
-					return NULL;
+					return $unknown;
 				}
 
 				$pi = 0;
@@ -1332,182 +1305,158 @@
 					{
 						$optional = 1;
 					}
-					
+
 					if(!isset($params[$pi]))
 					{
 						// parameter not set
 						if($optional == 1)
 						{
 							// pass the default value
-							$config[$name] = $par[2];
-				
+							$config[$name] = $par[2];				
 						}
 						else
 						{
-							return -1;
+							$this -> parametrizeError($instruction, 1, $pi);
 						}		
 					}
 					else
 					{
-						if($params[$pi] == '!x')
+						if(trim($params[$pi]) == '!x')
 						{
 							if($optional == 0)
 							{
-								$this -> tpl -> error(E_USER_ERROR, 'Cannot use !x marker for a required parameter.', 112);							
+								$this -> parametrizeError($instruction, 4, $pi);						
 							}
 							// force the default value
 							$config[$name] = $par[2];
 							$pi++;
 							continue;
 						}
-
-						// check the format of the parameter
-						switch($par[1])
-						{
-							case OPT_PARAM_ID:
-								if(preg_match('/[a-zA-Z\_]{1}[a-zA-Z0-9\_]*/', $params[$pi]))
-								{
-									$config[$name] = trim($params[$pi], '"');
-								}
-								else
-								{
-									return $pi+1;
-								}
-								break;
-							case OPT_PARAM_EXPRESSION:
-								$config[$name] = $this -> compileExpression($params[$pi]);
-								break;
-							case OPT_PARAM_ASSIGN_EXPR:
-								$config[$name] = $this -> compileExpression($params[$pi], true);
-								$config[$name] = $config[$name][0];
-								break;
-							case OPT_PARAM_STRING:
-								if($params[$pi]{0} == '"' && $params[$pi]{strlen($params[$pi]) - 1} == '"')
-								{
-									$config[$name] = trim($params[$pi], '"');
-								}
-								elseif(preg_match('/[a-zA-Z\_]?[a-zA-Z0-9\_]+/', $params[$pi]))
-								{
-									$config[$name] = $params[$pi];
-								}
-								else
-								{
-									return $pi+1;
-								}
-								break;
-							case OPT_PARAM_NUMBER:
-								if(preg_match('/(0[xX][0-9a-fA-F]+)|([0-9]+(\.[0-9]+)?)/', $params[$pi]))
-								{
-									$config[$name] = $params[$pi];
-								}
-								else
-								{
-									return $pi+1;
-								}
-								break;
-							case OPT_PARAM_VARIABLE:
-								if(preg_match('/\@([a-zA-Z0-9\_]+)/', $params[$pi], $got))
-								{
-									$config[$name] = '$this -> vars[\''.$got[1].'\']';
-								}
-								else
-								{
-									return $pi+1;
-								}
-								break;
-							default:
-								$this -> tpl -> error(E_USER_ERROR, 'Invalid parameter type: '.$par[1].' for `'.$name.'`. Check your instruction code.', 109);		
-						}			
+						$config[$name] = $this -> paramTest($instruction, $pi, $par[1], $params[$pi]);
 					}
-					$pi++;			
+					$pi++;
 				}
+				// End of parsing
 			}
 			else
 			{
+				if($style == OPT_STYLE_OPT)
+				{
+					$this -> parametrizeError($instruction, 7, 'OPT_STYLE_XML');
+				}
 				// use named parameters
 				preg_match_all('#([a-zA-Z0-9\_]+)\="((.*?)[^\\\\])"#s', $matches[4], $found);
-				
-				foreach($config as $name => $par)
+
+				// Parse all matches
+				foreach($found[1] as $id => $name)
 				{
-					if(($pi = array_search($name, $found[1])) !== FALSE)
+					$found[2][$id] = str_replace(array(
+						'\\"',
+						'\\\\"'
+					),
+					array(
+						'"',
+						'\\"'
+						), $found[2][$id]
+					);
+				
+					if(isset($config[$name]))
 					{
-						// ok, the parameter is defined... try to parse it
-						switch($par[1])
-						{
-							case OPT_PARAM_ID:
-								if(preg_match('/[a-zA-Z\_]?[a-zA-Z0-9\_]+/', $found[2][$pi]))
-								{
-									$config[$name] = $found[2][$pi];
-								}
-								else
-								{
-									return $i;
-								}
-								break;
-							case OPT_PARAM_EXPRESSION:
-								$config[$name] =  $this -> compileExpression($found[2][$pi]);
-								break;
-							case OPT_PARAM_ASSIGN_EXPR:
-								$config[$name] = $this -> compileExpression($found[2][$pi], true);
-								$config[$name] = $config[$name][0];
-								break;
-							case OPT_PARAM_STRING:
-								$config[$name] = preg_replace('#[^\\]\\"#is', '"', $found[2][$pi]);
-								break;
-							case OPT_PARAM_NUMBER:
-								if(preg_match('/(0[xX][0-9a-fA-F]+)|([0-9]+(\.[0-9]+)?)/', $found[2][$pi]))
-								{
-									$config[$name] = $found[2][$pi];
-								}
-								else
-								{
-									return $pi;
-								}
-								break;
-							case OPT_PARAM_VARIABLE:
-								if(preg_match('/\@([a-zA-Z0-9\_]+)/', $found[2][$pi], $got))
-								{
-									$config[$name] = '$this -> vars[\''.$got[1].'\']';
-								}
-								else
-								{
-									return $pi;
-								}
-								break;
-							default:
-								$this -> tpl -> error(E_USER_ERROR, 'Invalid parameter type: '.$par[1].' for `'.$name.'`. Check your instruction code.', 109);		
-						}				
+						$config[$name] = $this -> paramTest($instruction, $name, $config[$name][1], $found[2][$id]);
+					}
+					elseif(isset($config['__UNKNOWN__']) && $name != '__UNKNOWN__')
+					{
+						$unknown[$name] = $this -> paramTest($instruction, $name, $config['__UNKNOWN__'][1], $found[2][$id]);					
+					}
+					elseif($name == '__UNKNOWN__')
+					{
+						$this -> parametrizeError($instruction, 6, $name);
 					}
 					else
 					{
-						// set default value
-						if($par[0] == OPT_PARAM_REQUIRED)
+						$config[$name] = $found[2][$id];
+					}
+				}
+				// Optional parameters parsing
+				foreach($config as $name => &$value)
+				{
+					if($name == '__UNKNOWN__')
+					{
+						continue;
+					}	
+					if(is_array($value))
+					{
+						if($value[0] == OPT_PARAM_OPTIONAL)
 						{
-							return -1;
+							$value = $value[2];
 						}
 						else
 						{
-							$config[$name] = $par[2];
+							$this -> parametrizeError($instruction, 1, $name);
 						}
-					}				
+					}	
 				}
 			}
-			return NULL;
+			return $unknown;
 		} // end parametrize();
 
-		public function parametrizeError($name, $number)
+		private function paramTest($instrName, $name, $type, $value)
 		{
-			if($number === NULL)
+			switch($type)
 			{
-				return 0;
+				case OPT_PARAM_ID:
+					if(preg_match('/[a-zA-Z\_]?[a-zA-Z0-9\_]+/', $value))
+					{
+						return $value;
+					}
+					$this -> parametrizeError($instrName, 3, $name);
+					break;
+				case OPT_PARAM_EXPRESSION:
+					return $this -> compileExpression($value);
+					break;
+				case OPT_PARAM_ASSIGN_EXPR:
+					$ret = $this -> compileExpression($value, true);
+					return $ret[0];
+				case OPT_PARAM_STRING:
+					return $value;
+					break;
+				case OPT_PARAM_NUMBER:
+					if(preg_match('/(0[xX][0-9a-fA-F]+)|([0-9]+(\.[0-9]+)?)/', $value))
+					{
+						return $value;
+					}
+					$this -> parametrizeError($instrName, 3, $name);
+					break;
+				case OPT_PARAM_VARIABLE:
+					if(preg_match('/\@([a-zA-Z0-9\_]+)/', $value, $got))
+					{
+						return '$this -> vars[\''.$got[1].'\']';
+					}
+					else
+					{
+						$this -> parametrizeError($instrName, 3, $name);
+					}
+					break;
+				default:
+					// Skip it
+					return '';
 			}
-			if($number < 0)
+		} // end paramTest();
+
+		public function parametrizeError($name, $code, $number = NULL)
+		{
+			switch($code)
 			{
-				$this -> tpl -> error(E_USER_ERROR, 'Wrong parameter count for `'.$name.'` instruction!', 110);
-			}
-			else
-			{
-				$this -> tpl -> error(E_USER_ERROR, 'Invalid parameter #'.($number+1).' in `'.$name.'` instruction!', 111);
+				case 1: 
+					$this -> tpl -> error(E_USER_ERROR, 'Required parameter `'.$number.'` not specified in instruction `'.$name.'`.', 110);
+				case 3:
+					$this -> tpl -> error(E_USER_ERROR, 'Invalid parameter #'.$number.' in `'.$name.'` instruction.', 111);
+				case 4:
+					$this -> tpl -> error(E_USER_ERROR, 'Cannot use !x marker for a required parameter in `'.$name.'` instruction.', 112);
+				case 6:
+					$this -> tpl -> error(E_USER_ERROR, '__UNKNOWN__ is a reserved parameter name in instruction `'.$name.'`.', 113);
+				case 7:
+					$this -> tpl -> error(E_USER_ERROR, 'The `'.$name.'` instruction requires '.$number.' style parameters.', 114);			
 			}
 		} // end parametrizeError();
 	}

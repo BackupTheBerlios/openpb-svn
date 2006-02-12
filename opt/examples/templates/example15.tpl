@@ -10,12 +10,12 @@ header.tpl and footer.tpl, but PLACE puts it into our template and does not gene
 if you work with loops, but it has also one disadvantage. If your subtemplate changes, OPT will never recompile it, because it does not know about
 that.</p>
 <hr/>
-{place="header.tpl"; tralala}
+{place=header.tpl; tralala}
 
 {@tralala}
 
 <i>The body of the page</i>
 
-{place="footer.tpl"}
+{place=footer.tpl}
 </body> 
 </html>

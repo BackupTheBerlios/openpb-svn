@@ -14,7 +14,7 @@ template. This is useful while developing advanced HTML forms.</p>
 <hr/>
 <form method="get" action="example8.php">
 Select the category:
-{component id="selector"}
+{component id="$selector"}
 	{onmessage message="msg" position="down"}
 		<font color="red">{@msg}</font>
 	{/onmessage}
