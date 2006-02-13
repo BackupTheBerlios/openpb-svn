@@ -8,6 +8,16 @@
 <p>This example demonstrates working with XML-Syntax mode. In this mode OPT is allowed to parse also XML-like tags, so it may
 be used in XML document without any problems. Notice OPT does not use any XML parser; it's only an emulation. This means it will parse
 also invalid XML content and doesn't generate an error.</p>
+<p>In XML-Syntax mode, OPT supports some entities in the instruction parameters. Two last ones are also supported outside the OPT tags:</p>
+<ul>
+  <li>&amp;amp; - &amp;</li>
+  <li>&amp;quot; - &quot;</li>
+  <li>&amp;apos; - '</li>
+  <li>&amp;lt; - &lt;</li>
+  <li>&amp;gt; - &gt;</li>
+  <li>&amp;lb; - &lb;</li>
+  <li>&amp;rb; - &rb;</li>
+</ul>
 <hr/>
 
 <table width="60%" opt:put="$border">
@@ -24,5 +34,5 @@ also invalid XML content and doesn't generate an error.</p>
  </tr>
  </opt:section>
 </table>
-</body> 
+</body>
 </html>

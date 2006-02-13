@@ -104,9 +104,9 @@
 		# /DEBUG_CONSOLE
 		public $trace = 0;
 		public $rewriteWarnings = 0;
-		public $includeOptimization = 0;
 		public $xmlsyntaxMode = 0;
 		public $strictSyntax = 0;
+		public $entities = 0;
 		public $sectionStructure = OPT_SECTION_MULTI;
 		public $statePriority = OPT_PRIORITY_NORMAL;
 		public $parseintDecPoint = '.';
@@ -982,7 +982,8 @@
 				'root', 'compile', 'cache', 'plugins',
 				'gzipCompression', 'compileCacheDisabled', 'showWarnings', 'showSource', 'charset',
 				'safeMode', 'debugConsole', 'trace', 'rewriteWarnings', 'xmlsyntaxMode',
-				'strictSyntax', 'parseintDecPoint', 'parseintDecimals', 'parseIntThousands'
+				'strictSyntax', 'entities', 'parseintDecPoint', 'parseintDecimals', 'parseIntThousands',
+				'sectionStructure', 'statePriority'
 			);
 
 			if(is_string($data))

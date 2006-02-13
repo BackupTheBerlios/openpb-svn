@@ -150,7 +150,7 @@
 		
 		public function addItem($item)
 		{
-			$this -> text .= $item;	
+			$this -> text .= $item;
 		} // end addBlock();
 		
 		public function getName()
@@ -185,7 +185,15 @@
 
 		public function __toString()
 		{
-			return $this -> text;
+			return str_replace(array(
+					'&lb;',
+					'&rb;'
+				),
+				array(
+					'{',
+					'}'
+				), $this -> text
+			);
 		} // end __toString();
 	}
 	
@@ -1402,6 +1410,17 @@
 
 		private function paramTest($instrName, $name, $type, $value)
 		{
+			// Entity parsing
+			if($this -> tpl -> xmlsyntaxMode == 1 || $this -> tpl -> entities == 1)
+			{
+				$value = str_replace(array(
+					'&amp;', '&quot;', '&lt;', '&gt;', '&lb;', '&rb;', '&apos;'				
+				),array(
+					'&', '"', '<', '>', '{', '}', '\''				
+				),
+				$value);
+			}
+			// Type checking		
 			switch($type)
 			{
 				case OPT_PARAM_ID:
