@@ -16,7 +16,7 @@
 	{
 		define('OPD_DIR', './');
 	}
-	define('OPD_VERSION', '0.2');
+	define('OPD_VERSION', '0.3');
 	define('OPD_CACHE_PREPARE', true);
 	
 	require(OPD_DIR.'opd.statement.php');
@@ -32,12 +32,20 @@
 		public $dsn;
 		public $debugConsole;
 		
+		// Debug etc.
 		private $queryMonitor;
+		private $consoleCode;
 		private $i;
+		
+		private $counterExecuted = 0;
+		private $counterRequested = 0;
+		private $counterTime = 0;
+		private $counterTimeExecuted = 0;
 
+		// PDO
 		private $pdo;
-		private $queryCount;
-
+		
+		// Cache
 		private $cacheDir;
 		private $cache;
 		private $cacheId;
@@ -55,42 +63,19 @@
 		{
 			if($this -> debugConsole)
 			{
-				$config = array('DSN' => $this -> dsn, 'Debug console' => (int)$this -> debugConsole);
+				$config = array(
+					'Open Power Driver version' => OPD_VERSION,
+					'DSN' => $this -> dsn,
+					'Requested queries' => $this -> counterRequested,
+					'Executed queries' => $this -> counterExecuted,
+					'Total database time' => $this -> counterTime.' s',
+					'Executed queries time' => $this -> counterTimeExecuted.' s'
+				);
 			
+				eval($this->consoleCode);
 				echo '<script language="JavaScript">
 				opd_console = window.open("","OPD debug console","width=680,height=350,resizable,scrollbars=yes");
-				opd_console.document.write("<HTML><TITLE>OPD debug console</TITLE><BODY bgcolor=#ffffff><h1>OPD DEBUG CONSOLE</h1>");
-				opd_console.document.write(\'<table border="0" width="100%">\');
-				';
-				foreach($config as $id => $val)
-				{
-					echo '
-						opd_console.document.write(\'<tr><td width="25%" bgcolor="#DDDDDD"><b>'.$id.'</b></td>\'); 
-						opd_console.document.write(\'<td width="75%" bgcolor="#EEEEEE">'.$val.'</td></tr>\');
-					';
-				}
-				echo '
-				opd_console.document.write(\'</table><table border="0" width="100%"><tr><td width="64%" bgcolor="#CCCCCC"><b>Query</b></td>\'); 
-				opd_console.document.write(\'<td width="8%" bgcolor="#CCCCCC"><b>Result</b></td>\');
-				opd_console.document.write(\'<td width="8%" bgcolor="#CCCCCC"><b>Cache</b></td>\');
-				opd_console.document.write(\'<td width="20%" bgcolor="#CCCCCC"><b>Execution time</b></td></tr>\');
-				';
-				if(count($this -> queryMonitor) > 0)
-				{
-					foreach($this -> queryMonitor as $queryInfo)
-					{
-						echo '
-							opd_console.document.write(\'<tr><td width="64%" bgcolor="#EEEEEE">'.addslashes($queryInfo['query']).'</td>\'); 
-							opd_console.document.write(\'<td width="8%" bgcolor="#EEEEEE"><b>'.$queryInfo['result'].'</b></td>\');
-							opd_console.document.write(\'<td width="8%" bgcolor="#EEEEEE">'.$queryInfo['cache'].'</td>\');
-							opd_console.document.write(\'<td width="20%" bgcolor="#EEEEEE">'.$queryInfo['execution'].' s</td></tr>\');
-						';
-					}
-				}
-				echo '
-				opd_console.document.write(\'</table>\');
-				</script>
-				';
+				'.$debugCode.'</script>';
 			}
 		} // end __destruct();
 		
@@ -140,13 +125,11 @@
 
 		public function exec($statement)
 		{
-			$this -> beginDebugDefinition($statement, false);
-			$this -> startTimer();
+			$this -> beginDebugDefinition($statement);
+			$this -> startTimer(false, false);
 			$result = $this -> pdo -> exec($statement);
 			$this -> endTimer();
 			$this -> endDebugDefinition($result);
-			$this -> lastQuery = $statement;
-			$this -> incCounter();
 			return $result;
 		} // end exec();
 
@@ -179,7 +162,6 @@
 				}
 	
 				$result = $this -> pdo -> prepare($statement, $options);
-				$this -> lastQuery = $statement;
 				return new opdStatement($this, $result, $statement);
 			}
 			else
@@ -232,7 +214,6 @@
 					}
 		
 					$result = $this -> pdo -> prepare($statement, $options);
-					$this -> lastQuery = $statement;
 				}
 				$this -> cacheIds = array();
 				$this -> cachePeroids = array();
@@ -242,7 +223,7 @@
 
 		public function query($statement, $fetchMode = PDO::FETCH_ASSOC)
 		{
-			$this -> beginDebugDefinition($statement, $this -> cache);
+			$this -> beginDebugDefinition($statement);
 			if($this -> cache)
 			{
 				$this -> cache = false;
@@ -262,22 +243,18 @@
 						return new opdCachedStatement($this, true, $this->cacheId);
 					}
 				}
-				$this -> startTimer();
+				$this -> startTimer(true, false);
 				$result = $this -> pdo -> query($statement);
 				$this -> endTimer();
-				$this -> lastQuery = $statement;
-				$this -> incCounter();
 
 				$result -> setFetchMode($fetchMode);
 				return new opdCachedStatement($this, false, $result, $this->cacheId);
 			}
 			else
 			{
-				$this -> startTimer();
+				$this -> startTimer(false, false);
 				$result = $this -> pdo -> query($statement);
 				$this -> endTimer();
-				$this -> lastQuery = $statement;
-				$this -> incCounter();
 	
 				$result -> setFetchMode($fetchMode);
 				return new opdStatement($this, $result);
@@ -306,7 +283,6 @@
 		public function get($query)
 		{
 			$stmt = $this -> query($query, PDO::FETCH_NUM);
-			$this -> incCounter();
 			if($row = $stmt -> fetch())
 			{
 				$stmt -> closeCursor();
@@ -373,36 +349,44 @@
 			}
 			return false;
 		} // end clearCacheGroup();
-
-		public function incCounter()
-		{
-			$this -> queryCount++;
-		} // end incCounter();
 		
 		public function getCounter()
 		{
-			return $this -> queryCount;
+			return $this -> counterExecuted;
 		} // end getCounter();
 		
 		// --------------------
 		// Debug console methods
 		// --------------------
 		
-		public function beginDebugDefinition($query, $cache)
+		public function beginDebugDefinition($query)
 		{
 			if($this -> debugConsole)
 			{
+				if(is_null($this -> consoleCode))
+				{
+					$this -> consoleCode = file_get_contents(OPD_DIR.'opd.debug.php');				
+				}
+			
 				$this -> queryMonitor[$this->i] = array(
 					'query' => $query,
 					'result' => '',
-					'cache' => ($cache == true ? 'Yes' : 'No'),
-					'execution' => 0		
+					'cache' => 0,
+					'cached' => 0,
+					'execution' => 0
 				);
 			}
 		} // end beginDebugDefinition();
 		
-		public function startTimer()
+		public function startTimer($cacheEnabled, $cached)
 		{
+			$this -> counterRequested++;
+			if(!$cached)
+			{
+				$this -> counterExecuted++;
+			}
+			$this -> queryMonitor[$this->i]['cache'] = $cacheEnabled == true ? 'Yes' : 'No';
+			$this -> queryMonitor[$this->i]['cached'] = $cached;
 			if($this -> debugConsole)
 			{
 				$this -> time = microtime(true);
@@ -414,6 +398,11 @@
 			if($this -> debugConsole)
 			{
 				$this -> queryMonitor[$this->i]['execution'] = round(microtime(true) - $this -> time, 6);
+				$this -> counterTime += $this -> queryMonitor[$this->i]['execution'];
+				if(!$this -> queryMonitor[$this->i]['cached'])
+				{
+					$this -> counterTimeExecuted += $this -> queryMonitor[$this->i]['execution'];
+				}
 			}
 		} // end endTimer();
 		

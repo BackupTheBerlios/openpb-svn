@@ -87,7 +87,7 @@
 
 		public function closeCursor()
 		{
-			$this -> opd -> endDebugDefinition($this -> items - 1);
+			$this -> opd -> endDebugDefinition($this -> items);
 			return $this -> stmt -> closeCursor();
 		} // end closeCursor();
 
@@ -108,22 +108,43 @@
 
 		public function execute($inputParameters = NULL)
 		{
-			$this -> opd -> incCounter();
 			if($inputParameters == NULL)
 			{
-				return $this -> stmt -> execute();
+				$this -> opd -> beginDebugDefinition($this -> query);
+				$this -> opd -> startTimer(false, false);
+				$result = $this -> stmt -> execute();
+				$this -> opd -> endTimer();
 			}
-			return $this -> stmt -> execute($inputParameters);
+			else
+			{
+				$this -> opd -> beginDebugDefinition($this -> query);
+				$this -> opd -> startTimer(false, false);
+				$result =  $this -> stmt -> execute($inputParameters);
+				$this -> opd -> endTimer();
+			}
+
+			$this -> items = $this -> stmt -> rowCount();
+
+			$letter = strtolower($this->query[0]);
+			if($letter == 'i' || $letter == 'u' || $letter == 'd' || $letter == 'r')
+			{
+				$this -> opd -> endDebugDefinition($this -> items);
+			}
+
+			return $result;
 		} // end execute();
 
 		public function fetch($fetchStyle = PDO::FETCH_BOTH, $orientation = PDO::FETCH_ORI_NEXT, $offset = NULL)
 		{
-			$this -> items++;
 			if($offset == NULL)
 			{
-				return $this -> stmt -> fetch($fetchStyle, $orientation);
+				$data = $this -> stmt -> fetch($fetchStyle, $orientation);
 			}
-			return $this -> stmt -> fetch($fetchStyle, $orientation, $offset);
+			if($data = $this -> stmt -> fetch($fetchStyle, $orientation, $offset))
+			{
+				$this -> items++;
+				return $data;
+			}
 		} // end fetch();
 
 		public function fetchAll($fetchStyle = PDO::FETCH_BOTH, $columnIndex = 0)
@@ -173,6 +194,11 @@
 			}
 			return $this -> stmt -> setFetchMode($mode);
 		} // end setFetchMode();
+		
+		public function rowNumber()
+		{
+			return $this -> items;
+		} // end rowNumber();
 		
 		/*
 		 *	ITERATOR INTERFACE IMPLEMENTATION
@@ -232,7 +258,7 @@
 				$this -> cacheId = $param2;
 				if($this -> cacheId != NULL)
 				{
-					$this -> opd -> startTimer();
+					$this -> opd -> startTimer(true, true);
 					$this -> data = unserialize(file_get_contents($this->cacheDir.'%%'.$this->cacheId.'.php'));
 					$this -> opd -> endTimer();
 				}
@@ -263,7 +289,7 @@
 
 		public function closeCursor()
 		{
-			$this -> opd -> endDebugDefinition($this -> i);
+			$this -> opd -> endDebugDefinition(count($this -> data));
 			if(!$this -> cache)
 			{
 				file_put_contents($this->cacheDir.'%%'.$this->cacheId.'.php', serialize($this->data));
@@ -439,7 +465,7 @@
 			// set the cursor at the starting position
 			$this -> i = 0;
 			$this -> j = 0;
-			
+
 			$this -> cache = $this -> cacheIds[$this->j]['test'];
 		} // end __construct();
 		
@@ -449,15 +475,15 @@
 			{
 				return false;			
 			}
-			$this -> opd -> beginDebugDefinition($this -> query, $this -> cacheIds[$this->j]['test']);
+			$this -> opd -> beginDebugDefinition($this -> query);
 			$this -> i = 0;
 			if($this -> cacheIds[$this->j]['test'] == true)
 			{
 				$this -> cache = true;
 				$this -> cacheId = $this -> cacheIds[$this->j]['id'];
-				$this -> opd -> startTimer();
+				$this -> opd -> startTimer(true, true);
 				$this -> data = unserialize(file_get_contents($this->cacheDir.'%%'.$this->cacheId.'.php'));
-				$this -> opd -> endTimer();		
+				$this -> opd -> endTimer();
 			}
 			else
 			{
@@ -465,16 +491,15 @@
 				$this -> cacheId = $this -> cacheIds[$this->j]['id'];
 				$this -> data = array();
 
-				$this -> opd -> incCounter();
 				if($inputParameters == NULL)
 				{
-					$this -> opd -> startTimer();
+					$this -> opd -> startTimer(true, false);
 					$result = $this -> stmt -> execute();
 					$this -> opd -> endTimer();
 				}
 				else
 				{
-					$this -> opd -> startTimer();
+					$this -> opd -> startTimer(true, false);
 					$result = $this -> stmt -> execute($inputParameters);
 					$this -> opd -> endTimer();
 				}

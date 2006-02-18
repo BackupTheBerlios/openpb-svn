@@ -5,6 +5,7 @@
 	try
 	{
 		$sql = opdClass::create('./config.php');
+		$sql -> debugConsole = true;
 		
 		echo '<h2>Time caching prepared statements</h2>';
 		
