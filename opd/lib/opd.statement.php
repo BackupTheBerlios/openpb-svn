@@ -10,7 +10,7 @@
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
   //
-  // $Id$ $Author$ $Date$ $Revision$
+  // $Id$
 
 	interface iopdStatement
 	{	
@@ -122,12 +122,11 @@
 				$result =  $this -> stmt -> execute($inputParameters);
 				$this -> opd -> endTimer();
 			}
-
-			$this -> items = $this -> stmt -> rowCount();
-
+			$this -> items = 0;
 			$letter = strtolower($this->query[0]);
 			if($letter == 'i' || $letter == 'u' || $letter == 'd' || $letter == 'r')
 			{
+				$this -> items = $this -> stmt -> rowCount();
 				$this -> opd -> endDebugDefinition($this -> items);
 			}
 
@@ -138,7 +137,11 @@
 		{
 			if($offset == NULL)
 			{
-				$data = $this -> stmt -> fetch($fetchStyle, $orientation);
+				if($data = $this -> stmt -> fetch($fetchStyle, $orientation))
+				{
+					$this -> items++;
+					return $data;
+				}
 			}
 			if($data = $this -> stmt -> fetch($fetchStyle, $orientation, $offset))
 			{

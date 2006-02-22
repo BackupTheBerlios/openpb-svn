@@ -10,7 +10,7 @@
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
   //
-  // $Id$ $Author$ $Date$ $Revision$
+  // $Id$
 
 	if(!defined('OPD_DIR'))
 	{
@@ -73,9 +73,12 @@
 				);
 			
 				eval($this->consoleCode);
-				echo '<script language="JavaScript">
-				opd_console = window.open("","OPD debug console","width=680,height=350,resizable,scrollbars=yes");
-				'.$debugCode.'</script>';
+				if(isset($debugCode))
+				{
+					echo '<script language="JavaScript">
+					opd_console = window.open("","OPD debug console","width=680,height=350,resizable,scrollbars=yes");
+					'.$debugCode.'</script>';
+				}
 			}
 		} // end __destruct();
 		
@@ -365,7 +368,7 @@
 			{
 				if(is_null($this -> consoleCode))
 				{
-					$this -> consoleCode = file_get_contents(OPD_DIR.'opd.debug.php');				
+					$this -> consoleCode = file_get_contents(OPD_DIR.'opd.debug.php');	
 				}
 			
 				$this -> queryMonitor[$this->i] = array(
