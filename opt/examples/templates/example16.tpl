@@ -4,15 +4,18 @@
 </head> 
 <body>
 <h1>Example 16</h1>
-<h3>Object i18n support</h3>
-<p>This is an object-oriented layer for the custom i18n system. It provides additional method: setObjectI18n() and
-ioptI18n interface.</p>
+<h3>Binding</h3>
+<p>Binding works like CAPTURE, but it catches the precompiled code, so you can still change the data.</p>
 <hr/>
-{* put current date inside the global@date language block *}
-{apply($global@date, $current_date)}
-<p>{$global@text1}</p>
-<p>{$global@text2}</p>
-<p>{$global@text3}</p>
-<p>{$global@date}</p>
+{var=variable1; "This is value 1"}
+
+{bind=snippet}
+<font color="blue">Text: {@variable1}</font><br/>
+{/bind}
+
+{insert=snippet}
+{* the variable modification will be visible, if we call the snippet again *}
+{@variable1 = "This is another value"}
+{insert=snippet}
 </body> 
 </html>

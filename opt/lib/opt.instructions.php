@@ -51,18 +51,18 @@
 					$this -> defaultTreeProcess($node -> getFirstBlock());
 					break;
 				case OPT_TEXT:
-					$this -> output .= $node->__toString();
+					$this -> compiler -> out($node->__toString(), true);
 					break;
 				case OPT_EXPRESSION:
 					$result = $this -> compiler -> compileExpression($node->getFirstBlock()->getAttributes(), 1);
 					if($result[1] == 1)
 					{
 						// we have an assignment, so we must build different code
-						$this -> output .= '\'; '.$result[0].'; '.$this -> compiler -> tpl -> captureTo.' \'';
+						$this -> compiler -> out($result[0].';');
 					}
 					else
 					{		
-						$this -> output .= '\'.(string)('.$result[0].').\'';
+						$this -> compiler -> out('echo '.$result[0].';');
 					}
 					break;
 				case OPT_INSTRUCTION:
@@ -70,8 +70,8 @@
 					break;
 				case OPT_COMPONENT:
 					$this -> compiler -> processors['component'] -> instructionNodeProcess($node);
-					break;			
-			}		
+					break;
+			}
 		} // end nodeProcess();
 		
 		public function instructionProcess(ioptNode $node)
@@ -170,20 +170,20 @@
 		{
 			$link = '';
 			$syntax = $this -> getLink($name, $datasource, $link); 
-			
+			$output = '';
 			if(is_null($state))
 			{
-				$this -> output .= '\'; if(($__'.$name.'_cnt = count('.$link.')) > 0){ '.$this -> compiler -> tpl -> captureTo.' \'';
+				$output .= ' if(($__'.$name.'_cnt = count('.$link.')) > 0){ ';
 			}
 			else
 			{
 				if($this -> compiler -> tpl -> statePriority == OPT_PRIORITY_NORMAL)
 				{
-					$this -> output .= '\'; if(($__'.$name.'_cnt = count('.$link.')) > 0 && '.$state.'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+					$output .= ' if(($__'.$name.'_cnt = count('.$link.')) > 0 && '.$state.'){ ';
 				}
 				else
 				{
-					$this -> output .= '\'; if('.$state.'){ if(($__'.$name.'_cnt = count('.$link.')) > 0){ '.$this -> compiler -> tpl -> captureTo.' \'';
+					$output .= ' if('.$state.'){ if(($__'.$name.'_cnt = count('.$link.')) > 0){ ';
 				}
 			}
 
@@ -195,13 +195,14 @@
 				'show' => $show,
 				'else' => false
 			);
+			$this -> compiler -> out($output);
 		} // end showAction();
 		
 		public function showElse()
 		{
 			if($this->sections[$this->nesting]['show'] == true)
 			{
-				$this -> output .= '\'; } else { '.$this -> compiler -> tpl -> captureTo.' \'';			
+				$this -> compiler -> out(' } else { ');	
 			}		
 		} // end showElse();
 		
@@ -211,11 +212,11 @@
 			{
 				if(!is_null($this->sections[$this->nesting]['state']) && $this -> compiler -> tpl -> statePriority == OPT_PRIORITY_HIGH)
 				{
-					$this -> output .= '\'; } } '.$this -> compiler -> tpl -> captureTo.' \'';
+					$this -> compiler -> out(' } } ');	
 				}
 				else
 				{
-					$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';	
+					$this -> compiler -> out(' } ');	
 				}
 			}
 			unset($this -> sections[$this -> nesting]);
@@ -238,11 +239,11 @@
 
 			if($this->sections[$this->nesting]['order'] == 'reversed')
 			{
-				$this -> output .= '\'; for($__'.$name.'_id = $__'.$name.'_cnt - 1; $__'.$name.'_id >= 0; $__'.$name.'_id--){ $__'.$name.'_val = &'.$this->sections[$this->nesting]['link'].'[$__'.$name.'_id]; '.$this -> compiler -> tpl -> captureTo.' \'';		
+				$this -> compiler -> out(' for($__'.$name.'_id = $__'.$name.'_cnt - 1; $__'.$name.'_id >= 0; $__'.$name.'_id--){ $__'.$name.'_val = &'.$this->sections[$this->nesting]['link'].'[$__'.$name.'_id]; ');		
 			}			
 			else
 			{
-				$this -> output .= '\'; foreach('.$this->sections[$this->nesting]['link'].' as $__'.$name.'_id => &$__'.$name.'_val){ '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' foreach('.$this->sections[$this->nesting]['link'].' as $__'.$name.'_id => &$__'.$name.'_val){ ');
 			}
 			$this -> nesting++;
 		} // end sectionBegin();
@@ -252,7 +253,7 @@
 			if($this->sections[$this->nesting-1]['show'] == false)
 			{
 				$this->sections[$this->nesting-1]['else'] = true;
-				$this -> output .= '\'; } } else { '.$this -> compiler -> tpl -> captureTo.' \'';			
+				$this -> compiler -> out(' } } else { ');		
 			}
 		} // end sectionElse();
 		
@@ -261,17 +262,17 @@
 			$this -> nesting--;
 			if($this->sections[$this->nesting]['show'] == true)
 			{				
-				$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';			
+				$this -> compiler -> out(' } ');			
 			}
 			else
 			{
 				if($this->sections[$this->nesting]['else'] == true)
 				{
-					$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';
+					$this -> compiler -> out(' } ');
 				}
 				else
 				{
-					$this -> output .= '\'; } } '.$this -> compiler -> tpl -> captureTo.' \'';
+					$this -> compiler -> out(' } } ');
 				}
 				unset($this -> sections[$this -> nesting]);
 			}
@@ -393,24 +394,20 @@
 				'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
 			$variables = $this -> compiler -> parametrize('include', $block -> getAttributes(), $params);
-
+			$code = '';
+			foreach($variables as $name => $variable)
+			{
+				$code .= ' $this -> vars[\''.$name.'\'] = '.$variable.'; ';		
+			}
 			if($params['default'] != NULL)
 			{
-				$code = ' if($this->checkExistence('.$params['file'].')){ $this -> doInclude('.$params['file'].', $nestingLevel + 1); }else{ $this -> doInclude('.$params['default'].', $nestingLevel + 1); } ';
+				$code .= ' if(!$this -> doInclude('.$params['file'].')){ $this -> doInclude('.$params['default'].'); } ';
 			}
 			else
 			{
-				$code = '$this -> doInclude('.$params['file'].', $nestingLevel + 1);';
+				$code .= '$this -> doInclude('.$params['file'].');';
 			}
-	
-			if($params['assign'] != NULL)
-			{
-				$this -> output .= '\'; $this -> captureTo = \'$this->vars[\\\''.$params['assign'].'\\\'].=\'; '.$code.' $this -> captureTo = \''.$this -> compiler -> tpl -> captureTo.'\'; '.$this -> compiler -> tpl -> captureTo.' \'';
-			}
-			else
-			{
-				$this -> output .= '\'; '.$code.' '.$this -> compiler -> tpl -> captureTo.' \'';
-			}
+			$this -> compiler -> out($code);
 		} // end instructionNodeProcess();
 	}
 
@@ -436,18 +433,14 @@
 			$this -> compiler -> parametrize('place', $block->getAttributes(), $params);
 	
 			$file = '';
-			$res = $this -> compiler -> tpl -> getResourceInfo($params['file'], $file);
 			if($params['assign'] != NULL)
 			{	
-				$captureBuffer = $this -> compiler -> tpl -> captureTo;
-				$this -> compiler -> tpl -> captureTo = '$this -> vars[\''.$params['assign'].'\'] .= ';
-				$this -> output .= '\'; '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' ob_start(); ');
 			}
-			$this -> compiler -> parse($res -> loadSource($file));
+			$this -> compiler -> out($this -> compiler -> tpl -> getTemplate($params['file']), true);
 			if($params['assign'] != NULL)
 			{
-				$this -> compiler -> tpl -> captureTo = $captureBuffer;
-				$this -> output .= '\'; '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' $this -> vars[\''.$params['assign'].'\'] .= ob_end_flush(); ');
 			}
 		} // end instructionNodeProcess();
 	}
@@ -473,7 +466,7 @@
 			);
 			$this -> compiler  -> parametrize('var', $block -> getAttributes(), $params);
 	
-			$this -> output .= '\'; $this -> vars[\''.$params['name'].'\'] = '.$params['value'].'; '.$this -> compiler -> tpl -> captureTo.' \'';
+			$this -> compiler -> out('$this -> vars[\''.$params['name'].'\'] = '.$params['value'].'; ');
 		} // end instructionNodeProcess();
 	}
 	
@@ -498,7 +491,7 @@
 			);
 			$this -> compiler -> parametrize('default', $block -> getAttributes(), $params);
 			
-			$this -> output .= '\'.(isset('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].').\'';
+			$this -> compiler -> out(' echo (isset('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].'); ');
 		} // end process();
 	}
 
@@ -559,11 +552,11 @@
 					'test' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
 				);
 				$this -> compiler -> parametrize('if', $group, $params);
-				$this -> output .= '\'; if('.$params['test'].'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' if('.$params['test'].'){ ');
 			}
 			else
 			{
-				$this -> output .= '\'; if('.$this -> compiler -> compileExpression($group[4]).'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out('; if('.$this -> compiler -> compileExpression($group[4]).'){ ');
 			}
 		} // end ifBegin();
 		
@@ -579,11 +572,11 @@
 						'test' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
 					);
 					$this -> compiler -> parametrize('elseif', $group, $params);
-					$this -> output .= '\'; }elseif('.$params['test'].'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+					$this -> compiler -> out('; }elseif('.$params['test'].'){ ');
 				}
 				else
 				{
-					$this -> output .= '\'; }elseif('.$this -> compiler -> compileExpression($group[4]).'){ '.$this -> compiler -> tpl -> captureTo.' \'';
+					$this -> compiler -> out(' }elseif('.$this -> compiler -> compileExpression($group[4]).'){ ');
 				}
 		 	# nestingLevel
 		 	}
@@ -600,7 +593,7 @@
 		 	if($this -> nesting > 0)
 			{
 			# /nestingLevel
-		 		$this -> output .= '\'; }else{ '.$this -> compiler -> tpl -> captureTo.' \'';
+		 		$this -> compiler -> out(' }else{ ');
 		 	# nestingLevel
 		 	}
 			else
@@ -617,7 +610,7 @@
 			{
 		 		$this -> nesting--;
 		 	# /nestingLevel
-		 		$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';
+		 		$this -> compiler -> out(' } ');
 		 	# nestingLevel
 		 	}
 			else
@@ -630,6 +623,9 @@
 	
 	class optCapture extends optInstruction
 	{
+		private $active = false;
+		private $name = '';
+	
 		public function configure()
 		{
 			return array(
@@ -664,10 +660,11 @@
 				'to' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
 			);
 			$this -> compiler -> parametrize('capture', $group, $params);
-			if($this -> compiler -> tpl -> captureTo == $this -> compiler -> tpl -> captureDef)
+			if(!$this -> active)
 			{
-				$this -> compiler -> tpl -> captureTo = '$this -> capture[\''.$params['to'].'\'] .= ';
-				$this -> output .= '\'; '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> active = true;
+				$this -> name = $params['to'];
+				$this -> compiler -> out(' ob_start(); ');
 			}
 			else
 			{
@@ -677,10 +674,10 @@
 		
 		private function captureEnd()
 		{
-			if($this -> compiler -> tpl -> captureTo != $this -> compiler -> tpl -> captureDef)
+			if($this -> active)
 			{
-				$this -> compiler -> tpl -> captureTo = $this -> compiler -> tpl -> captureDef;
-				$this -> output .= '\'; '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> active = false;
+				$this -> compiler -> out(' $this -> capture[\''.$this->name.'\'] = ob_end_flush(); ');
 			}
 			else
 			{
@@ -741,7 +738,7 @@
 		 	$this -> nesting++;
 		 	# /nestingLevel
 	
-	 		$this -> output .= '\'; for('.$params['begin'].'; '.$params['end'].'; '.$params['iterate'].'){ '.$this -> compiler->tpl->captureTo.' \'';
+	 		$this -> compiler -> out(' for('.$params['begin'].'; '.$params['end'].'; '.$params['iterate'].'){ ');
 		} // end forBegin();
 		
 		private function forEnd()
@@ -751,7 +748,7 @@
 		 	{
 		 		$this -> nesting--;
 		 	# /nestingLevel
-		 		$this -> output .= '\'; } '.$this -> compiler -> tpl -> captureTo.' \'';
+		 		$this -> compiler -> out(' } ');
 		 	# nestingLevel
 		 	}
 		 	else
@@ -817,11 +814,11 @@
 	
 			if($params['value'] == NULL)
 			{
-				$this -> output .= '\'; if(count('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['id'].'\'] = &$__f_'.$this -> nesting.'_val; '.$cpl -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' if(count('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['id'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
 			else
 			{
-				$this -> output .= '\'; if(count('.$params['table'].') > 0){ foreach('.$params['table'].' as $__f_'.$this -> nesting.'_id => &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = $__f_'.$this -> nesting.'_id; $this -> vars[\''.$params['value'].'\'] = &$__f_'.$this -> nesting.'_val; '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' if(count('.$params['table'].') > 0){ foreach('.$params['table'].' as $__f_'.$this -> nesting.'_id => &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = $__f_'.$this -> nesting.'_id; $this -> vars[\''.$params['value'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
 		} // end foreachBegin();
 		
@@ -833,7 +830,7 @@
 		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'FOREACHELSE called when not in FOREACH.', 209);
 		 	}
 		 	# /nestingLevel
-		 	$this -> output .= '\'; } }else{ { '.$this -> compiler -> tpl -> captureTo.' \'';		
+		 	$this -> compiler -> out(' } }else{ { ');		
 		} // end foreachElse();
 		
 		private function foreachEnd()
@@ -843,7 +840,7 @@
 		 	{
 		 		$this -> nesting--;
 		 	# /nestingLevel
-	 			$this -> output .= '\'; } } '.$this -> compiler -> tpl -> captureTo.' \'';
+	 			$this -> compiler -> out(' } } ');
 		 	# nestingLevel
 		 	}
 		 	else
@@ -968,10 +965,11 @@
 				return '';
 			}
 		
-			if($this -> active = 0)
+			if($this -> active == 0)
 			{
 				$this -> active = 1;
-				$this -> output .= '\'; $this -> cacheOutput[] = ob_get_contents(); /* #@#DYNAMIC#@# */ '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> out(' $dynamic = true; $this -> outputBuffer[] = ob_get_contents(); ');
+				$this -> compiler -> dynamic(true);
 			}
 			else
 			{
@@ -989,7 +987,8 @@
 			if($this -> active == 1)
 			{
 				$this -> active = 0;
-				$this -> output .= '\'; /* #@#END DYNAMIC#@# */ ob_start(); '.$this -> compiler -> tpl -> captureTo.' \'';
+				$this -> compiler -> dynamic(false);
+				$this -> compiler -> out(' ob_start(); ');
 			}
 			else
 			{
@@ -1099,7 +1098,7 @@
 					'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
 				$args = $this -> compiler -> parametrize($node -> getName(), $block->getAttributes(), $params);
-				$this -> output .= '\'; if('.$params['id'].' instanceof ioptComponent){ ';
+				$code =' if('.$params['id'].' instanceof ioptComponent){ ';
 				$componentLink = $params['id'];
 				$condBegin = 1;
 			}
@@ -1110,18 +1109,18 @@
 					'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
 				$args = $this -> compiler -> parametrize($block -> getName(), $block->getAttributes(), $params);
-				$this -> output .= '\'; $__component_'.$cid.' = new '.$block -> getName().'(); ';
+				$code = ' $__component_'.$cid.' = new '.$block -> getName().'(); ';
 				if($params['datasource'] != NULL)
 				{
-						$this -> output .= ' $__component_'.$cid.' -> setDatasource('.$params['datasource'].'); ';
+						$code .= ' $__component_'.$cid.' -> setDatasource('.$params['datasource'].'); ';
 				}
 				$componentLink = '$__component_'.$cid;	
 			}
-			$this -> output .= $componentLink.' -> setOptInstance($this); ';
+			$code .= $componentLink.' -> setOptInstance($this); ';
 
 			foreach($args as $name => $value)
 			{
-				$this -> output .= $componentLink.' -> set(\''.$name.'\', '.$value.'); ';
+				$code .= $componentLink.' -> set(\''.$name.'\', '.$value.'); ';
 			}
 
 			// let's see, what do we have inside the block
@@ -1140,7 +1139,7 @@
 							'value' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
 						);
 						$this -> compiler -> parametrize('component parameter', $node -> getFirstBlock()->getAttributes(), $params);
-						$this -> output .= $componentLink.' -> set(\''.$params['name'].'\', '.$params['value'].'); ';
+						$code .= $componentLink.' -> set(\''.$params['name'].'\', '.$params['value'].'); ';
 						break;
 					case 'listItem':
 						// list items
@@ -1150,7 +1149,7 @@
 							'selected' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, 0)
 						);
 						$this -> compiler -> parametrize('component list element', $node -> getFirstBlock()->getAttributes(), $params);
-						$this -> output .= $componentLink.' -> push(\''.$params['name'].'\', '.$params['value'].', '.$params['selected'].'); ';
+						$code .= $componentLink.' -> push(\''.$params['name'].'\', '.$params['value'].', '.$params['selected'].'); ';
 						break;
 					default:
 						if($node -> getType() == OPT_UNKNOWN)
@@ -1177,18 +1176,18 @@
 						}
 				}
 			}
-			
+			$this -> compiler -> out($code);
 			// ok, now we put the events in the correct order
 			foreach($events[0] as $name => $nodeData)
 			{
 				$this -> compileEvent($componentLink, $nodeData);
 			}
-			$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' '.$componentLink.' -> begin(); ';
+			$this -> compiler -> out(' '.$componentLink.' -> begin(); ');
 			foreach($events[1] as $name => $nodeData)
 			{
 				$this -> compileEvent($componentLink, $nodeData);
 			}
-			$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' '.$componentLink.' -> end(); ';
+			$this -> compiler -> out(' '.$componentLink.' -> end(); ');
 			foreach($events[2] as $name => $nodeData)
 			{
 				$this -> compileEvent($componentLink, $nodeData);
@@ -1197,11 +1196,7 @@
 			// terminate the processing
 			if($condBegin == 1)
 			{
-				$this -> output .= ' } '.$this -> compiler -> tpl -> captureTo.' \'';			
-			}
-			else
-			{
-				$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' \'';			
+				$this -> compiler -> out(' } ');		
 			}
 		} // end instructionNodeProcess();
 		
@@ -1209,12 +1204,12 @@
 		{
 			$node = $eventNode[0];
 			$message = $eventNode[1];
-			$this -> output .= ' if('.$componentId.' -> '.$node->getName().'(\''.$eventNode[1].'\')) { '.($capture = $this -> compiler -> tpl -> captureTo).' \'';
+			$this -> compiler -> out(' if('.$componentId.' -> '.$node->getName().'(\''.$eventNode[1].'\')) { ');
 			foreach($node as $block)
 			{
 				$this -> defaultTreeProcess($block);
 			}
-			$this -> output .= '\'; } ';
+			$this -> compiler -> out(' } ');
 		} // end compileEvent();
 
 	}

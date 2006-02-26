@@ -4,11 +4,9 @@
 </head> 
 <body>
 <h1>Example 5</h1>
-<h3>Custom i18n support</h3>
-<p>When it comes to the template, the i18n code is exactly the same. The differences are, when we look at the PHP.
-Custom i18n system allows you to link OPT with object-based i18n system. You have to write your own text manager,
-your own apply function, and of course - a postfilter which create the object inside the template. This could be done
-for example by singleton.</p>
+<h3>Object i18n support</h3>
+<p>This is an object-oriented layer for the custom i18n system. It provides additional method: setObjectI18n() and
+ioptI18n interface.</p>
 <hr/>
 {* put current date inside the global@date language block *}
 {apply($global@date, $current_date)}

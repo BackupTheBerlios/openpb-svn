@@ -26,30 +26,7 @@ More info on http://opt.openpb.net/
 ****************************
 There is a lot of changes, 1.0.0 and 0.1.1 are completely different scripts.
 
- - [new] New compiler using tree-processing algorithm
- - [new] New instructions 
- - [new] New instruction API
- - [new] Components
- - [new] Instruction parameter syntax mode. The old one is also available.
- - [new] XML Syntax mode
- - [new] Ultra-configurable delimiters
- - [new] Parameter parser
- - [new] HTTP Output cache
- - [new] Plugins
- - [new] Pre-, post-, and outputfilters.
- - [new] Custom template resources
- - [new] Plugin autoloader
- - [new] Assign method family
- - [new] Expression engine
- - [new] OPT Configurator
- - [new] Debug console
- - [new] UnitTest
- - [new] New naming style: "nameName()" instead of "name_name()"
- - [new] Initialization procedure changed
- - [new] Configuration handler changed
- - [upd] New features for i18n support
- - [upd] Full object support
- - [upd] Heavy OPTimizations
+ - [new] Everything is new, fresh and clean
  - [upd] License change to GNU LGPL
  - [fix] many problems with output cache (thanks to normanos)
  - [fix] bug #6

@@ -262,7 +262,12 @@
 		public $processors;
 		public $mapper;
 		public $translator;
-		public $parseRun;
+		
+		public $dynamic;		
+		private $dynamicEnabled = false;
+		private $di = 0;
+		private $dynamicSeg = array(0 => '');
+		private $output;
 		
 		// EXPRESSION REGEX		
 		private $rDoubleQuoteString = '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"';
@@ -275,14 +280,13 @@
 		private $rOperators = '\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+|\-|\*|\/|\[|\]|\.|\:\:|';
 		private $rConfiguration = '\#?[a-zA-Z0-9\_]+';
 
+		// Administrative methods
 		public function __construct($tpl)
 		{
 			// Init the compiler
 			if($tpl instanceof optCompiler)
 			{
 				$this -> tpl = $tpl -> tpl;
-				$this -> nestingNames = $tpl -> nestingNames;
-				$this -> nestingLevel = $tpl -> nestingLevel;
 			}
 			else
 			{
@@ -291,19 +295,11 @@
 			}
 			
 			// Register plugin instructions
-			if($this -> tpl -> compileCode != '')
+			if($this -> tpl -> plugins != NULL)
 			{
-				eval($this -> tpl -> compileCode);
+				require($this -> tpl -> plugins.'compile.php');				
 			}
-			# PLUGIN_AUTOLOAD
-			else
-			{
-				if($this -> tpl -> plugins != NULL)
-				{
-					require($this -> tpl -> plugins.'compile.php');				
-				}
-			}
-			
+
 			// Load compiler files
 			if(count($this -> tpl -> instructionFiles) > 0)
 			{
@@ -333,16 +329,55 @@
 					}
 				}
 			}
-			$this -> parseRun = 0;
 		} // end __construct();
 
-		public function parse($code)
+		public function translate($class)
+		{
+		
+		} // end translate();
+		
+		public function out($code, $static = false)
+		{
+			if($static)
+			{
+				$this -> output .= $code;
+				if($this -> dynamic)
+				{
+					$this -> dynamicSeg[$this->di] .= $code;	
+				}
+				return;
+			}
+			$this -> output .= '<'.'?php '.$code.' ?'.'>';
+			if($this -> dynamic)
+			{
+				$this -> dynamicSeg[$this->di] .= '<'.'?php '.$code.' ?'.'>';
+			}
+		} // end out();
+		
+		public function dynamic($state)
+		{
+			$this -> dynamic = $state;
+			$this -> dynamicEnabled = true;
+			if($this -> dynamic == false)
+			{
+				$this -> di++; // dynamic segment iterator
+				$this -> dynamicSeg[$this->di] = '';
+			}
+		} // end dynamic();
+
+		// General compiler
+		public function parse($filename, $code)
 		{
 			static $regex;
+			
+			$this -> dynamic = false;
+			$this -> dynamicEnabled = false;
+			$this -> dynamicSeg = array(0 => '');
+			$this -> di = 0;
 
-			if(count($this -> tpl -> codeFilters['pre']) > 0)
+			if(count($this -> tpl -> filters['pre']) > 0)
 			{
-				foreach($this -> tpl -> codeFilters['pre'] as $name)
+				foreach($this -> tpl -> filters['pre'] as $name)
 				{
 					// @ used because of stupid notice
 					// "Object of class opt_template to string conversion".
@@ -372,21 +407,7 @@
 					unset($result[$i]);
 				}
 			}
-			$output = $this -> tpl -> captureTo.' \'';
-			if(!$this -> parseRun)
-			{				
-				// register output
-				foreach($this -> processors as $name => $processor)
-				{
-					$processor -> setOutput($output);
-				}
-				$this -> parseRun = 1;
-			}
-			else
-			{
-				$this -> parseRun = 2;
-			}
-			
+			$this -> output = '';			
 			// initialize the tree
 			$root = $current = new optNode(NULL, OPT_ROOT, NULL);
 			$rootBlock = $currentBlock = new optBlock(NULL);
@@ -592,15 +613,6 @@
 						$text = new optTextNode(NULL, OPT_TEXT, $current);
 						$currentBlock -> addNode($text);
 					}
-					// character escaping
-					if($item == '\'')
-					{
-						$item = '\\\'';
-					}
-					if($item == '\\')
-					{
-						$item = '\\\\';
-					}
 					$text -> addItem($item);
 					$textAssign = 1;
 				}
@@ -608,19 +620,22 @@
 			}
 			// execute the tree
 			$this -> processors['generic'] -> nodeProcess($root);
-			if($this->parseRun < 2)
-			{
-				$code = $output.'\';';
-			}
 			// apply postfilters
-			if(count($this -> tpl -> codeFilters['post']) > 0)
+			if(count($this -> tpl -> filters['post']) > 0)
 			{
-				foreach($this -> tpl -> codeFilters['post'] as $name)
+				foreach($this -> tpl -> filters['post'] as $name)
 				{
-					$code = $name($code, $this -> tpl);
+					$this -> output = $name($this -> output, $this -> tpl);
 				}
 			}
-			$this -> parseRun--;
+			if(!is_null($filename))
+			{
+				file_put_contents($filename, $this -> output);
+			}
+			if($this -> dynamicEnabled)
+			{
+				file_put_contents($filename.'.dyn', serialize($this -> dynamicSeg));			
+			}
 			return $code;
 		} // end parse();
 
@@ -1108,7 +1123,7 @@
 			$ns = explode('@', ltrim($block, '$'));
 			if($this -> tpl -> showWarnings == 1)
 			{
-				if(!isset($this -> tpl -> lang[$ns[0]][$ns[1]]) && $this -> tpl -> i18nType == 0)
+				if($this -> tpl -> i18nType == 0 && !isset($this -> tpl -> i18n[$ns[0]][$ns[1]]))
 				{
 					$this -> tpl -> error(E_USER_WARNING, 'The language block `'.$name.'` does not exist.', 151);
 				}
@@ -1117,11 +1132,11 @@
 			{
 				if($this -> tpl -> i18nType == 1)
 				{
-					return sprintf($this -> tpl -> lang['template'], $ns[0], $ns[1]);									
+					return '$this->i18n->put(\''.$ns[0].'\', \''.$ns[1].'\')';									
 				}
 				else
 				{
-					return '$this->lang[\''.$ns[0].'\'][\''.$ns[1].'\']';
+					return '$this->i18n[\''.$ns[0].'\'][\''.$ns[1].'\']';
 				}
 			}
 			else
@@ -1157,7 +1172,7 @@
 			{
 				if($this -> tpl -> i18nType == 1)
 				{
-					return $this -> tpl -> lang['applyClass'].'->apply(';
+					return '$this->i18n->apply(';
 				}
 				else
 				{

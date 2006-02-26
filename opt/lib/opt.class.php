@@ -12,9 +12,6 @@
   //
   // $Id$
 
-	define('OPT_FORCE_REWRITE', 1);	
-	define('OPT_MAX_NESTING_LEVEL', 32);
-
 	define('OPT_HTTP_CACHE', 1);
 	define('OPT_NO_HTTP_CACHE', 2);
 
@@ -23,9 +20,6 @@
 	define('OPT_XML', 2);
 	define('OPT_WML', 3);
 	define('OPT_TXT', 4);
-
-	define('OPT_ENABLED', 1);
-	define('OPT_DISABLED', 0);
 
 	define('OPT_PREFILTER', 0);
 	define('OPT_POSTFILTER', 1);
@@ -36,13 +30,14 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-
 	define('OPT_VERSION', '1.0.0');
 	
 	if(!defined('OPT_DIR'))
 	{
 		define('OPT_DIR', './');
 	}
+	
+	// Additional interfaces
 	
 	include_once(OPT_DIR.'opt.error.php');
 	# COMPONENTS
@@ -64,10 +59,6 @@
 	# /COMPONENTS
 	
 	# OBJECT_I18N
-/************************
- *   O P T   I 1 8 N    *
- ************************/
- 
 	interface ioptI18n
 	{
 		public function setOptInstance(optClass $tpl);
@@ -75,48 +66,40 @@
 		public function apply($group, $id);	
 	}
 	# /OBJECT_I18N
-
-/************************
- *   O P T   C L A S S
- ************************/
+	
+	// OPT Parser class
 
 	class optClass
 	{
-		// configuration area
-		public $root = './templates/';
-		public $compile = './templates_c/';
-		# OUTPUT_CACHING
+		// Configuration
+		public $root = NULL;
+		public $compile = NULL;
 		public $cache = NULL;
-		# /OUTPUT_CACHING
-		# PLUGIN_AUTOLOAD
 		public $plugins = NULL;
-		# /PLUGIN_AUTOLOAD
-		# GZIP_SUPPORT
-		public $gzipCompression = 1;
-		# /GZIP_SUPPORT
-		public $compileCacheDisabled = 0;
-		public $showWarnings = 0;
-		public $showSource = 0;
-		public $charset = 'iso-8859-1';
-		public $safeMode = 0;
-		# DEBUG_CONSOLE
-		public $debugConsole = 0;
-		# /DEBUG_CONSOLE
-		public $trace = 0;
-		public $rewriteWarnings = 0;
-		public $xmlsyntaxMode = 0;
-		public $strictSyntax = 0;
-		public $entities = 0;
+
+		public $gzipCompression = false;
+		public $charset = NULL;
+
+		public $showWarnings = true;
+		public $debugConsole = false;
+		public $performance = false;
+
+		public $xmlsyntaxMode = false;
+		public $strictSyntax = false;
+		public $entities = false;
 		public $sectionStructure = OPT_SECTION_MULTI;
 		public $statePriority = OPT_PRIORITY_NORMAL;
+
 		public $parseintDecPoint = '.';
 		public $parseintDecimals = 3;
 		public $parseintThousands = ',';
 		
-		// parser data area	
+		// Parser and compiler data
+		protected $init = 0;
+		public $compiler;
 		public $data = array();
 		public $vars = array();
-		public $compiler;
+		public $capture = array();
 		public $functions = array(
 								'parse_int' => 'PredefParseInt',
 								'wordwrap' => 'PredefWordwrap',
@@ -161,174 +144,55 @@
 		public $delimiters = array(0 => 
 								'\{(\/?)(.*?)(\/?)\}'
 							);
-
-		public $lang;
-		public $i18nType;
-		public $i18n = NULL;
-
-		protected $init = 0;
-		
-		public $resources = array();
-		public $codeFilters = array(
+		public $filters = array(
 								'pre' => NULL,
 								'post' => NULL,
 								'output' => NULL
 							);
-							
 		public $instructionFiles = array();
-		public $capture;
-		public $captureTo = 'echo';
-		public $captureDef = 'echo';
-		private $oldErrorReporting;
 		
-		private $outputBuffer;
-		# DEBUG_CONSOLE
-		private $debugOutput;
-		private $debugConfig;
-		private $debugCode;
-		# /DEBUG_CONSOLE
-		# OUTPUT_CACHING
-		private $cacheStatus;
-		private $cacheExpires;
-		private $cacheId;
-		private $cacheOutput;
-		private $cacheTestResult;
-		private $cacheResource;
-		private $cacheHeader;
-		# /OUTPUT_CACHING
+		// I18n
+		public $i18n = NULL;
+		public $i18nType = 0;
 		
-		public $compileCode = '';
-		private $includedFiles = array();
-		private $testIncludedFiles;
-
-		public function __destruct()
+		// Debug console
+		private $debugOutput = array();
+		private $totalTime = 0;
+		
+		// Output cache
+		private $cacheStatus = false;
+		private $cacheId = NULL;
+		private $cacheExpire = 0;
+		private $cacheDynamic = false;
+		private $cacheData = array();
+		private $outputBuffer = array();
+		
+		// Methods		
+		public function assign($name, $value)
 		{
-			# DEBUG_CONSOLE
-			if($this -> debugConsole)
-			{
-				$this -> data['config'] = array(0 => 
-					array('name' => 'root', 'value' => $this -> root),
-					array('name' => 'compile', 'value' => $this -> compile),
-					array('name' => 'cache', 'value' => $this -> cache),
-					array('name' => 'plugins', 'value' => $this -> plugins),
-					array('name' => 'compileCacheDisabled', 'value' => $this -> compileCacheDisabled),
-					# GZIP_SUPPORT
-					array('name' => 'gzipCompression', 'value' => $this -> gzipCompression),
-					# /GZIP_SUPPORT
-					array('name' => 'charset', 'value' => $this -> charset),
-					array('name' => 'safeMode', 'value' => $this -> safeMode)				
-				);
-				$this -> data['files'] = &$this->debugOutput;
-			//	eval($this->debug_code);
-				echo '<script language="JavaScript">
-				opt_console = window.open("","OPT debug console","width=680,height=350,resizable,scrollbars=yes");
-				opt_console.document.write("<HTML><TITLE>OPT debug console</TITLE><BODY bgcolor=#ffffff><h1>OPT DEBUG CONSOLE</h1>");
-				opt_console.document.write(\'<table border="0" width="100%">\');
-				'; if(count($this -> data['config']) > 0){ foreach($this -> data['config'] as $__config_id => &$__config_val){ echo '
-				opt_console.document.write(\'<tr><td width="25%" bgcolor="#DDDDDD"><b>'.(string)($__config_val['name']).'</b></td>\'); 
-				opt_console.document.write(\'<td width="75%" bgcolor="#EEEEEE">'.(string)($__config_val['value']).'</td></tr>\');
-				'; } } echo '
-				opt_console.document.write(\'</table><table border="0" width="100%"><tr><td width="25%" bgcolor="#CCCCCC"><b>Loaded file</b></td>\'); 
-				opt_console.document.write(\'<td width="25%" bgcolor="#CCCCCC"><b>Problems</b></td>\');
-				opt_console.document.write(\'<td width="25%" bgcolor="#CCCCCC"><b>Compile cache status</b></td>\');
-				opt_console.document.write(\'<td width="25%" bgcolor="#CCCCCC"><b>Execution time</b></td></tr>\');
-				'; if(count($this -> data['files']) > 0){ foreach($this -> data['files'] as $__files_id => &$__files_val){ echo '
-				opt_console.document.write(\'<tr><td width="25%" bgcolor="#EEEEEE">'.(string)($__files_val['name']).'</td>\'); 
-				opt_console.document.write(\'<td width="25%" bgcolor="#EEEEEE"><b>'.(string)($__files_val['problems']).'</b></td>\');
-				opt_console.document.write(\'<td width="25%" bgcolor="#EEEEEE">'.(string)($__files_val['cache']).'</td>\');
-				opt_console.document.write(\'<td width="25%" bgcolor="#EEEEEE">'.(string)($__files_val['exec']).' s</td></tr>\');
-				'; } } echo '
-				opt_console.document.write(\'</table>\');
-				</script>
-				';
-			}
-			# /DEBUG_CONSOLE
-			if(count($this -> codeFilters['output']) > 0)
-			{
-				$output = ob_get_clean();
-				foreach($this -> codeFilters['output'] as $filter)
-				{
-					$output = $filter($output, $this);
-				}
-				echo $output;
-			}
-			else
-			{
-				// potential bug
-				// while(@ob_end_flush());
-				@ob_end_flush();
-			}
-		} // end __destruct();
+			$this -> data[$name] = $value;		
+		} // end assign();
 
-		public function error($type, $msg, $code)
+		public function assignGroup($values)
 		{
-			// get callback information
-			$dFile = 'Unknown';
-			$dLine = '0';
-			$dFunction = 'main';
-			$trace = debug_backtrace();
-			for($i = count($trace) - 1; $i >= 0; $i--)
+			if(!is_array($values))
 			{
-				if(isset($trace[$i]['class']))
-				{
-					if($trace[$i]['class'] == 'optClass' || $trace[$i]['class'] == 'optCompiler')
-					{
-						$dFile = $trace[$i]['file'];
-						$dLine = $trace[$i]['line'];
-						$dFunction = $trace[$i]['function'];
-						break;				
-					}
-				}	
+				return false;
 			}
-			// Code processing
-			if($code > 0 && $code < 100)
+		
+			foreach($values as $name => &$value)
 			{
-				$n_type = 'Open Power Template';
-			}
-			else
-			{
-				$n_type = 'Open Power Template Compiler';
-			}
-			if($type == E_USER_WARNING && $this -> showWarnings == 1)
-			{
-				echo '<br/><b>'.$n_type.' warning #'.$code.':</b> '.$msg.' <i>Generated by OPT method `'.$dFunction.'` called in '.$dFile.' on line '.$dLine.'</i><br/>';
-			}
-			elseif($type == E_USER_ERROR)
-			{
-				// Close the io connections
-				foreach($this -> resources as $resource)
-				{
-					if($resource -> getIoStatus() == OPT_IO_LOCKED)
-					{
-						// remove the file, if possible
-						$resource -> saveCode(NULL);
-					}
-				}
-			
-				// Send the exception
-				$exception = new optException($msg, $code, $n_type, $dFile, $dLine, $dFunction, $this -> trace);
-				
-				if($this -> trace)
-				{
-					$exception -> directories = array(
-						'root' => $this->root,
-						'compile' => $this->compile,
-						'cache' => $this->cache,
-						'plugins' => $this->plugins
-					);			
-				}
-				throw $exception;
+				$this -> data[$name] = $value;
 			}	
-		} // end error();
+		} // end assignGroup();
 
-		# HTTP_HEADERS
+		public function assignByRef($name, &$value)
+		{
+			$this -> data[$name] = $value;		
+		} // end assignByRef();
+
 		public function httpHeaders($content, $cache = OPT_HTTP_CACHE)
 		{
-			if(headers_sent())
-			{
-				return 0;
-			}
-
 			$charset = '';
 			if($this -> charset != NULL)
 			{
@@ -379,21 +243,37 @@
 				// HTTP/1.0 
 				header('Pragma: no-cache');
 			}
-			# DEBUG_CONSOLE
-			if($this->debugConsole)
-			{
-				$this -> debugConfig[] = array('name' => 'HTTP Headers', 'value' => implode('<br/>', headers_list()));
-			}
-			# /DEBUG_CONSOLE
 		} // end httpHeaders();
-		# /HTTP_HEADERS
+
+		public function loadConfig($data)
+		{
+			$configDirectives = array(0=>
+				'root', 'compile', 'cache', 'plugins',
+				'gzipCompression', 'charset', 'showWarnings', 'debugConsole',
+				'performance', 'xmlsyntaxMode', 'strictSyntax', 'entities', 'sectionStructure',
+				'statePriority', 'parseintDecPoint', 'parseintDecimals', 'parseintThousands'
+			);
+			
+			if(!is_array($data))
+			{
+				$data = parse_ini_file($data);
+			}
+
+			foreach($configDirectives as $name)
+			{
+				if(isset($data[$name]))
+				{
+					$this -> $name = $data[$name];
+				}			
+			}
+		} // end loadConfig();
 
 		public function setDefaultI18n(&$lang)
 		{
 			$this -> i18nType = 0;
 			if(is_array($lang))
 			{
-				$this -> lang = &$lang;
+				$this -> i18n = &$lang;
 			}
 			else
 			{
@@ -401,466 +281,18 @@
 			}
 		} // end setDefaultI18n();
 
-		public function setCustomI18n($template, $applyClass, $postfilter = NULL)
-		{
-			$this -> i18nType = 1;
-			$this -> lang = array(
-				'template' => $template,
-				'applyClass' => $applyClass	
-			);
-
-			if($postfilter != NULL)
-			{
-				$this -> registerFilter(OPT_POSTFILTER, $postfilter);			
-			}
-		} // setCustomI18n();
-		# OBJECT_I18N
 		public function setObjectI18n(ioptI18n $i18n)
 		{
 			$this -> i18nType = 1;
-			$this -> lang = array(
-				'template' => '$this->i18n->put(\'%s\',\'%s\')',
-				'applyClass' => '$this->i18n'
-			);
-			$this -> i18n = $i18n;
-			$this -> i18n -> setOptInstance($this);
-		} // setObjectI18n();
-		# /OBJECT_I18N
-
-		public function assign($name, $value, $forceRewrite = 0)
-		{
-			if($forceRewrite)
-			{
-				$this -> data[$name] = $value;
-				return 1;
-			}
-			else
-			{
-				if(!isset($this -> data[$name]))
-				{
-					$this -> data[$name] = $value;
-					return 1;
-				}
-				elseif($this -> rewriteWarnings == 1)
-				{
-					$this -> error(E_USER_WARNING, 'Trying to rewrite \''.$name.'\' block (value: `'.$this -> data[$name].'`) with `'.$value.'` value', 51);
-				}
-			}
-			return 0;
-		} // end assign();
-
-		public function assignGroup($values, $forceRewrite = 0)
-		{
-			if(!is_array($values))
-			{
-				return 0;
-			}
-			if($forceRewrite)
-			{
-				$this -> data = array_merge($this->data, $values);
-				return 1;
-			}
-			else
-			{
-				foreach($values as $name => &$value)
-				{
-					if(!isset($this -> data[$name]))
-					{
-						$this -> data[$name] = $value;
-					}
-					elseif($this -> rewriteWarnings == 1)
-					{
-						$this -> error(E_USER_WARNING, 'Trying to rewrite \''.$name.'\' block (value: `'.$this -> data[$name].'`) with `'.$value.'` value', 51);
-					}
-				}
-			}
-			return 1;
-		} // end assignGroup();
-
-		public function assignRef($name, &$value, $forceRewrite = 0)
-		{
-			if($forceRewrite)
-			{
-				$this -> data[$name] = &$value;
-				return 1;
-			}
-			else
-			{
-				if(!isset($this -> data[$name]))
-				{
-					$this -> data[$name] = &$value;
-					return 1;
-				}
-			}
-			return 0;		
-		} // end assignRef();
-
-		public function assignSect($name, $values)
-		{
-			if(is_array($values))
-			{
-				if(!is_array($this -> data[$name]))
-				{
-					$this -> data[$name] = array();
-				}
-				$this -> data[$name][] = $values;
-				return 1;
-			}
-			else
-			{
-				return 0;
-			}
-		} // end assignSect();
-
-		public function parse($file)
-		{
-			$this -> captureTo = 'echo';
-			$this -> captureDef = 'echo';
-			return $this -> doParse($file, 0);
-		} // end parse();
-
-		public function parseCapture($file, $destination)
-		{
-			$this -> captureTo = '$this -> capture[\''.$destination.'\'] .=';
-			$this -> captureDef = '$this -> capture[\''.$destination.'\'] .=';
-			return $this -> doParse($file, 0);
-		} // end parseCapture();
-
-		public function fetch($file)
-		{
-			$this -> outputBuffer = '';
-			$this -> captureTo = '$this -> outputBuffer .=';
-			$this -> captureDef = '$this -> outputBuffer .=';
-			$this -> doParse($file, 0);
-			return $this -> outputBuffer;
-		} // end fetch();
-
-		private function doParse($file, $nestingLevel)
-		{
-			if($this -> init == 0)
-			{
-				require_once(OPT_DIR.'opt.functions.php');
-				# GZIP_SUPPORT
-				if($this -> gzipCompression == 1 && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
-				{
-					ob_start('ob_gzhandler');
-					ob_implicit_flush(0);					
-				}
-				# /GZIP_SUPPORT
-				# PLUGIN_AUTOLOAD
-				if($this -> plugins != NULL)
-				{
-					$this -> loadPlugins();
-				}
-				# /PLUGIN_AUTOLOAD
-				$this -> init = 1;
-			}
-			$res = $this -> getResourceInfo($file, $file);
-			if($nestingLevel > OPT_MAX_NESTING_LEVEL)
-			{
-				$this -> error(E_USER_ERROR, 'Nesting level too deep.', 3);
-			}
-			$status = 0; // whether the code was
-			// time generating
-			# DEBUG_CONSOLE
-			if($this -> debugConsole)
-			{
-				$time = microtime(true);
-			}
-			# /DEBUG_CONSOLE
-			# DISABLED_CC
-			if($this -> compileCacheDisabled == 1)
-			{
-				// The compile cache is disabled
-				if(!is_object($this -> compiler))
-				{
-					require_once(OPT_DIR.'opt.compiler.php');
-					$this -> compiler = new optCompiler($this);
-				}
-				$res -> setTestStatus(0);
-				$code = $this -> compiler -> parse($res -> loadSource($file));
-				$res -> setTestStatus(1);
-				$status = 0;
-				# DEBUG_CONSOLE
-				$useCache = 'no';
-				# /DEBUG_CONSOLE
-			}
-			else
-			{
-			# /DISABLED_CC
-				// The compile cache is enabled
-				if($res -> isModified($file))
-				{
-					// The file is not compiled
-					if(!is_object($this -> compiler))
-					{
-						require_once(OPT_DIR.'opt.compiler.php');
-						$this -> compiler = new optCompiler($this);
-					}
-					$res -> setTestStatus(0);
-					$res -> lockCode($file);
-					$code = $this -> compiler -> parse($res -> loadSource($file));
-					$res -> saveCode($code);
-					$res -> setTestStatus(1);
-					$status = 1;
-					# DEBUG_CONSOLE
-					$useCache = 'generating';
-					# /DEBUG_CONSOLE
-				}
-				else
-				{
-					# OUTPUT_CACHING
-					// Output caching enabled
-					if($this -> cacheStatus == true)
-					{
-						if($this -> cacheProcess($file))
-						{
-							return 1;
-						}
-					}
-					# /OUTPUT_CACHING
-
-					// The file is compiled
-					$code = $res -> loadCode($file);
-					# DEBUG_CONSOLE
-					$useCache = 'reading';
-					# /DEBUG_CONSOLE
-				}
-			
-			# DISABLED_CC
-			}
-			# /DISABLED_CC
-
-			// turn off the notices for the template execution time
-			// and restore the old settings					
-			$this -> oldErrorReporting = ini_get('error_reporting');
-			error_reporting(E_ALL ^ E_NOTICE);
-			eval($code);
-			error_reporting($this -> oldErrorReporting);
-
-			// if the programmer wants the template source...
-			if($this -> showSource == 1)
-			{
-				$source = explode("\n", htmlspecialchars($code));
-				echo '<hr/><b>Template Source:</b><br/><table style="width: 100%; border: 1px solid #000000;">';
-				foreach($source as $num => $lineCode)
-				{
-					echo '<tr><td bgcolor="#DDDDDD" width="30">'.($num+1).'</td><td><pre>'.wordwrap($lineCode, 100, "\n").'</pre></td></tr>';						
-				}
-				echo '</table>';
-			}
-			# OUTPUT_CACHING
-			if($this -> cacheStatus == true && $status == 1)
-			{
-				if(count($this -> cacheOutput) == 0)
-				{
-					$this -> cacheWrite($file);
-				}
-				else
-				{
-					$this -> cacheWrite($file, $code);
-				}
-			}
-			# /OUTPUT_CACHING
-			
-			# DEBUG_CONSOLE
-			if($this -> debugConsole)
-			{
-				$time = microtime(true) - $time;
-				
-				if(!isset($php_errormsg))
-				{
-					$problem = '<font color="blue">Error data unavailable</font>';
-				}
-				elseif(strpos($php_errormsg, 'Undefined') === 0 || $php_errormsg == '')
-				{
-					$problem = '<font color="green">no</font>';
-				}
-				else
-				{
-					$problem = '<font color="red">'.$php_errormsg.'</font>';
-				}
-				$this -> debugOutput[] = array(
-					'name' => $file,
-					'problems' => $problem,
-					'cache' => $useCache,
-					'exec' => round($time, 5)
-				);
-			}
-			# /DEBUG_CONSOLE
-			return 1;
-		} // end doParse();
-		
-		private function doInclude($file, $nestingLevel)
-		{
-			$res = $this -> getResourceInfo($file, $file);
-			if($nestingLevel > OPT_MAX_NESTING_LEVEL)
-			{
-				$this -> error(E_USER_ERROR, 'Nesting level too deep', 3);
-			}
-			$ok = 0;
-
-			// time generating
-			# DEBUG_CONSOLE
-			if($this -> debugConsole)
-			{
-				$time = microtime(true);
-			}
-			# /DEBUG_CONSOLE
-
-			if(!($included = in_array($file, $this->includedFiles)))
-			{
-				$res -> setTestStatus(1);
-			}
-
-			# DISABLED_CC
-			if($this -> compileCacheDisabled == 1)
-			{
-				// The compile cache is disabled
-				$code = $this -> compiler -> parse($res -> loadSource($file));
-				$ok = 1;
-				# DEBUG_CONSOLE
-				$useCache = 'no';
-				# /DEBUG_CONSOLE
-			}
-			else
-			{
-			# /DISABLED_CC
-				// the template hasn't been processed yet
-				if(!$included)
-				{		
-					// The compile cache is enabled
-					if($res -> isModified($file))
-					{
-						// The file is not compiled
-						if(!is_object($this -> compiler))
-						{
-							require_once(OPT_DIR.'opt.compiler.php');
-							$this -> compiler = new optCompiler($this);
-						}
-						$res -> lockCode($file);
-						$code = $this -> compiler -> parse($res -> loadSource($file));
-						$res -> saveCode($code);
-						$ok = 1;
-						# DEBUG_CONSOLE
-						$useCache = 'generating';
-						# /DEBUG_CONSOLE
-					}
-					else
-					{
-						// The file is compiled
-						$code = $res -> loadCode($file);
-						# DEBUG_CONSOLE
-						$useCache = 'reading';
-						# /DEBUG_CONSOLE
-						$ok = 1;
-					}
-					$this -> includedFiles[] = $file;
-				}
-				else
-				{
-					// The file is compiled
-					$code = $res -> loadCode($file);
-					# DEBUG_CONSOLE
-					$useCache = 'reading';
-					# /DEBUG_CONSOLE
-					$ok = 1;
-				}
-			# DISABLED_CC
-			}
-			# /DISABLED_CC
-	
-			// turn off the notices for the template execution time
-			// and restore the old settings					
-			$this -> oldErrorReporting = ini_get('error_reporting');
-			error_reporting(E_ALL ^ E_NOTICE);
-			eval($code);
-			error_reporting($this -> oldErrorReporting);
-			$res -> setTestStatus(1);
-			# DEBUG_CONSOLE
-			if($this -> debugConsole)
-			{
-				$time = microtime(true) - $time;
-				
-				if(strpos($php_errormsg, 'Undefined') === 0 || $ $php_errormsg == '')
-				{
-					$problem = '<font color="green">no</font>';
-				}
-				else
-				{
-					$problem = '<font color="red">'.$php_errormsg.'</font>';
-				}
-				$this -> debugOutput[] = array(
-					'name' => $file,
-					'problems' => $problem,
-					'cache' => $useCache,
-					'exec' => round($time, 5)				
-				);
-			}
-			# /DEBUG_CONSOLE
-			
-			return $ok;
-		} // end doInclude();
-
-		public function checkExistence($file)
-		{
-			$res = $this -> getResourceInfo($file, $file);
-
-			if(!isset($this->testIncludedFiles[$file]))
-			{
-				return $this->testIncludedFiles[$file] = $res->templateExists($file);
-			}
-			else
-			{
-				return $this->testIncludedFiles[$file];
-			}
-		} // end checkExistence();
-
-		# REGISTER_FAMILY
-		public function registerFunction($name, $func = '')
-		{
-			if(is_array($name))
-			{
-				$this -> functions = $name;
-				return 1;
-			}
-			else
-			{
-				if(strlen($name) > 0 && function_exists('opt'.$func))
-				{
-					$this -> functions[$name] = $func;
-					return 1;
-				}
-			}
-			return 0;
-		} // end registerFunction();
+			$this -> i18n = $i18n;		
+		} // end setObjectI18n();
 
 		public function registerInstruction($class)
 		{
 			if(is_object($this -> compiler))
 			{
 				// The compiler is already initialized, we have to translate this call like the compiler does.
-				if(is_array($class))
-				{
-					foreach($class as $c)
-					{
-						eval('$data = '.$c.'::configure();');
-	
-						foreach($data as $name => $type)
-						{
-							$this -> compiler -> translator[$name] = array(0 => $c, 1 => $type);				
-						}
-					}
-				}
-				else
-				{
-					eval('$data = '.$class.'::configure();');
-
-					foreach($data as $name => $type)
-					{
-						$this -> translator[$name] = array(0 => $class, 1 => $type);
-					}
-				}
+				$this -> compiler -> translate($class);
 			}
 			else
 			{
@@ -876,9 +308,36 @@
 				}
 			}
 		} // end registerInstruction();
-		
-		# COMPONENTS
-		public function registerComponent($class)
+
+		public function registerFunction($name, $callback = NULL)
+		{
+			if(is_array($name))
+			{
+				$this -> functions = $name;
+				return 1;
+			}
+			else
+			{
+				if(strlen($name) > 0)
+				{
+					$this -> functions[$name] = $callback;
+					return 1;
+				}
+			}
+			return 0;
+		} // end registerFunction();
+
+		public function registerResource($name, $callback)
+		{
+			if(function_exists($callback))
+			{
+				$this -> resources[$name] = $callback;
+				return 1;
+			}
+			$this -> error(E_USER_ERROR, 'Specified value is not a valid resource function name.', 5);
+		} // end registerResource();
+
+		public function registerComponent()
 		{
 			if(is_array($class))
 			{
@@ -893,14 +352,14 @@
 				$this -> components[] = $class;
 			}
 		} // end registerComponent();
-		# /COMPONENTS
+
+		public function registerInstructionFile($file)
+		{
+			$this -> instructionFiles[] = $file;
+		} // end registerInstructionFile();
 
 		public function registerFilter($type, $callback)
 		{
-			if(count($this -> codeFilters['pre']) + count($this -> codeFilters['post']) + count($this -> codeFilters['output']) == 0)
-			{
-				require_once(OPT_DIR.'opt.filters.php');
-			}
 			switch($type)
 			{
 				case 0:
@@ -920,7 +379,7 @@
 			}
 			if(function_exists($prefix.$callback))
 			{
-				$this -> codeFilters[$idx][] = $prefix.$callback;			
+				$this -> filters[$idx][] = $prefix.$callback;			
 				return 1;
 			}
 			else
@@ -928,18 +387,6 @@
 				$this -> error(E_USER_ERROR, 'Specified '.$idx.' filter function: `'.$callback.'` does not exist!', 4);
 			}
 		} // end registerFilter();
-
-		# CUSTOM_RESOURCES
-		public function registerResource($name, $resourceName)
-		{
-			if(class_exists($resourceName))
-			{
-				$this -> resources[$name] = new $resourceName($this);
-				return 1;
-			}
-			$this -> error(E_USER_ERROR, 'Specified value is not a valid resource class name.', 5);	
-		} // end registerResource();
-		# /CUSTOM_RESOURCES
 
 		public function unregisterFilter($type, $callback)
 		{
@@ -969,432 +416,400 @@
 			}
 			return 0;
 		} // end unregisterFilter();
-		# /REGISTER_FAMILY
-		
-		public function registerInstructionFile($file)
+
+		public function parse($filename)
 		{
-			$this -> instructionFiles[] = $file;
-		} // end registerInstructionFile();
+			$this -> fetch($filename, true);
+		} // end parse();
 
-		public function loadConfig($data)
-		{	
-			$configDirectives = array(0=>
-				'root', 'compile', 'cache', 'plugins',
-				'gzipCompression', 'compileCacheDisabled', 'showWarnings', 'showSource', 'charset',
-				'safeMode', 'debugConsole', 'trace', 'rewriteWarnings', 'xmlsyntaxMode',
-				'strictSyntax', 'entities', 'parseintDecPoint', 'parseintDecimals', 'parseIntThousands',
-				'sectionStructure', 'statePriority'
-			);
+		public function parseCapture($filename, $destination)
+		{
+			$this -> capture[$destination] = $this -> fetch($filename);
+		} // end parseCapture();
 
-			if(is_string($data))
+		public function fetch($filename, $display = false)
+		{
+			static $init;
+			if(is_null($init))
 			{
-				$data = parse_ini_file($data);			
-			}
-			elseif(!is_array($data))
-			{
-				$this -> error(E_USER_ERROR, 'Invalid configuration data format. Array or file name required.');
-			}
-
-			foreach($configDirectives as $name)
-			{
-				if(isset($data[$name]))
+				require_once(OPT_DIR.'opt.functions.php');
+				# GZIP_SUPPORT
+				if($this -> gzipCompression == 1 && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
 				{
-					$this -> $name = $data[$name];
-				}			
+					ob_start('ob_gzhandler');
+					ob_implicit_flush(0);					
+				}
+				else
+				{
+					ob_start();
+					ob_implicit_flush(0);
+				}
+				# /GZIP_SUPPORT
+				# PLUGIN_AUTOLOAD
+				if($this -> plugins != NULL)
+				{
+					$this -> loadPlugins();
+				}
+				# /PLUGIN_AUTOLOAD
+				$init = 1;
+				$this -> init = 1;
 			}
-		} // end loadConfig();
-
-		public function compileCacheReset($resource = 'file', $filename = NULL)
-		{
-			if(isset($this -> resources[$resource]))
+			
+			if(!$display)
 			{
-				$res = $this -> resources[$resource];
+				ob_start();
+			}
+			$cached = false;
+			$dynamic = false;
+			if($this -> performance)
+			{
+				if($this -> cacheStatus == true)
+				{
+					if(!$this -> cacheProcess($filename))
+					{
+						$filename = optCompileFilenameFull($filename);
+						$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+						include($this -> compile.$filename);
+						error_reporting($oldErrorReporting);
+						$this -> cacheWrite($filename, $dynamic);
+						$cached = true;
+					}
+				}
+				else
+				{
+					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+					include($this -> compile.optCompileFilenameFull($filename));
+					error_reporting($oldErrorReporting);
+				}
 			}
 			else
 			{
-				$this -> error(E_USER_ERROR, 'Specified resource type: '.$resource.' does not exist.', 6);
+				if($this -> debugConsole)
+				{
+					$time = microtime(true);
+				}
+			
+				if($this -> cacheStatus == true)
+				{
+					if(!$this -> cacheProcess($filename))
+					{
+						$compiled = $this -> needCompile($filename);
+						$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+						include($this -> compile.$compiled);
+						error_reporting($oldErrorReporting);
+						$this -> cacheWrite($compiled, $dynamic);
+						$cached = true;
+					}
+				}
+				else
+				{
+					$compiled = $this -> needCompile($filename);
+					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+					include($this -> compile.$compiled);
+					error_reporting($oldErrorReporting);
+				}
+				
+				if($this -> debugConsole)
+				{
+					// Because of a bug in PHP 5.12 or lower we have to include this file here, not in destructor
+					// Disable it, if you have better version and go to the destructor
+					require_once(OPT_DIR.'opt.core.php');
+					$this -> totalTime += $time = microtime(true) - $time;
+					$this -> debugOutput[] = array(
+						'template' => $filename,
+						'cached' => $cached,
+						'problems' => (!isset($php_errormsg) || strpos($php_errormsg, 'Undefined') === 0 || $php_errormsg == '') ? '&nbsp;' : $php_errormsg,
+						'cache' => ($this -> cacheStatus ? 'Yes' : 'No'),
+						'exec' => round($time, 5)				
+					);
+				}
 			}
-			$res -> compileCacheReset($filename);
+			if(!$display)
+			{
+				return ob_get_clean();
+			}
+		} // end fetch();
+		
+		public function doInclude($filename, $default = false)
+		{
+			if($this -> performance)
+			{
+				if($default == true)
+				{
+					if(!file_exists($filename = $this -> compile.optCompileFilenameFull($filename)))
+					{
+						return false;					
+					}
+					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+					include($this -> compile.optCompileFilenameFull($filename));
+					error_reporting($oldErrorReporting);
+				}
+				else
+				{
+					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+					include($this -> compile.optCompileFilenameFull($filename));
+					error_reporting($oldErrorReporting);
+				}
+			}
+			else
+			{
+				$compiled = $this -> needCompile($filename, true);
+				if($compiled == NULL)
+				{
+					return false;
+				}
+				$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+				include($this -> compile.$compiled);
+				error_reporting($oldErrorReporting);
+			}
+			return true;	
+		} // end doInclude();
+
+		public function compileCacheReset($filename = NULL)
+		{
+			require_once(OPT_DIR.'opt.core.php');
+			optCompileCacheReset($filename, $this -> compile);
 		} // end compileCacheReset();
 
-		# OUTPUT_CACHING
-		public function cacheStatus($status, $expires = 3600)
+		public function cacheReset($filename = NULL, $id = NULL, $expireTime = NULL)
+		{
+			require_once(OPT_DIR.'opt.core.php');
+			optCacheReset($filename, $id, $expireTime);
+		} // end cacheReset();
+
+		public function cacheStatus($status, $expire = 2)
 		{
 			$this -> cacheStatus = $status;
-			if($expires < 2)
-			{
-				$this -> cacheExpires = 2;
-			}
-			else
-			{
-				$this -> cacheExpires = $expires;
-			}
-		} // end cacheStatus();
+			$this -> cacheExpire = $expire;
+		} // end cacheReset();
 
 		public function getStatus()
 		{
 			return $this -> cacheStatus;
-		} // end getStatus();
+		} // end cacheReset();
 
 		public function cacheUnique($id = NULL)
 		{
 			$this -> cacheId = $id;
-		} // end cacheUnique();
+		} // end cacheReset();
 
 		public function isCached($filename, $id = NULL)
 		{
-			$hashed = $this->cd($filename, $id);
-			$hashedPath = $this->cache.$hashed;
-			if(file_exists($hashedPath))
+			$hash = base64_encode($filename.$id);
+			$this -> cacheFilename = optCacheFilename($filename, $id);
+			if(!isset($this -> cacheData[$hash]))
 			{
-				$ok = $this -> cacheRead($hashedPath, $hashed, $filename);
-				if($ok != 1)
+				// Need to check, hasn't done yet			
+				$header = @unserialize(file_get_contents($this -> cache.$this -> cacheFilename.'.def'));
+				
+				if(!is_array($header))
 				{
-					unlink($hashedPath);
+					$this -> cacheBuffer[$hash]['ok'] = false;
+					return false;				
 				}
+				
+				$this -> cacheDynamic = $header['dynamic'];
+				if($header['timestamp'] < (time() - (int)$header['expire']))
+				{
+					$this -> cacheBuffer[$hash]['ok'] = false;
+					return false;				
+				}
+				$this -> cacheBuffer[$hash]['ok'] = true;
+				return true;
 			}
-			else
-			{
-				$ok = 0;
-			}
-			return $ok;
-		} // end isCached();
-
-		private function cacheProcess($filename)
+			$this -> cacheDynamic = $this -> cacheData[$hash]['dynamic'];
+			return $this -> cacheBuffer[$hash]['ok'];
+		} // end cacheReset();
+		
+		public function __destruct()
 		{
-			$hashed = $this -> cd($filename, $this -> cacheId);
-			$hashedPath = $this -> cache.$hashed;
-			$this -> cacheOutput = array();
-			if(file_exists($hashedPath))
+			if($this -> init)
 			{
-				if(filemtime($hashedPath) < (time() - $this -> cacheExpires))
-				{
-					// recompilation
-					ob_start();
-					return 0;
-				}
-				else
-				{
-					if(!isset($this -> cacheHeader[$hashed]))
-					{
-						if(!$this -> cacheRead($hashedPath, $hashed, $filename))
-						{
-							// recompilation
-							return 0;
-						}
-					}
-					// we can read it					
-					if($this -> cacheHeader[$hashed]['dynamic'] == true)
-					{
-						// there is some dynamic stuff.
-						eval($this -> cacheHeader[$hashed]['content']);
-					}
-					else
-					{
-						// whole file is static
-						echo $this -> cacheHeader[$hashed]['content'];
-					}
-					$this -> cacheId = NULL;
-					return 1;			
-				}
+				ob_end_flush();
 			}
-			ob_start();
-			return 0;
-		} // end cacheProcess();
-
-		private function cacheWrite($filename, $code = NULL)
+			if($this -> debugConsole)
+			{
+				// Warning! This line doesn't work in PHP 5.1.2 or lower!
+				// Enable, if you have better one
+				// require_once(OPT_DIR.'opt.core.php');
+				
+				optShowDebugConsole(array(
+					'Root directory' => $this -> root,
+					'Compile directory' => $this -> compile,
+					'Plugin directory' => (!is_null($this -> plugins) ? $this -> plugins : '&nbsp;'),
+					'Cache directory' => (!is_null($this -> cache) ? $this -> cache : '&nbsp;'),
+					'GZip compression' => $this -> gzipCompression,
+					'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),
+					'Total template time' => round($this -> totalTime, 6).' s'				
+				),$this -> debugOutput);
+			}
+		} // end __destruct();
+		
+		public function error($type, $message, $code)
 		{
-			$c = $this -> cache.$this->cd($filename, $this -> cacheId);
-			$this -> cacheId = NULL;
-			$content = 'echo(\'Unknown content!\');';
-			if(count($this -> cacheOutput) == 0)
+			require_once(OPT_DIR.'opt.core.php');
+			optErrorMessage($this, $type, $message, $code);
+		} // end error();
+		
+		private function needCompile($filename, $noException = false)
+		{
+			$compiled = optCompileFilename($filename);
+			$resource = 'file';
+			if(strpos($filename, ':') !== FALSE)
 			{
-				// ok, the content is static!
-				$dynamic = false;
-				$content = ob_get_contents();
-				ob_start();
-			}
-			else
-			{
-				// the content is dynamic
-				$dynamic = true;
-				if(preg_match_all('#\/\* \#\@\#DYNAMIC\#\@\# \*\/(.+)\/\* \#\@\#END DYNAMIC\#\@\# \*\/#si', $code, $blocks))
+				$data = explode(':', $filename);
+				$filename = $data[1];
+				$resource = $data[0];
+				
+				if(!isset($this -> resources[$resource]))
 				{
-					$content = $this -> captureDef.' \'';
-					for($i = 0; $i < count($this -> cacheOutput); $i++)
+					if($noException)
 					{
-						$content .= str_replace(array(
-							'\\',
-							'\''
-						),
-						array(
-							'\\\\',
-							'\\\''
-						), $this->cacheOutput[$i]);
-						$content .= '\'; ';
-						$content .= $blocks[1][$i];
-						$content .= ' '.$this -> captureDef.' \'';					
+						return NULL;
 					}
-					$content .= str_replace(array(
-						'\\',
-						'\''
-					),
-					array(
-						'\\\\',
-						'\\\''
-					), ob_get_contents()).'\';';
+					$this -> error(E_USER_ERROR, 'Specified resource type: '.$resource.' does not exist.', 8);
 				}
-				else
-				{
-					$this -> error(E_USER_ERROR, 'Critical caching system error: invalid dynamic delimiters!', 7);
-				}
+				$callback = $this -> resources[$resource];
 			}
 			
+			$compiledTime = @filemtime($this -> compile.$compiled);
+			$result = array(0 => false, '');
+			if($resource == 'file')
+			{
+				$rootTime = @filemtime($this -> root.$filename);
+				if($rootTime === false)
+				{
+					if($noException)
+					{
+						return NULL;
+					}
+					$this -> error(E_USER_ERROR, '`'.$filename.'` not found in '.$this->root.' directory.', 9);
+				}
+				if($compiledTime === false || $compiledTime < $rootTime)
+				{
+					$result = array(0 => true, file_get_contents($this -> root.$filename));
+				}
+			}
+			else
+			{
+				$result = $callback($this, $filename, $compiledTime);
+			}
+			if(!$result[0])
+			{
+				return $compiled;
+			}
+			
+			if(!is_object($this -> compiler))
+			{
+				require_once(OPT_DIR.'opt.compiler.php');
+				$this -> compiler = new optCompiler($this);
+			}
+			$this -> compiler -> parse($this -> compile.$compiled, $result[1]);
+			return $compiled;		
+		} // end needCompile();
+		
+		public function getTemplate($filename)
+		{
+			$compiled = optCompileFilename($filename);
+			$resource = 'file';
+			if(strpos($filename, ':') !== FALSE)
+			{
+				$data = explode(':', $filename);
+				$filename = $data[1];
+				$resource = $data[0];
+				
+				if(!isset($this -> resources[$resource]))
+				{
+					$this -> error(E_USER_ERROR, 'Specified resource type: '.$resource.' does not exist.', 8);
+				}
+				$callback = $this -> resources[$resource];
+			}
+			if($resource == 'file')
+			{
+				$result = file_get_contents($this -> root.$filename);
+			}
+			else
+			{
+				$result = $callback($this, $filename, $compiledTime);
+			}
+			$compiler = new optCompiler($this -> compiler);
+			return $compiler -> parse(NULL, $result);
+		} // end getFilename();
+			
+		private function cacheProcess($filename)
+		{
+			if($this -> isCached($filename, $this -> cacheId))
+			{
+				if($this -> cacheDynamic)
+				{
+					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+					include($this -> cache.$this->cacheFilename);
+					error_reporting($oldErrorReporting);			
+				}
+				else
+				{
+					echo file_get_contents($this -> cache.$this->cacheFilename);
+				}
+				return true;
+			}
+			else
+			{
+				ob_start();
+				return false;
+			}
+		} // end cacheProcess();
+		
+		private function cacheWrite($compiled, $dynamic)
+		{
 			// generate the file
 			$header = array(
 				'timestamp' => time(),
-				'copyVersion' => filemtime($this->root.$filename),
 				'dynamic' => $dynamic,
-				'expire' => $this -> cacheExpires
+				'expire' => $this -> cacheExpire
 			);
-			file_put_contents($c, serialize($header)."\n".$content);		
+			file_put_contents($this->cache.$this -> cacheFilename.'.def', serialize($header));
+			
+			if(!$dynamic)
+			{
+				file_put_contents($this->cache.$this -> cacheFilename, ob_get_contents());
+			}
+			else
+			{
+				// Build the dynamic source
+				$dynamicCodes = unserialize(file_get_contents($this -> compile.$compiled.'.dyn'));
+				$content = '';
+				foreach($this -> outputBuffer as $id => &$buffer)
+				{
+					$content .= $buffer;
+					if(isset($dynamicCodes[$id]))
+					{
+						$content .= $dynamicCodes[$id];
+					}
+				}
+				file_put_contents($this->cache.$this -> cacheFilename, $content.ob_get_contents());			
+			}
 		} // end cacheWrite();
-		
-		private function cacheRead($hashedPath, $hashed, $filename)
-		{
-			$resource = fopen($hashedPath, 'r');
-			$this -> cacheHeader[$hashed] = unserialize(fgetss($resource));
-			
-			if(!is_array($this -> cacheHeader[$hashed]))
-			{
-				// the cache is broken, recompile
-				return 0;
-			}
-
-			// one more time we will control the timestamp
-			if($this -> cacheHeader[$hashed]['timestamp'] < (time() - (int)$this -> cacheHeader[$hashed]['expire']))
-			{
-				// ok, the filesystem was wrong, we should recompile this...
-				return 0;
-			}
-
-			$this -> cacheHeader[$hashed]['content'] = fread($resource, filesize($hashedPath));
-			fclose($resource);
-			return 1;
-		} // end cacheTest();
-
-		private function cd($filename, $id = '')
-		{
-			return str_replace(array('|', '/'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
-		} // end cd();
-		
-		private function base64Name($filename)
-		{
-			return base64_encode(dirname($filename)).basename($filename);
-		} // end base64Name();
-		
-		public function cacheReset($filename = NULL, $id = NULL, $expire_time = NULL)
-		{
-			if($filename == NULL && $id == NULL)
-			{
-				$dir = opendir($this -> cache);
-				while($f = readdir($dir))
-				{
-					if($expire_time != NULL)
-					{
-						$expire = $this -> checkExpire($file, $expire_time);
-					}
-					else
-					{
-						$expire = 1;
-					}
-					if(is_file($this -> cache.$f) && $expire)
-					{
-						unlink($this -> cache.$f);
-					}
-				}
-				closedir($dir);
-				return 1;
-			}
-			elseif($filename == NULL)
-			{
-				$id = str_replace('|', '^', $id);
-				$dir = glob($this -> cache.$id.'*_*.*', GLOB_BRACE);
-				foreach($dir as $file)
-				{
-					if($expire_time != NULL)
-					{
-						$expire = $this -> checkExpire($file, $expire_time);
-					}
-					else
-					{
-						$expire = 1;
-					}
-					if(is_file($file) && $expire)
-					{
-						unlink($file);
-					}
-				}
-				return 1;
-			}
-			elseif($id == NULL)
-			{
-				$dir = glob($this -> cache.'*_'.$this->cd($filename, true));
-				foreach($dir as $file)
-				{
-					if($expire_time != NULL)
-					{
-						$expire = $this -> checkExpire($file, $expire_time);
-					}
-					else
-					{
-						$expire = 1;
-					}
-					if(is_file($file) && $expire)
-					{
-						unlink($file);
-					}
-				}
-				return 1;
-			}
-			else
-			{
-				$id = str_replace('|', '^', $id);
-				$dir = glob($this -> cache.$id.'*_'.$this->cd($filename, true), GLOB_BRACE);
-				foreach($dir as $file)
-				{
-					if($expire_time != NULL)
-					{
-						$expire = $this -> checkExpire($file, $expire_time);
-					}
-					else
-					{
-						$expire = 1;
-					}
-					if(is_file($file) && $expire)
-					{
-						unlink($file);
-					}
-				}
-				return 1;
-			
-			}
-		} // end cacheReset();
-		
-		private function checkExpire($file, $time)
-		{
-			if($time == 0)
-			{
-				return 1;
-			}
-
-			$f = fopen($file, 'r');
-			$header = unserialize(fgetss($f));
-			fclose($f);
-			if($header['timestamp'] < (time() - $time))
-			{
-				return 1;
-			}
-			return 0;		
-		} // end checkExpire();
-		# /OUTPUT_CACHING
-		# PLUGIN_AUTOLOAD
-		private function loadPlugins()
-		{
-			if(file_exists($this -> plugins.'plugins.php'))
-			{
-				// Load precompiled plugin database
-				include($this -> plugins.'plugins.php');	
-			}
-			else
-			{
-				// Compile plugin database
-				if(!is_dir($this -> plugins))
-				{
-					return 0;
-				}
-
-				$code = '';
-				$file = '';
-				$dir = opendir($this -> plugins);
-				while($file = readdir($dir))
-				{
-					if(preg_match('/(component|instruction|function|prefilter|postfilter|outputfilter|resource)\.([a-zA-Z0-9\_]+)\.php/', $file, $matches))
-					{
-						switch($matches[1])
-						{
-							# COMPONENTS
-							case 'component':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
-								break;
-							# /COMPONENTS
-							case 'instruction':
-								$this -> compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
-								$this -> compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
-								break;
-							case 'function':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->functions['".$matches[2]."'] = '".$matches[2]."';\n";
-								break;
-							case 'prefilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->codeFilters['pre'][] = 'optPrefilter".$matches[2]."';\n";
-								break;
-							case 'postfilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->codeFilters['post'][] = 'optPostfilter".$matches[2]."';\n";
-								break;
-							case 'outputfilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->codeFilters['output'][] = 'optOutputfilter".$matches[2]."';\n";
-								break;
-							case 'resource':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->resources[".$matches[2]."] = new \$".$matches[4]."(\$this);\n";
-								break;
-						}	
-					}
-				}
-				closedir($dir);
-				file_put_contents($this -> plugins.'plugins.php', "<?php\n".$code."?>");
-				file_put_contents($this -> plugins.'compile.php', "<?php\n".$this -> compileCode."?>");
-				eval($code);
-			}
-			return 1;
-		} // end loadPlugins();
-		# /PLUGIN_AUTOLOAD
-		
-		public function getResourceInfo($path, &$file)
-		{
-			if(!isset($this->resources['file']))
-			{
-				require_once(OPT_DIR.'opt.resources.php');
-				$this -> resources['file'] = new optResourceFiles($this);
-			}
-			# CUSTOM_RESOURCES
-			if(strpos($path, ':') !== FALSE)
-			{
-				$resource = explode(':', $path);
-				$file = $resource[1];
-				if(isset($this -> resources[$resource[0]]))
-				{
-					return $this -> resources[$resource[0]];
-				}
-				else
-				{
-					$this -> error(E_USER_ERROR, 'Specified resource type: '.$res_name.' does not exist.', 8);
-				}
-			}
-			else
-			{
-			# /CUSTOM_RESOURCES
-				$file = $path;
-				
-				return $this->resources['file'];
-			# CUSTOM_RESOURCES
-			}
-			# /CUSTOM_RESOURCES
-		} // end getResourceInfo();
 	}
+	
+	// Functions
+	
+	function optCompileFilenameFull($filename)
+	{
+		if(strpos($filename, ':') !== FALSE)
+		{
+			$resource = explode(':', $filename);
+			$filename = $resource[1];
+		}
+		return '%%'.str_replace('/', '_', $filename);
+	} // end optCompileFilenameFull();
+	
+	function optCompileFilename($filename)
+	{
+		return '%%'.str_replace('/', '_', $filename);
+	} // end optCompileFilename();
+	
+	function optCacheFilename($filename, $id = '')
+	{
+		return str_replace(array('|', '/'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
+	} // end cd();
 ?>

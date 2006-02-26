@@ -2,10 +2,11 @@
 	define('OPT_DIR', '../lib/');
 	require('../lib/opt.class.php');
   
-	class i18n{
+	class i18n implements ioptI18n{
 		private $data;
 		private $replacements;
 		static $instance;
+		private $tpl;
   	
 		private function __construct()
 		{
@@ -19,6 +20,11 @@
 				)
 			);
 		} // end __construct();
+		
+		public function setOptInstance(optClass $tpl)
+		{
+			$this -> tpl = $tpl;
+		} // end setOptInstance();
 		
 		static public function getInstance()
 		{
@@ -46,12 +52,6 @@
 			$this -> replacements[$group][$text_id] = vsprintf($this -> data[$group][$text_id], $args);
 		} // end apply();  
 	}
-	
-	function optPostfilterI18n($code, optClass $opt)
-	{
-		// pass the instance of i18n system to the processed template
-		return '$i18n = i18n::getInstance(); '.$code;
-	} // end optPostfilterI18n();
  
 	try{ 
 		$tpl = new optClass; 
@@ -60,11 +60,12 @@
 		$tpl -> gzipCompression = 1;
 		$tpl -> httpHeaders(OPT_HTML); 
     
-		// init default i18n system:
-		// 1. language block pattern
-		// 2. object for dedicated "apply" function
-		// 3. postfilter name
-		$tpl -> setCustomI18n('$i18n->put(\'%s\',\'%s\')', '$i18n', 'I18n');
+
+		// create an instance of the i18n system
+		$i18n = i18n::getInstance();
+		
+		// pass it to the parser
+		$tpl -> setObjectI18n($i18n);
 
 		$tpl -> assign('current_date', date('d.m.Y')); 
 		$tpl -> parse('example5.tpl'); 

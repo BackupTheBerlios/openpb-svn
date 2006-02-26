@@ -94,7 +94,7 @@
 				}		
 			}
 			$code .= '</select>';
-			return $code;
+			echo $code;
 		} // end begin();
 
 		public function onmessage($pass_to)
@@ -109,7 +109,7 @@
 
 		public function end()
 		{
-			return '';		
+			echo '';		
 		} // end end();
 	}
 
@@ -167,7 +167,7 @@
 
 		public function begin()
 		{
-			return '<input type="text"'.generateTagElementList($this->tagParameters).' />';
+			echo '<input type="text"'.generateTagElementList($this->tagParameters).' />';
 		} // end begin();
 
 		public function onmessage($pass_to)
@@ -182,7 +182,7 @@
 
 		public function end()
 		{
-			return '';		
+			echo '';		
 		} // end end();
 	}
 
@@ -193,9 +193,9 @@
 			$code = '<input type="hidden"'.generateTagElementList($this->tagParameters).' />';
 			if($this -> tagParameters['value'] != NULL)
 			{
-				return $code.'<span class="label">'.htmlspecialchars($this -> tagParameters['value']).'</span>';
+				echo $code.'<span class="label">'.htmlspecialchars($this -> tagParameters['value']).'</span>';
 			}
-			return $code;
+			echo $code;
 		} // end begin();
 	}
 
@@ -240,12 +240,12 @@
 			{
 				$code .= '<input type="'.$button['type'].'"'.($button['name'] != NULL ? ' name="'.$button['name'].'"' : '').' value="'.$button['value'].'"/>';			
 			}
-			return $code;
+			echo $code;
 		} // end begin();
 
 		public function end()
 		{
-			return '';		
+			echo '';		
 		} // end end();
 	}
 ?>

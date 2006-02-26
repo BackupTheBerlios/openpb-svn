@@ -38,7 +38,7 @@
 		unset($args[0]);
 		unset($args[1]);
 		unset($args[2]);
-		$tpl -> lang[$group][$item] = vsprintf($tpl -> lang[$group][$item], $args);
+		$tpl -> i18n[$group][$item] = vsprintf($tpl -> i18n[$group][$item], $args);
 	} // end optPredefApply();
 	
 	function optPredefCycle($tpl)
