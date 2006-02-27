@@ -50,6 +50,6 @@
 	
 	$projectFiles = array(
 		'opt.class.php', 'opt.compiler.php', 'opt.instructions.php', 'opt.functions.php', 'opt.error.php',
-		'opt.filters.php', 'opt.api.php', 'opt.components.php'
+		'opt.core.php', 'opt.api.php', 'opt.components.php'
 	);
 ?>

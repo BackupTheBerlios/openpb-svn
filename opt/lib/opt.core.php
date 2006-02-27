@@ -148,93 +148,108 @@ opt_console.document.write(\'</html>\');
 		return 0;
 	} // end optCompileCacheReset();
 	
-	function optCacheReset($filename, $id, $expireTime)
+	function optCacheReset($filename, $id, $expireTime, $cache, $root)
 	{
 		if($filename == NULL && $id == NULL)
 		{
-			$dir = opendir($this -> cache);
+			$dir = opendir($cache);
 			while($f = readdir($dir))
 			{
 				if($expireTime != NULL)
 				{
-					$expire = $this -> checkExpire($file, $expireTime);
+					$expire = optCheckExpire($file, $expireTime);
 				}
 				else
 				{
-					$expire = 1;
+					$expire = true;
 				}
-				if(is_file($this -> cache.$f) && $expire)
+				if(is_file($cache.$f) && $expire)
 				{
-					unlink($this -> cache.$f);
+					unlink($cache.$f);
 				}
 			}
 			closedir($dir);
-			return 1;
+			return true;
 		}
 		elseif($filename == NULL)
 		{
 			$id = str_replace('|', '^', $id);
-			$dir = glob($this -> cache.$id.'*_*.*', GLOB_BRACE);
+			$dir = glob($cache.$id.'*_*.*', GLOB_BRACE);
 			foreach($dir as $file)
 			{
 				if($expireTime != NULL)
 				{
-					$expire = $this -> checkExpire($file, $expireTime);
+					$expire = optCheckExpire($file, $expireTime);
 				}
 				else
 				{
-					$expire = 1;
+					$expire = true;
 				}
 				if(is_file($file) && $expire)
 				{
 					unlink($file);
 				}
 			}
-			return 1;
+			return true;
 		}
 		elseif($id == NULL)
 		{
-			$dir = glob($this -> cache.'*_'.$this->cd($filename, true));
+			$dir = glob($cache.'*_'.base64_encode(dirname($filename)).basename($filename).'*');
 			foreach($dir as $file)
 			{
 				if($expireTime != NULL)
 				{
-					$expire = $this -> checkExpire($file, $expireTime);
+					$expire = optCheckExpire($file, $expireTime);
 				}
 				else
 				{
-					$expire = 1;
+					$expire = true;
 				}
 				if(is_file($file) && $expire)
 				{
 					unlink($file);
 				}
 			}
-			return 1;
+			return true;
 		}
 		else
 		{
 			$id = str_replace('|', '^', $id);
-			$dir = glob($this -> cache.$id.'*_'.$this->cd($filename, true), GLOB_BRACE);
+			$dir = glob($cache.$id.'*_'.base64_encode(dirname($filename)).basename($filename).'*', GLOB_BRACE);
 			foreach($dir as $file)
 			{
 				if($expireTime != NULL)
 				{
-					$expire = $this -> checkExpire($file, $expireTime);
+					$expire = optCheckExpire($file, $expireTime);
 				}
 				else
 				{
-					$expire = 1;
+					$expire = true;
 				}
 				if(is_file($file) && $expire)
 				{
 					unlink($file);
 				}
 			}
-			return 1;
-		
+			return true;		
 		}
+		return false;
 	} // end optCacheReset();
+	
+	function optCheckExpire($file, $time)
+	{
+		if($time == 0)
+		{
+			return true;
+		}
+		$header = unserialize(file_get_contents($file.'.def'));
+		if($header['timestamp'] < (time() - $time))
+		{
+			return true;
+		}
+		return false;
+	} // end optCheckExpire();
+
 	
 	function optErrorMessage($tpl, $type, $message, $code)
 	{

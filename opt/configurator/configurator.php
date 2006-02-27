@@ -1,4 +1,11 @@
-<?php require('./directives.php'); ?><html>
+<?php require('./directives.php');
+
+	function addLine($name, $value)
+	{
+		return $name.' = "'.$value."\"\r\n";
+	} // end addLine();
+
+ ?><html>
 <head>
 <title>OPT Configurator</title>
 </head>
@@ -26,6 +33,23 @@ Please specify DIFFERENT source and destination directory names!
 		}
 		elseif(is_readable($_POST['src']) && is_writable($_POST['dest']))
 		{
+			// Save current settings
+			$code = '';
+			$code .= addLine('source', $_POST['src']);
+			$code .= addLine('destination', $_POST['dest']);
+			foreach($availableDirectives as $id => $void)
+			{
+				if(isset($_POST['f'][$id]))
+				{
+					$code .= addLine($id, '1');
+				}
+				else
+				{
+					$code .= addLine($id, '0');
+				}			
+			}
+			file_put_contents('./savedsettings.ini', $code);
+		
 			foreach($projectFiles as $file)
 			{
 				$src = file($_POST['src'].$file);
@@ -113,14 +137,29 @@ directory, where will be placed "new" OPT; 3/ the features you want to keep. Her
 Welcome to the Open Power Template configuration tool. Here you may configure, which
 options and features should be available in your OPT version. Please fill in the
 form:<br/><br/>
-OPT source directory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="src"/><br/>
-OPT destination directory: <input type="text" name="dest"/><br/><br/>
+<?php
+
+	if(file_exists('./savedsettings.ini'))
+	{
+		$data = parse_ini_file('./savedsettings.ini');
+	}
+	else
+	{
+		$data = array(
+			'source' => '',
+			'destination' => ''	
+		);
+	}
+	echo 'OPT source directory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="src" value="'.$data['source'].'"/><br/>
+	OPT destination directory: <input type="text" name="dest" value="'.$data['destination'].'"/><br/><br/>';
+
+?>
 Features [ <a href="configurator.php?help" target="_blank">Help</a> ]<br/>
 Uncheck to remove specified feature.<br/>
 <?php
 	foreach($availableDirectives as $id => $directive)
 	{
-		echo '<input type="checkbox" name="f['.$id.']" checked="checked"/> '.$directive['title'].'<br/>';
+		echo '<input type="checkbox" name="f['.$id.']" '.(isset($data[$id]) ? ($data[$id] == 1 ? 'checked="checked"' : '') : 'checked="checked"').' value="1"/> '.$directive['title'].'<br/>';
 	}
 ?>
 <br/>

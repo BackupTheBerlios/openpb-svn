@@ -155,16 +155,19 @@
 		public $i18n = NULL;
 		public $i18nType = 0;
 		
-		// Debug console
+		# DEBUG_CONSOLE
 		private $debugOutput = array();
 		private $totalTime = 0;
+		# /DEBUG_CONSOLE
 		
 		// Output cache
 		private $cacheStatus = false;
+		# OUTPUT_CACHING
 		private $cacheId = NULL;
 		private $cacheExpire = 0;
 		private $cacheDynamic = false;
 		private $cacheData = array();
+		# /OUTPUT_CACHING
 		private $outputBuffer = array();
 		
 		// Methods		
@@ -191,6 +194,7 @@
 			$this -> data[$name] = $value;		
 		} // end assignByRef();
 
+		# HTTP_HEADERS
 		public function httpHeaders($content, $cache = OPT_HTTP_CACHE)
 		{
 			$charset = '';
@@ -244,6 +248,7 @@
 				header('Pragma: no-cache');
 			}
 		} // end httpHeaders();
+		# /HTTP_HEADERS
 
 		public function loadConfig($data)
 		{
@@ -281,17 +286,23 @@
 			}
 		} // end setDefaultI18n();
 
+		# OBJECT_I18N
 		public function setObjectI18n(ioptI18n $i18n)
 		{
 			$this -> i18nType = 1;
 			$this -> i18n = $i18n;		
 		} // end setObjectI18n();
-
+		# /OBJECT_I18N
+		# REGISTER_FAMILY
 		public function registerInstruction($class)
 		{
 			if(is_object($this -> compiler))
 			{
 				// The compiler is already initialized, we have to translate this call like the compiler does.
+				if(!is_array($class))
+				{
+					$class = array(0 => $class);
+				}
 				$this -> compiler -> translate($class);
 			}
 			else
@@ -321,10 +332,10 @@
 				if(strlen($name) > 0)
 				{
 					$this -> functions[$name] = $callback;
-					return 1;
+					return true;
 				}
 			}
-			return 0;
+			return false;
 		} // end registerFunction();
 
 		public function registerResource($name, $callback)
@@ -332,7 +343,7 @@
 			if(function_exists($callback))
 			{
 				$this -> resources[$name] = $callback;
-				return 1;
+				return true;
 			}
 			$this -> error(E_USER_ERROR, 'Specified value is not a valid resource function name.', 5);
 		} // end registerResource();
@@ -344,19 +355,13 @@
 				foreach($class as $componentName)
 				{
 					$this -> components[$componentName] = 1;
-				}
-		
+				}		
 			}
 			else
 			{
 				$this -> components[] = $class;
 			}
 		} // end registerComponent();
-
-		public function registerInstructionFile($file)
-		{
-			$this -> instructionFiles[] = $file;
-		} // end registerInstructionFile();
 
 		public function registerFilter($type, $callback)
 		{
@@ -375,12 +380,12 @@
 						$idx = 'output';
 						break;
 				default:
-						return 0;			
+						return false;			
 			}
 			if(function_exists($prefix.$callback))
 			{
 				$this -> filters[$idx][] = $prefix.$callback;			
-				return 1;
+				return true;
 			}
 			else
 			{
@@ -393,30 +398,35 @@
 			switch($type)
 			{
 				case 0:
-						if(isset($this -> codeFilters['pre']['optPrefilter'.$callback]))
+						if(($id = in_array('optPrefilter'.$callback, $this -> filters['pre'])) !== FALSE)
 						{
-							unset($this -> codeFilters['pre']['optPrefilter'.$callback]);
-							return 1;
+							unset($this -> filters['post'][$id]);
+							return true;
 						}
 						break;
 				case 1:
-						if(isset($this -> codeFilters['post']['optPostfilter'.$callback]))
+						if(($id = in_array('optPostfilter'.$callback, $this -> filters['post'])) !== FALSE)
 						{
-							unset($this -> codeFilters['post']['optPostfilter'.$callback]);
-							return 1;
+							unset($this -> filters['post'][$id]);
+							return true;
 						}
 						break;
 				case 2:
-						if(isset($this -> codeFilters['output']['optOutputfilter'.$callback]))
+						if(($id = in_array('optOutputfilter'.$callback, $this -> filters['output'])) !== FALSE)
 						{
-							unset($this -> codeFilters['output']['optOutputfilter'.$callback]);
-							return 1;
+							unset($this -> filters['post'][$id]);
+							return true;
 						}
 						break;
 			}
-			return 0;
+			return false;
 		} // end unregisterFilter();
-
+		# /REGISTER_FAMILY
+		public function registerInstructionFile($file)
+		{
+			$this -> instructionFiles[] = $file;
+		} // end registerInstructionFile();
+		
 		public function parse($filename)
 		{
 			$this -> fetch($filename, true);
@@ -439,11 +449,6 @@
 					ob_start('ob_gzhandler');
 					ob_implicit_flush(0);					
 				}
-				else
-				{
-					ob_start();
-					ob_implicit_flush(0);
-				}
 				# /GZIP_SUPPORT
 				# PLUGIN_AUTOLOAD
 				if($this -> plugins != NULL)
@@ -455,7 +460,7 @@
 				$this -> init = 1;
 			}
 			
-			if(!$display)
+			if(!$display || count($this -> filters['output']) > 0)
 			{
 				ob_start();
 			}
@@ -463,6 +468,7 @@
 			$dynamic = false;
 			if($this -> performance)
 			{
+				# OUTPUT_CACHING
 				if($this -> cacheStatus == true)
 				{
 					if(!$this -> cacheProcess($filename))
@@ -477,18 +483,23 @@
 				}
 				else
 				{
+				# /OUTPUT_CACHING
 					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
 					include($this -> compile.optCompileFilenameFull($filename));
 					error_reporting($oldErrorReporting);
+				# OUTPUT_CACHING
 				}
+				# /OUTPUT_CACHING
 			}
 			else
 			{
+				# DEBUG_CONSOLE
 				if($this -> debugConsole)
 				{
 					$time = microtime(true);
 				}
-			
+				# /DEBUG_CONSOLE
+				# OUTPUT_CACHING
 				if($this -> cacheStatus == true)
 				{
 					if(!$this -> cacheProcess($filename))
@@ -503,15 +514,18 @@
 				}
 				else
 				{
+				# /OUTPUT_CACHING
 					$compiled = $this -> needCompile($filename);
 					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
 					include($this -> compile.$compiled);
 					error_reporting($oldErrorReporting);
+				# OUTPUT_CACHING
 				}
-				
+				# /OUTPUT_CACHING
+				# DEBUG_CONSOLE
 				if($this -> debugConsole)
 				{
-					// Because of a bug in PHP 5.12 or lower we have to include this file here, not in destructor
+					// Because of a bug in PHP 5.1.2 or lower we have to include this file here, not in destructor
 					// Disable it, if you have better version and go to the destructor
 					require_once(OPT_DIR.'opt.core.php');
 					$this -> totalTime += $time = microtime(true) - $time;
@@ -523,7 +537,23 @@
 						'exec' => round($time, 5)				
 					);
 				}
+				# /DEBUG_CONSOLE
 			}
+			// Parse output filters
+			if(count($this -> filters['output']) > 0)
+			{
+				$content = ob_get_clean();
+				foreach($this -> filters['output'] as $filter)
+				{
+					$content = $filter($this, $content);
+				}
+				if(!$display)
+				{
+					return $content;
+				}
+				echo $content;
+			}
+			// Return by default
 			if(!$display)
 			{
 				return ob_get_clean();
@@ -570,11 +600,11 @@
 			require_once(OPT_DIR.'opt.core.php');
 			optCompileCacheReset($filename, $this -> compile);
 		} // end compileCacheReset();
-
+		# OUTPUT_CACHING
 		public function cacheReset($filename = NULL, $id = NULL, $expireTime = NULL)
 		{
 			require_once(OPT_DIR.'opt.core.php');
-			optCacheReset($filename, $id, $expireTime);
+			optCacheReset($filename, $id, $expireTime, $this -> cache, $this -> root);
 		} // end cacheReset();
 
 		public function cacheStatus($status, $expire = 2)
@@ -620,13 +650,17 @@
 			$this -> cacheDynamic = $this -> cacheData[$hash]['dynamic'];
 			return $this -> cacheBuffer[$hash]['ok'];
 		} // end cacheReset();
+		# /OUTPUT_CACHING
 		
 		public function __destruct()
 		{
+			# GZIP_SUPPORT
 			if($this -> init)
 			{
 				ob_end_flush();
 			}
+			# /GZIP_SUPPORT
+			# DEBUG_CONSOLE
 			if($this -> debugConsole)
 			{
 				// Warning! This line doesn't work in PHP 5.1.2 or lower!
@@ -643,6 +677,7 @@
 					'Total template time' => round($this -> totalTime, 6).' s'				
 				),$this -> debugOutput);
 			}
+			# /DEBUG_CONSOLE
 		} // end __destruct();
 		
 		public function error($type, $message, $code)
@@ -735,7 +770,8 @@
 			$compiler = new optCompiler($this -> compiler);
 			return $compiler -> parse(NULL, $result);
 		} // end getFilename();
-			
+		
+		# OUTPUT_CACHING
 		private function cacheProcess($filename)
 		{
 			if($this -> isCached($filename, $this -> cacheId))
@@ -789,6 +825,73 @@
 				file_put_contents($this->cache.$this -> cacheFilename, $content.ob_get_contents());			
 			}
 		} // end cacheWrite();
+		# /OUTPUT_CACHING
+		
+		private function loadPlugins()
+		{
+			if(file_exists($this -> plugins.'plugins.php'))
+			{
+				// Load precompiled plugin database
+				include($this -> plugins.'plugins.php');
+				$this -> instructionFiles[] = $this -> plugins.'compile.php';	
+			}
+			else
+			{
+				// Compile plugin database
+				if(!is_dir($this -> plugins))
+				{
+					return 0;
+				}
+
+				$code = '';
+				$file = '';
+				$dir = opendir($this -> plugins);
+				while($file = readdir($dir))
+				{
+					if(preg_match('/(component|instruction|function|prefilter|postfilter|outputfilter|resource)\.([a-zA-Z0-9\_]+)\.php/', $file, $matches))
+					{
+						switch($matches[1])
+						{
+							# COMPONENTS
+							case 'component':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
+								break;
+							# /COMPONENTS
+							case 'instruction':
+								$this -> compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
+								$this -> compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
+								break;
+							case 'function':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->functions['".$matches[2]."'] = '".$matches[2]."';\n";
+								break;
+							case 'prefilter':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->filters['pre'][] = 'optPrefilter".$matches[2]."';\n";
+								break;
+							case 'postfilter':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->filters['post'][] = 'optPostfilter".$matches[2]."';\n";
+								break;
+							case 'outputfilter':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->filters['output'][] = 'optOutputfilter".$matches[2]."';\n";
+								break;
+							case 'resource':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->resources[".$matches[2]."] = \$".$matches[4].";\n";
+								break;
+						}	
+					}
+				}
+				closedir($dir);
+				file_put_contents($this -> plugins.'plugins.php', '<'."?php\n".$code.'?'.'>');
+				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$this -> compileCode.'?'.'>');
+				eval($code);
+			}
+			return 1;
+		} // end loadPlugins();
 	}
 	
 	// Functions

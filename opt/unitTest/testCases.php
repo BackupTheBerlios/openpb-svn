@@ -1,5 +1,20 @@
 <?php
 
+	function optPrefilterTest($tpl, $code)
+	{
+		return '-'.$code.'-';	
+	} // end optPrefilterTest();
+
+	function optPostfilterTest($tpl, $code)
+	{
+		return '*'.$code.'*';	
+	} // end optPostfilterTest();
+	
+	function optOutputfilterTest($tpl, $code)
+	{
+		return trim($code);	
+	} // end optOutputfilterTest();
+
 	class optTest extends PHPUnit_TestCase
 	{
 		private $opt;
@@ -75,10 +90,10 @@
 			$this -> assertTrue(count(file(OPT_DIR.'opt.components.php')) > 1);		
 		} // end testCorrectNewlinesComponents();
 		
-		public function testCorrectNewlinesFilters()
+		public function testCorrectNewlinesCore()
 		{
-			$this -> assertTrue(count(file(OPT_DIR.'opt.filters.php')) > 1);		
-		} // end testCorrectNewlinesFilters();
+			$this -> assertTrue(count(file(OPT_DIR.'opt.core.php')) > 1);		
+		} // end testCorrectNewlinesCore();
 		
 		public function testCorrectNewlinesError()
 		{
@@ -135,11 +150,11 @@
 			// (A - B) * C
 			// C + (-9.01)
 			$result = $this -> opt -> fetch('math.tpl');
-			$this -> assertEquals('22
-15.7
--0.625
--37.68
--5.87', $result);		
+			$this -> assertEquals('22 ;
+15.7 ;
+-0.625 ;
+-37.68 ;
+-5.87 ;', $result);		
 		} // end testMath();
 
 		public function testParseInt()
@@ -156,12 +171,46 @@
 			// B + C
 			// C * D
 			$result = $this -> opt -> fetch('parseint.tpl');
-			$this -> assertEquals('118 531
-107 610,567
-119 873,22
-54 613,567
-745 169 360,048', $result);
+			$this -> assertEquals('118 531 ;
+107 610,567 ;
+119 873,22 ;
+54 613,567 ;
+745 169 360,048 ;', $result);
 		} // end testParseInt();
+		
+		public function testPrefilterRegistration()
+		{
+			$ok1 = $this -> opt -> registerFilter(OPT_PREFILTER, 'Test');
+			$ok2 = $this -> opt -> unregisterFilter(OPT_PREFILTER, 'Test');
+			$this -> assertTrue($ok1 && $ok2);		
+		} // end testPrefilterRegistration();
+		
+		public function testPostfilterRegistration()
+		{
+			$ok1 = $this -> opt -> registerFilter(OPT_POSTFILTER, 'Test');
+			$ok2 = $this -> opt -> unregisterFilter(OPT_POSTFILTER, 'Test');
+			$this -> assertTrue($ok1 && $ok2);		
+		} // end testPostfilterRegistration();
+		
+		public function testOutputfilterRegistration()
+		{
+			$ok1 = $this -> opt -> registerFilter(OPT_OUTPUTFILTER, 'Test');
+			$ok2 = $this -> opt -> unregisterFilter(OPT_OUTPUTFILTER, 'Test');
+			$this -> assertTrue($ok1 && $ok2);		
+		} // end testOutputfilterRegistration();
+		
+		public function testCompilationFilters()
+		{
+			$this -> opt -> registerFilter(OPT_PREFILTER, 'Test');
+			$this -> opt -> registerFilter(OPT_POSTFILTER, 'Test');
+			$this -> assertEquals('*-  Hello World  -*', $this -> opt -> fetch('filters.tpl'));		
+		} // end testCompilationFilters();
+		
+		public function testRuntimeFilters()
+		{
+			$this -> opt -> registerFilter(OPT_OUTPUTFILTER, 'Test');
+			$this -> assertEquals('Hello World', $this -> opt -> fetch('outputfilters.tpl'));		
+		} // end testRuntimeFilters();
 	}
 
 ?>

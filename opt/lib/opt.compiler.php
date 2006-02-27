@@ -295,18 +295,11 @@
 			}
 			
 			// Register plugin instructions
-			if($this -> tpl -> plugins != NULL)
-			{
-				require($this -> tpl -> plugins.'compile.php');				
-			}
 
 			// Load compiler files
-			if(count($this -> tpl -> instructionFiles) > 0)
+			foreach($this -> tpl -> instructionFiles as $file)
 			{
-				foreach($this -> tpl -> instructionFiles as $file)
-				{
-					require_once($file);
-				}
+				require_once($file);
 			}
 			# /PLUGIN_AUTOLOAD
 			$this -> processors['generic'] = new optInstruction($this);
@@ -314,7 +307,12 @@
 			$this -> processors['component'] = new optComponent($this);
 			# /COMPONENTS
 			// Translate the instructions
-			foreach($this -> tpl -> control as $class)
+			$this -> translate($this -> tpl -> control);
+		} // end __construct();
+
+		public function translate($classList)
+		{
+			foreach($classList as $class)
 			{
 				$instruction = new $class($this);
 				$data = $instruction -> configure();
@@ -329,11 +327,6 @@
 					}
 				}
 			}
-		} // end __construct();
-
-		public function translate($class)
-		{
-		
 		} // end translate();
 		
 		public function out($code, $static = false)
@@ -382,7 +375,7 @@
 					// @ used because of stupid notice
 					// "Object of class opt_template to string conversion".
 					// Whatever it means, I couldn't recognize, why PHP does such things.
-					$this -> code = @$name($code, $this -> tpl);
+					$code = @$name($this -> tpl, $code);
 				}
 			}
 
@@ -625,7 +618,7 @@
 			{
 				foreach($this -> tpl -> filters['post'] as $name)
 				{
-					$this -> output = $name($this -> output, $this -> tpl);
+					$this -> output = $name($this -> tpl, $this -> output);
 				}
 			}
 			if(!is_null($filename))
@@ -1007,7 +1000,7 @@
 							{
 								$state['prev'] = OPCODE_METHOD;
 							}
-							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL)
+							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_ASSIGN)
 							{
 								if($token == 'apply')
 								{
@@ -1028,7 +1021,7 @@
 								$state['first'] = 0;
 							}
 						}
-						elseif($state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_BRACKET)
+						elseif($state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_BRACKET || $state['prev'] == OPCODE_ASSIGN)
 						{
 							$token = $this -> compileString($token);
 							$state['prev'] = OPCODE_STRING;
