@@ -540,9 +540,7 @@
 		
 		private function ifBegin($group)
 		{
-			# nestingLevel
-		 	$this -> compiler -> checkNestingLevel($this -> nesting);
-		 	
+			# nestingLevel	 	
 		 	$this -> nesting++;
 		 	# /nestingLevel
 		 	
@@ -733,7 +731,6 @@
 			$this -> compiler -> parametrize('for', $group, $params);
 	
 			# nestingLevel
-		 	$this -> compiler -> checkNestingLevel($this -> nesting);
 		 	
 		 	$this -> nesting++;
 		 	# /nestingLevel
@@ -801,7 +798,6 @@
 		private function foreachBegin($group)
 		{
 			# nestingLevel
-			$this -> compiler -> checkNestingLevel($this -> nesting);
 			$this -> nesting++;
 			# /nestingLevel
 	
@@ -1066,6 +1062,47 @@
 			}
 		} // end instructionNodeProcess();
 	} // end optInsert;
+
+	class optBindEvent extends optInstruction
+	{
+		public $buffer = array();
+	
+		public function configure()
+		{
+			return array(
+				// processor name
+				0 => 'bindEvent',
+				// instructions
+				'bindEvent' => OPT_MASTER,
+				'/bindEvent' => OPT_ENDER
+			);
+		} // end configure();
+
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			foreach($node as $block)
+			{
+				switch($block -> getName())
+				{
+					case 'bindEvent':
+						$params = array(
+							'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+							'type' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+							'message' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+							'position' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 0)
+						);
+						$this -> compiler -> parametrize('bind', $block -> getAttributes(), $params);
+						$this -> buffer[$params['name']] = array(
+							'type' => $params['type'],
+							'message' => $params['message'],
+							'position' => $params['position'],
+							'tree' => $node						
+						);
+						break;
+				}
+			}
+		} // end instructionNodeProcess();
+	} // end optBindEvent;
 	
 	# COMPONENTS
 	class optComponent extends optInstruction
@@ -1109,7 +1146,14 @@
 					'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
 				$args = $this -> compiler -> parametrize($block -> getName(), $block->getAttributes(), $params);
-				$code = ' $__component_'.$cid.' = new '.$block -> getName().'(); ';
+				if(isset($args['name']))
+				{
+					$code = ' $__component_'.$cid.' = new '.$block -> getName().'('.$args['name'].'); ';
+				}
+				else
+				{
+					$code = ' $__component_'.$cid.' = new '.$block -> getName().'(); ';
+				}
 				if($params['datasource'] != NULL)
 				{
 						$code .= ' $__component_'.$cid.' -> setDatasource('.$params['datasource'].'); ';
@@ -1151,6 +1195,27 @@
 						$this -> compiler -> parametrize('component list element', $node -> getFirstBlock()->getAttributes(), $params);
 						$code .= $componentLink.' -> push(\''.$params['name'].'\', '.$params['value'].', '.$params['selected'].'); ';
 						break;
+					case 'load':
+						$params = array('event' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID));
+						$this -> compiler -> parametrize('event loader', $node->getFirstBlock()->getAttributes(), $params);
+						if(isset($this -> compiler -> processors['bindEvent'] -> buffer[$params['event']]))
+						{
+							$info = $this -> compiler -> processors['bindEvent'] -> buffer[$params['event']];
+							switch($info['position'])
+							{
+								case 'up':
+									$events[0][$info['type']] = array(0 => $info['tree'], $info['message']);
+									break;
+								case 'mid':
+									$events[1][$info['type']] = array(0 => $info['tree'], $info['message']);
+									break;
+								case 'down':
+								default:
+									$events[2][$info['type']] = array(0 => $info['tree'], $info['message']);
+									break;
+							}
+						}
+						break;
 					default:
 						if($node -> getType() == OPT_UNKNOWN)
 						{
@@ -1180,17 +1245,17 @@
 			// ok, now we put the events in the correct order
 			foreach($events[0] as $name => $nodeData)
 			{
-				$this -> compileEvent($componentLink, $nodeData);
+				$this -> compileEvent($name, $componentLink, $nodeData);
 			}
 			$this -> compiler -> out(' '.$componentLink.' -> begin(); ');
 			foreach($events[1] as $name => $nodeData)
 			{
-				$this -> compileEvent($componentLink, $nodeData);
+				$this -> compileEvent($name, $componentLink, $nodeData);
 			}
 			$this -> compiler -> out(' '.$componentLink.' -> end(); ');
 			foreach($events[2] as $name => $nodeData)
 			{
-				$this -> compileEvent($componentLink, $nodeData);
+				$this -> compileEvent($name, $componentLink, $nodeData);
 			}
 
 			// terminate the processing
@@ -1200,12 +1265,10 @@
 			}
 		} // end instructionNodeProcess();
 		
-		private function compileEvent($componentId, $eventNode)
+		private function compileEvent($name, $componentId, $eventNode)
 		{
-			$node = $eventNode[0];
-			$message = $eventNode[1];
-			$this -> compiler -> out(' if('.$componentId.' -> '.$node->getName().'(\''.$eventNode[1].'\')) { ');
-			foreach($node as $block)
+			$this -> compiler -> out(' if('.$componentId.' -> '.$name.'(\''.$eventNode[1].'\')) { ');
+			foreach($eventNode[0] as $block)
 			{
 				$this -> defaultTreeProcess($block);
 			}

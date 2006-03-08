@@ -384,7 +384,7 @@
 				if($this -> tpl -> xmlsyntaxMode == 1)
 				{
 					$regex = '\<\!\-\-.+\-\-\>|<\!\[CDATA\[|\]\]>|'.$regex;
-					$this -> tpl -> delimiters[] = '\<(\/?)opt\:(.*?)()\>';
+					$this -> tpl -> delimiters[] = '\<(\/?)opt\:(.*?)(\/?)\>';
 					$this -> tpl -> delimiters[] = '\<()opt\:(.*?)(\/)\>';
 					$this -> tpl -> delimiters[] = 'opt\:put\=\"(.*?[^\\\\])\"';
 				}
@@ -457,7 +457,7 @@
 					$sortMatches = array(0 => '', 1 => '', 2 => '');
 					preg_match('/'.$regex.'/', $item, $matches);
 
-					$foundCommand = 0;
+					$foundCommand = false;
 					foreach($matches as $id => $val)
 					{
 						$val = trim($val);
@@ -477,7 +477,7 @@
 							elseif($id != 0 )
 							{
 								$sortMatches[1] = $val;
-								$foundCommand = 1;
+								$foundCommand = true;
 							}
 						}
 					}
@@ -631,6 +631,61 @@
 			}
 			return $code;
 		} // end parse();
+		
+		public function debugBlockProcess(optBlock $block)
+		{
+			if($block -> hasChildNodes())
+			{
+				foreach($block as $node)
+				{
+					$this -> debugNodeProcess($node);
+				}
+			}
+		} // end debugBlockProcess();
+		
+		public function debugNodeProcess(ioptNode $node)
+		{
+			echo '<ul>';
+			switch($node -> getType())
+			{
+				case OPT_ROOT:
+					echo '<li>Root';
+					$this -> debugBlockProcess($node -> getFirstBlock());
+					echo '</li>';
+					break;
+				case OPT_TEXT:
+					echo '<li>Text</li>';
+					break;
+				case OPT_EXPRESSION:
+					echo '<li>Expression: '.$node->getFirstBlock()->getAttributes().'</li>';
+					break;
+				case OPT_INSTRUCTION:
+					echo '<li>Instruction: '.$node->getName();
+					foreach($node as $block)
+					{
+						$this -> debugBlockProcess($block);
+					}					
+					echo '</li>';
+					break;
+				case OPT_COMPONENT:
+					echo '<li>Component: '.$node->getName();
+					foreach($node as $block)
+					{
+						$this -> debugBlockProcess($block);
+					}					
+					echo '</li>';
+					break;
+				case OPT_UNKNOWN:
+					echo '<li>Unknown: '.$node->getName();
+					foreach($node as $block)
+					{
+						$this -> debugBlockProcess($block);
+					}					
+					echo '</li>';
+					break;
+			}
+			echo '</ul>';
+		} // end debugNodeProcess();
 
 		public function compileExpression($expr, $allowAssignment=0)
 		{
@@ -1150,9 +1205,9 @@
 				case '\'':
 					return $str;
 				case '"':
-					return '"'.str_replace('"', '\\"', stripslashes(trim($str, '"'))).'"';
+					return '"'.str_replace('"', '\\"', stripslashes(substr($str, 1, strlen($str) - 2))).'"';
 				case '`':
-					return '\''.str_replace('\'', '\\\'', stripslashes(trim($str, '`'))).'\'';
+					return '\''.str_replace('\'', '\\\'', stripslashes(substr($str, 1, strlen($str) - 2))).'\'';
 					
 				default:
 					return '\''.$str.'\'';	

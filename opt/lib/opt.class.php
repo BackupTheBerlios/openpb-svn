@@ -63,7 +63,8 @@
 	{
 		public function setOptInstance(optClass $tpl);
 		public function put($group, $id);
-		public function apply($group, $id);	
+		public function putApply($group, $id);
+		public function apply($group, $id);
 	}
 	# /OBJECT_I18N
 	
@@ -80,6 +81,7 @@
 		public $gzipCompression = false;
 		public $charset = NULL;
 
+		public $alwaysRebuild = false;
 		public $showWarnings = true;
 		public $debugConsole = false;
 		public $performance = false;
@@ -95,7 +97,8 @@
 		public $parseintThousands = ',';
 		
 		// Parser and compiler data
-		protected $init = 0;
+		protected $init = false;
+		protected $outputBufferEnabled = false;
 		public $compiler;
 		public $data = array();
 		public $vars = array();
@@ -129,7 +132,8 @@
 								'optDynamic',
 								'optDefault',
 								'optBind',
-								'optInsert'			
+								'optInsert',
+								'optBindEvent'		
 							);
 		# COMPONENTS
 		public $components = array(
@@ -254,7 +258,7 @@
 		{
 			$configDirectives = array(0=>
 				'root', 'compile', 'cache', 'plugins',
-				'gzipCompression', 'charset', 'showWarnings', 'debugConsole',
+				'gzipCompression', 'charset', 'showWarnings', 'debugConsole', 'alwaysRebuild',
 				'performance', 'xmlsyntaxMode', 'strictSyntax', 'entities', 'sectionStructure',
 				'statePriority', 'parseintDecPoint', 'parseintDecimals', 'parseintThousands'
 			);
@@ -444,10 +448,11 @@
 			{
 				require_once(OPT_DIR.'opt.functions.php');
 				# GZIP_SUPPORT
-				if($this -> gzipCompression == 1 && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
+				if($this -> gzipCompression == true && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
 				{
 					ob_start('ob_gzhandler');
-					ob_implicit_flush(0);					
+					ob_implicit_flush(0);
+					$this -> outputBufferEnabled = true;		
 				}
 				# /GZIP_SUPPORT
 				# PLUGIN_AUTOLOAD
@@ -456,8 +461,6 @@
 					$this -> loadPlugins();
 				}
 				# /PLUGIN_AUTOLOAD
-				$init = 1;
-				$this -> init = 1;
 			}
 			
 			if(!$display || count($this -> filters['output']) > 0)
@@ -655,7 +658,7 @@
 		public function __destruct()
 		{
 			# GZIP_SUPPORT
-			if($this -> init)
+			if($this -> outputBufferEnabled)
 			{
 				ob_end_flush();
 			}
@@ -720,7 +723,7 @@
 					}
 					$this -> error(E_USER_ERROR, '`'.$filename.'` not found in '.$this->root.' directory.', 9);
 				}
-				if($compiledTime === false || $compiledTime < $rootTime)
+				if($compiledTime === false || $compiledTime < $rootTime || $this -> alwaysRebuild)
 				{
 					$result = array(0 => true, file_get_contents($this -> root.$filename));
 				}
@@ -729,6 +732,7 @@
 			{
 				$result = $callback($this, $filename, $compiledTime);
 			}
+			
 			if(!$result[0])
 			{
 				return $compiled;
