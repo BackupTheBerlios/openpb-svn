@@ -964,7 +964,6 @@
 			if($this -> active == 0)
 			{
 				$this -> active = 1;
-				$this -> compiler -> out(' $dynamic = true; $this -> outputBuffer[] = ob_get_contents(); ');
 				$this -> compiler -> dynamic(true);
 			}
 			else
@@ -984,7 +983,6 @@
 			{
 				$this -> active = 0;
 				$this -> compiler -> dynamic(false);
-				$this -> compiler -> out(' ob_start(); ');
 			}
 			else
 			{

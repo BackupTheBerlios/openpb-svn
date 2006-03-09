@@ -328,35 +328,6 @@
 				}
 			}
 		} // end translate();
-		
-		public function out($code, $static = false)
-		{
-			if($static)
-			{
-				$this -> output .= $code;
-				if($this -> dynamic)
-				{
-					$this -> dynamicSeg[$this->di] .= $code;	
-				}
-				return;
-			}
-			$this -> output .= '<'.'?php '.$code.' ?'.'>';
-			if($this -> dynamic)
-			{
-				$this -> dynamicSeg[$this->di] .= '<'.'?php '.$code.' ?'.'>';
-			}
-		} // end out();
-		
-		public function dynamic($state)
-		{
-			$this -> dynamic = $state;
-			$this -> dynamicEnabled = true;
-			if($this -> dynamic == false)
-			{
-				$this -> di++; // dynamic segment iterator
-				$this -> dynamicSeg[$this->di] = '';
-			}
-		} // end dynamic();
 
 		// General compiler
 		public function parse($filename, $code)
@@ -982,13 +953,14 @@
 							if($bi == 0 && $state['first'] == 1)
 							{
 								$token = '=';
+								$state['prev'] = OPCODE_ASSIGN;
 								$state['assigned'] = 1;
 							}
 							else
 							{
 								$this -> expressionError('OPCODE_ASSIGN', $token, $expr);
 							}
-							break;						
+							break;				
 						}
 					default:
 						if(preg_match('/^'.$this->rLanguageBlock.'$/', $token))
@@ -1287,26 +1259,42 @@
 		 * INSTRUCTION WRITING TOOLS
 		 */
 
-		public function checkNestingLevel($level, $maxLevel = OPT_MAX_NESTING_LEVEL)
+		public function out($code, $static = false)
 		{
-			if($level > $maxLevel)
+			if($static)
 			{
-				$this -> tpl -> error(E_USER_ERROR, 'Nesting level too deep for '.$name.' element (max level: '.$maxLevel.')', 108);
+				$this -> output .= $code;
+				if($this -> dynamic)
+				{
+					$this -> dynamicSeg[$this->di] .= $code;	
+				}
+				return;
 			}
-		} // end checkNestingLevel();
-
-		public function getDynamic($cpl, $code)
+			$this -> output .= '<'.'?php '.$code.' ?'.'>';
+			if($this -> dynamic)
+			{
+				$this -> dynamicSeg[$this->di] .= '<'.'?php '.$code.' ?'.'>';
+			}
+		} // end out();
+		
+		public function dynamic($state)
 		{
-			# OUTPUT_CACHING
-			if($cpl -> tpl -> getStatus() == true)
+			if($state == true)
 			{
-			# /OUTPUT_CACHING
-				return $code;
+				$this -> out(' $dynamic = true; $this -> outputBuffer[] = ob_get_contents(); ');
+			}		
+		
+			$this -> dynamic = $state;
+			$this -> dynamicEnabled = true;
+			if($this -> dynamic == false)
+			{
+				
+				$this -> di++; // dynamic segment iterator
+				$this -> dynamicSeg[$this->di] = '';
+				
+				$this -> out(' ob_start(); ');
 			}
-			# OUTPUT_CACHING
-			return '\'; $this -> cacheOutput[] = ob_get_contents(); /* #@#DYNAMIC#@# */ '.$code.' /* #@#END DYNAMIC#@# */ ob_start(); '.$cpl -> tpl -> captureTo.' \'';
-			# /OUTPUT_CACHING
-		} // end getDynamic();
+		} // end dynamic();
 
 		public function parametrize($instruction, $matches, &$config, $style = OPT_STYLE_BOTH)
 		{
