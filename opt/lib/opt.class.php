@@ -193,10 +193,10 @@
 			}	
 		} // end assignGroup();
 
-		public function assignByRef($name, &$value)
+		public function assignRef($name, &$value)
 		{
 			$this -> data[$name] = $value;		
-		} // end assignByRef();
+		} // end assignRef();
 
 		# HTTP_HEADERS
 		public function httpHeaders($content, $cache = OPT_HTTP_CACHE)
@@ -848,6 +848,7 @@
 				}
 
 				$code = '';
+				$compileCode = '';
 				$file = '';
 				$dir = opendir($this -> plugins);
 				while($file = readdir($dir))
@@ -863,8 +864,8 @@
 								break;
 							# /COMPONENTS
 							case 'instruction':
-								$this -> compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
-								$this -> compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
+								$compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
+								$compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
 								break;
 							case 'function':
 								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
@@ -891,7 +892,7 @@
 				}
 				closedir($dir);
 				file_put_contents($this -> plugins.'plugins.php', '<'."?php\n".$code.'?'.'>');
-				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$this -> compileCode.'?'.'>');
+				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$compileCode.'?'.'>');
 				eval($code);
 			}
 			return 1;

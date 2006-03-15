@@ -349,6 +349,12 @@
 					$code = @$name($this -> tpl, $code);
 				}
 			}
+			
+			$code = str_replace(array(
+				'<'.'?'
+			),array(
+				'<?php echo \'<?\'; ?'.'>'
+			), $code);
 
 			if($regex == NULL)
 			{
@@ -395,17 +401,7 @@
 					{
 						
 						if($item != '{/literal}')
-						{
-							$item = str_replace(array(
-								'\\',
-								'\''
-								),
-								array(
-								'\\\\',
-								'\\\''
-								), $item
-							);
-						
+						{					
 							$text -> addItem($item);
 							$textAssign = 1;							
 						}
