@@ -160,7 +160,7 @@
 		public function fetchColumn($columnNumber = 0)
 		{
 			$this -> items++;
-			return $this -> stmt -> fetchColumn($columnIndex);
+			return $this -> stmt -> fetchColumn($columnNumber);
 		} // end fetchColumn();
 
 		public function getAttribute($attribute)
@@ -369,7 +369,7 @@
 		{
 			if(!$this -> cache)
 			{
-				return $this -> data[$this->i++] = $this -> stmt -> fetchColumn($columnIndex);			
+				return $this -> data[$this->i++] = $this -> stmt -> fetchColumn($columnNumber);			
 			}
 			else
 			{
