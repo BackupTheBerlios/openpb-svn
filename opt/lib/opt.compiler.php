@@ -731,6 +731,16 @@
 				switch($token)
 				{
 					case '!':
+						if($state['prev'] == OPCODE_OBJECT_CALL)
+						{
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
+						}
+						$state['prev'] = OPCODE_OPERATOR;
+						if($bi == 0)
+						{
+							$state['first'] = 0;
+						}
+						break;
 					case '!==':
 					case '==':
 					case '===':
@@ -847,6 +857,10 @@
 						break;
 					case 'not':
 						// parenthesis control
+						if($state['prev'] == OPCODE_OBJECT_CALL)
+						{
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);
+						}
 						$state['prev'] = OPCODE_OPERATOR;
 						$token = $wordOperators[$token];
 						if($bi == 0)

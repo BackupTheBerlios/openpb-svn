@@ -30,7 +30,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.0.0');
+	define('OPT_VERSION', '1.0.0-RC3');
 	
 	if(!defined('OPT_DIR'))
 	{
@@ -832,19 +832,19 @@
 		# /OUTPUT_CACHING
 		
 		private function loadPlugins()
-		{
+		{	
+			$this -> instructionFiles[] = $this -> plugins.'compile.php';
 			if(file_exists($this -> plugins.'plugins.php'))
 			{
 				// Load precompiled plugin database
-				include($this -> plugins.'plugins.php');
-				$this -> instructionFiles[] = $this -> plugins.'compile.php';	
+				include($this -> plugins.'plugins.php');	
 			}
 			else
 			{
 				// Compile plugin database
 				if(!is_dir($this -> plugins))
 				{
-					return 0;
+					return false;
 				}
 
 				$code = '';

@@ -675,14 +675,14 @@
 			if($this -> active)
 			{
 				$this -> active = false;
-				$this -> compiler -> out(' $this -> capture[\''.$this->name.'\'] = ob_end_flush(); ');
+				$this -> compiler -> out(' $this -> capture[\''.$this->name.'\'] = ob_end_clean(); ');
 			}
 			else
 			{
 				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$matches[4].')', 205);
 			}
 		} // end captureEnd();
-		
+
 		public function processOpt($namespace)
 		{
 			return '$this -> capture[\''.$namespace[2].'\']';
