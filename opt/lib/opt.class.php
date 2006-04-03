@@ -125,7 +125,6 @@
 								'optPlace',
 								'optVar',
 								'optIf',
-								'optPhp',
 								'optFor',
 								'optForeach',
 								'optCapture',
@@ -837,14 +836,14 @@
 			if(file_exists($this -> plugins.'plugins.php'))
 			{
 				// Load precompiled plugin database
-				include($this -> plugins.'plugins.php');	
+				include($this -> plugins.'plugins.php');
 			}
 			else
 			{
 				// Compile plugin database
-				if(!is_dir($this -> plugins))
+				if(!is_writeable($this -> plugins))
 				{
-					return false;
+					$this -> error(E_USER_ERROR, $this->plugins.' is not a writeable directory.', 10);
 				}
 
 				$code = '';

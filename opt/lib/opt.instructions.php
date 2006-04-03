@@ -51,7 +51,7 @@
 					$this -> defaultTreeProcess($node -> getFirstBlock());
 					break;
 				case OPT_TEXT:
-					$this -> compiler -> out($node->__toString(), true);
+					$this -> compiler -> out(trim($node->__toString()), true);
 					break;
 				case OPT_EXPRESSION:
 					$result = $this -> compiler -> compileExpression($node->getFirstBlock()->getAttributes(), 1);
@@ -173,17 +173,17 @@
 			$output = '';
 			if(is_null($state))
 			{
-				$output .= ' if(($__'.$name.'_cnt = count('.$link.')) > 0){ ';
+				$output .= ' if(is_array('.$link.') && ($__'.$name.'_cnt = count('.$link.')) > 0){ ';
 			}
 			else
 			{
 				if($this -> compiler -> tpl -> statePriority == OPT_PRIORITY_NORMAL)
 				{
-					$output .= ' if(($__'.$name.'_cnt = count('.$link.')) > 0 && '.$state.'){ ';
+					$output .= ' if('.$state.' && is_array('.$link.') && ($__'.$name.'_cnt = count('.$link.')) > 0){ ';
 				}
 				else
 				{
-					$output .= ' if('.$state.'){ if(($__'.$name.'_cnt = count('.$link.')) > 0){ ';
+					$output .= ' if('.$state.'){ if(is_array('.$link.') && ($__'.$name.'_cnt = count('.$link.')) > 0){ ';
 				}
 			}
 
@@ -847,81 +847,6 @@
 		} // end foreachEnd();
 	}
 	
-	class optPhp extends optInstruction
-	{
-		public function configure()
-		{
-			return array(
-				// processor name
-				0 => 'php',
-				// instructions
-				'php' => OPT_MASTER,
-				'/php' => OPT_ENDER
-			);
-		} // end configure();
-		
-		public function instructionNodeProcess(ioptNode $node)
-		{
-			foreach($node as $block)
-			{
-				switch($block -> getName())
-				{
-					case 'php':
-							$this -> phpBegin($block -> getAttributes());
-							if($block -> hasChildNodes())
-							{
-								if($this -> compiler -> tpl -> safeMode == 1)
-								{
-									foreach($block as $subnode)
-									{
-										$this -> nodeProcess($subnode);
-									}
-								}
-								else
-								{
-									foreach($block as $subnode)
-									{
-										if($subnode -> getType() != OPT_TEXT)
-										{
-											$this -> compiler -> tpl -> error(E_USER_ERROR, 'Invalid node type '.$subnode->getType().' inside {php} tag! OPT_TEXT required.', 208);
-										}
-										$this -> nodeProcess($subnode);
-									}
-								}
-							}
-							break;
-					case '/php':
-							$this -> phpEnd();
-							break;
-				}
-			}
-		} // end process();
-		
-		private function phpBegin($group)
-		{
-			if($this -> compiler -> tpl -> safeMode == 1)
-			{
-				$this -> output .= $group[6];			
-			}
-			else
-			{
-				$this -> output .= '\'; ';
-			}
-		} // end phpBegin();
-		
-		private function phpEnd()
-		{
-			if($this -> compiler -> tpl -> safeMode == 1)
-			{
-				$this -> output .= $group[6];			
-			}
-			else
-			{
-				$this -> output .= ' '.$this -> compiler -> tpl -> captureTo.' \'';
-			}
-		} // end phpEnd();
-	}
-	
 	class optDynamic extends optInstruction
 	{
 		private $active = 0;
@@ -1084,14 +1009,14 @@
 				{
 					case 'bindEvent':
 						$params = array(
+							'id' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 							'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-							'type' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 							'message' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 							'position' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 0)
 						);
 						$this -> compiler -> parametrize('bind', $block -> getAttributes(), $params);
-						$this -> buffer[$params['name']] = array(
-							'type' => $params['type'],
+						$this -> buffer[$params['id']] = array(
+							'name' => $params['name'],
 							'message' => $params['message'],
 							'position' => $params['position'],
 							'tree' => $node						
@@ -1202,14 +1127,14 @@
 							switch($info['position'])
 							{
 								case 'up':
-									$events[0][$info['type']] = array(0 => $info['tree'], $info['message']);
+									$events[0][$info['name']] = array(0 => $info['tree'], $info['message']);
 									break;
 								case 'mid':
-									$events[1][$info['type']] = array(0 => $info['tree'], $info['message']);
+									$events[1][$info['name']] = array(0 => $info['tree'], $info['message']);
 									break;
 								case 'down':
 								default:
-									$events[2][$info['type']] = array(0 => $info['tree'], $info['message']);
+									$events[2][$info['name']] = array(0 => $info['tree'], $info['message']);
 									break;
 							}
 						}

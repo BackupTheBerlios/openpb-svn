@@ -333,6 +333,7 @@
 		public function parse($filename, $code)
 		{
 			static $regex;
+			static $blockRegex;
 			
 			$this -> dynamic = false;
 			$this -> dynamicEnabled = false;
@@ -358,25 +359,19 @@
 
 			if($regex == NULL)
 			{
+				$blockRegex = '\{literal\}|\{\/literal\}|\{php\}|\{\/php\}';
 				if($this -> tpl -> xmlsyntaxMode == 1)
 				{
-					$regex = '\<\!\-\-.+\-\-\>|<\!\[CDATA\[|\]\]>|'.$regex;
+					$regex = '';
 					$this -> tpl -> delimiters[] = '\<(\/?)opt\:(.*?)(\/?)\>';
 					$this -> tpl -> delimiters[] = '\<()opt\:(.*?)(\/)\>';
 					$this -> tpl -> delimiters[] = 'opt\:put\=\"(.*?[^\\\\])\"';
+					
+					$blockRegex = '\<\!\-\-|\-\-\>|<\!\[CDATA\[|\]\]>|\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
 				}
 				$regex = implode('|', $this -> tpl -> delimiters);
 			}
 
-			// tokenizer
-			preg_match_all('#({\*.+?\*\}|'.$regex.'|(.?))#si', $code, $result, PREG_PATTERN_ORDER);
-			foreach($result as $i => &$void)
-			{
-				if($i != 0)
-				{
-					unset($result[$i]);
-				}
-			}
 			$this -> output = '';			
 			// initialize the tree
 			$root = $current = new optNode(NULL, OPT_ROOT, NULL);
@@ -384,199 +379,240 @@
 			$root -> addItem($rootBlock);
 			$textAssign = 0;
 			$commented = 0;
-			$literal = 0;
-			foreach($result[0] as $i => $item)
+			$literal = false;
+			$php = false;
+			
+			$textBlocks = preg_split('/('.$blockRegex.')/', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
+
+			foreach($textBlocks as $bid => $bval)
 			{
-				// comment usage
-				if(strlen($item) > 1)
+				if(preg_match('/'.$blockRegex.'/', $bval))
 				{
-					if(preg_match('/{\*.+?\*\}/s', trim($item))|| preg_match('/\<\!\-\-.+\-\-\>/s', $item))
+
+					// Escape the OPT namespace, if in XML Syntax mode
+					if($this -> tpl -> xmlsyntaxMode == 1)
 					{
-						continue;
+						$bval = str_replace('opt:', '', $bval);
 					}
-					// a command
-					
-					// literal processing
-					if($literal == 1)
+					// Check, what we have here
+					if(strpos($bval, '/literal') !== false || $bval == ']]>')
 					{
-						
-						if($item != '{/literal}')
-						{					
-							$text -> addItem($item);
-							$textAssign = 1;							
-						}
-						else
+						$literal = false;
+					}
+					elseif(strpos($bval, 'literal') !== false || strpos($bval, 'CDATA') !== false)
+					{
+						if($textAssign == 0)
 						{
-							$literal = 0;
+							$text = new optTextNode(NULL, OPT_TEXT, $current);
+							$currentBlock -> addNode($text);
 						}
-						continue;
+						$textAssign = 1;
+						$literal = true;
 					}
-					
-					if($item == '{literal}' && $literal == 0)
+					elseif(strpos($bval, '/php') !== false)
 					{
-						$literal = 1;
-						continue;
+						$php = false;
+						$text -> addItem('?'.'>');
 					}
-
-					$textAssign = 0;
-
-					// grep the data
-					$sortMatches = array(0 => '', 1 => '', 2 => '');
-					preg_match('/'.$regex.'/', $item, $matches);
-
-					$foundCommand = false;
-					foreach($matches as $id => $val)
+					elseif(strpos($bval, 'php') !== false)
 					{
-						$val = trim($val);
-						if($val != '')
+						$php = true;
+						if($textAssign == 0)
 						{
-							if($val == '/')
+							$text = new optTextNode(NULL, OPT_TEXT, $current);
+							$currentBlock -> addNode($text);
+						}
+						$textAssign = 1;
+						$text -> addItem('<'.'?php');
+					}
+				}
+				elseif($literal == true || $php == true)
+				{
+					// Static literal/php text
+					$text -> addItem($bval);
+				}
+				elseif($literal == false && $php == false)
+				{
+					// tokenizer
+					preg_match_all('#({\*.+?\*\}|'.$regex.'|(.?))#si', $bval, $result, PREG_PATTERN_ORDER);
+					foreach($result as $i => &$void)
+					{
+						if($i != 0)
+						{
+							unset($result[$i]);
+						}
+					}
+					foreach($result[0] as $i => $item)
+					{
+						// comment usage
+						if(strlen($item) > 1)
+						{
+							if(preg_match('/{\*.+?\*\}/s', trim($item)) || preg_match('/\<\!\-\-.+\-\-\>/s', $item))
 							{
-								if(!$foundCommand)
+								continue;
+							}
+							// a command		
+							$textAssign = 0;
+		
+							// grep the data
+							$sortMatches = array(0 => '', 1 => '', 2 => '');
+							preg_match('/'.$regex.'/', $item, $matches);
+		
+							$foundCommand = false;
+							foreach($matches as $id => $val)
+							{
+								$val = trim($val);
+								if($val != '')
 								{
-									$sortMatches[0] = '/';
+									if($val == '/')
+									{
+										if(!$foundCommand)
+										{
+											$sortMatches[0] = '/';
+										}
+										else
+										{
+											$sortMatches[2] = '/';
+										}
+									}
+									elseif($id != 0 )
+									{
+										$sortMatches[1] = $val;
+										$foundCommand = true;
+									}
 								}
+							}
+							if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sortMatches[1], $found))
+							{
+								// we have an instruction
+								$realname = $found[2];
+								if($sortMatches[0] == '/')
+								{					
+									$found[2] = '/'.$found[2];
+								}
+								$found[6] = $item;
+		
+								// general instructions
+								if(isset($this -> translator[$found[2]]))
+								{
+									switch($this -> translator[$found[2]])
+									{
+										case OPT_COMMAND:
+											$node = new optNode($found[2], OPT_INSTRUCTION, $current);
+											$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
+											$currentBlock -> addNode($node);
+											break;
+										case OPT_MASTER:
+											$current -> storeBlock($currentBlock);
+											$current = new optNode($found[2], OPT_INSTRUCTION, $current);
+											$currentBlock -> addNode($current);
+											$currentBlock = new optBlock($found[2], $found, OPT_MASTER);
+											$current -> addItem($currentBlock);
+											break;
+										case OPT_ALT:
+											$currentBlock = new optBlock($found[2], $found, OPT_ALT);
+											$current -> addItem($currentBlock);
+											break;
+										case OPT_ENDER:
+											$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
+											$current -> addItem($currentBlock);
+											$current = $current -> getParent();
+											if(!is_object($current))
+											{
+												$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+											}
+											$currentBlock = $current -> restoreBlock();
+											break;							
+									}
+								}
+								# COMPONENTS
+								// components, and other shit
+								elseif($realname == 'component' || isset($this -> tpl -> components[$realname]))
+								{
+									if($sortMatches[0] == '/')
+									{
+										$currentBlock = new optBlock($found[2], $found);
+										$current -> addItem($currentBlock);
+										$current = $current -> getParent();
+										if(!is_object($current))
+										{
+											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+										}
+										$currentBlock = $current -> restoreBlock();
+									}
+									else
+									{
+										$current -> storeBlock($currentBlock);
+										$current = new optNode($realname, OPT_COMPONENT, $current);
+										$currentBlock -> addNode($current);
+										$currentBlock = new optBlock($realname, $found);
+										$current -> addItem($currentBlock);
+									}
+								}
+								# /COMPONENTS
 								else
 								{
-									$sortMatches[2] = '/';
-								}
-							}
-							elseif($id != 0 )
-							{
-								$sortMatches[1] = $val;
-								$foundCommand = true;
-							}
-						}
-					}
-					if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sortMatches[1], $found))
-					{
-						// we have an instruction
-						$realname = $found[2];
-						if($sortMatches[0] == '/')
-						{					
-							$found[2] = '/'.$found[2];
-						}
-						$found[6] = $item;
-
-						// general instructions
-						if(isset($this -> translator[$found[2]]))
-						{
-							switch($this -> translator[$found[2]])
-							{
-								case OPT_COMMAND:
-									$node = new optNode($found[2], OPT_INSTRUCTION, $current);
-									$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
-									$currentBlock -> addNode($node);
-									break;
-								case OPT_MASTER:
-									$current -> storeBlock($currentBlock);
-									$current = new optNode($found[2], OPT_INSTRUCTION, $current);
-									$currentBlock -> addNode($current);
-									$currentBlock = new optBlock($found[2], $found, OPT_MASTER);
-									$current -> addItem($currentBlock);
-									break;
-								case OPT_ALT:
-									$currentBlock = new optBlock($found[2], $found, OPT_ALT);
-									$current -> addItem($currentBlock);
-									break;
-								case OPT_ENDER:
-									$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
-									$current -> addItem($currentBlock);
-									$current = $current -> getParent();
-									if(!is_object($current))
+									// here comes the undefined command. The instruction programmer may do with them whatever he wants
+									// the compiler is going to recognize, what sort of command is it.
+									$ending = substr($found[2], strlen($found[2]) - 4, 4);
+									if($sortMatches[0] == '/')
 									{
-										$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+										// ending command, like in XML: /command
+										$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
+										$current -> addItem($currentBlock);
+										$current = $current -> getParent();
+										if(!($current instanceof ioptNode))
+										{
+											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 115);
+										}
+										$currentBlock = $current -> restoreBlock();
 									}
-									$currentBlock = $current -> restoreBlock();
-									break;							
-							}
-						}
-						# COMPONENTS
-						// components, and other shit
-						elseif($realname == 'component' || isset($this -> tpl -> components[$realname]))
-						{
-							if($sortMatches[0] == '/')
-							{
-								$currentBlock = new optBlock($found[2], $found);
-								$current -> addItem($currentBlock);
-								$current = $current -> getParent();
-								if(!is_object($current))
-								{
-									$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+									elseif($sortMatches[2] == '/')
+									{
+										// standalone command, like XML: command/ 
+										$node = new optNode($found[2], OPT_UNKNOWN, $current);
+										$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
+										$currentBlock -> addNode($node);
+									}
+									elseif($ending == 'else')
+									{
+										// alternative command, doesn't exist in XML: commandelse
+										$currentBlock = new optBlock($found[2], $found, OPT_ALT);
+										$current -> addItem($currentBlock);
+									}
+									else
+									{
+										// beginning command: command
+										$current -> storeBlock($currentBlock);
+										$current = new optNode($realname, OPT_UNKNOWN, $current);
+										$currentBlock -> addNode($current);
+										$currentBlock = new optBlock($realname, $found, OPT_MASTER);
+										$current -> addItem($currentBlock);
+									}
 								}
-								$currentBlock = $current -> restoreBlock();
 							}
 							else
 							{
-								$current -> storeBlock($currentBlock);
-								$current = new optNode($realname, OPT_COMPONENT, $current);
-								$currentBlock -> addNode($current);
-								$currentBlock = new optBlock($realname, $found);
-								$current -> addItem($currentBlock);
-							}
-						}
-						# /COMPONENTS
-						else
-						{
-							// here comes the undefined command. The instruction programmer may do with them whatever he wants
-							// the compiler is going to recognize, what sort of command is it.
-							$ending = substr($found[2], strlen($found[2]) - 4, 4);
-							if($sortMatches[0] == '/')
-							{
-								// ending command, like in XML: /command
-								$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
-								$current -> addItem($currentBlock);
-								$current = $current -> getParent();
-								if(!($current instanceof ioptNode))
-								{
-									$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 115);
-								}
-								$currentBlock = $current -> restoreBlock();
-							}
-							elseif($sortMatches[2] == '/')
-							{
-								// standalone command, like XML: command/ 
-								$node = new optNode($found[2], OPT_UNKNOWN, $current);
-								$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
+								// we have an expression
+								$node = new optNode(NULL, OPT_EXPRESSION, $current);
+								$node -> addItem(new optBlock(NULL, $sortMatches[1]));
 								$currentBlock -> addNode($node);
 							}
-							elseif($ending == 'else')
-							{
-								// alternative command, doesn't exist in XML: commandelse
-								$currentBlock = new optBlock($found[2], $found, OPT_ALT);
-								$current -> addItem($currentBlock);
-							}
-							else
-							{
-								// beginning command: command
-								$current -> storeBlock($currentBlock);
-								$current = new optNode($realname, OPT_UNKNOWN, $current);
-								$currentBlock -> addNode($current);
-								$currentBlock = new optBlock($realname, $found, OPT_MASTER);
-								$current -> addItem($currentBlock);
-							}
 						}
-					}
-					else
-					{
-						// we have an expression
-						$node = new optNode(NULL, OPT_EXPRESSION, $current);
-						$node -> addItem(new optBlock(NULL, $sortMatches[1]));
-						$currentBlock -> addNode($node);
+						else
+						{
+							// text item
+							if($textAssign == 0)
+							{
+								$text = new optTextNode(NULL, OPT_TEXT, $current);
+								$currentBlock -> addNode($text);
+							}
+							$text -> addItem($item);
+							$textAssign = 1;
+						}
+					
 					}
 				}
-				else
-				{
-					// text item
-					if($textAssign == 0)
-					{
-						$text = new optTextNode(NULL, OPT_TEXT, $current);
-						$currentBlock -> addNode($text);
-					}
-					$text -> addItem($item);
-					$textAssign = 1;
-				}
-			
 			}
 			// execute the tree
 			$this -> processors['generic'] -> nodeProcess($root);
