@@ -152,7 +152,14 @@
 
 		public function fetchAll($fetchStyle = PDO::FETCH_BOTH, $columnIndex = 0)
 		{
-			$data = $this -> stmt -> fetchAll($fetchStyle, $columnIndex);
+			if($fetchStyle == PDO::FETCH_COLUMN)
+			{
+				$data = $this -> stmt -> fetchAll($fetchStyle, $columnIndex);
+			}
+			else
+			{
+				$data = $this -> stmt -> fetchAll($fetchStyle);
+			}
 			$this -> items = count($data);
 			return $data;
 		} // end fetchAll();
@@ -357,7 +364,14 @@
 		{
 			if(!$this -> cache)
 			{
-				return $this -> data = $this -> stmt -> fetchAll($fetchStyle, $columnIndex);			
+				if($fetchStyle == PDO::FETCH_COLUMN)
+				{
+					return $this -> data = $this -> stmt -> fetchAll($fetchStyle, $columnIndex);
+				}
+				else
+				{
+					return $this -> data = $this -> stmt -> fetchAll($fetchStyle);
+				}
 			}
 			else
 			{
@@ -584,11 +598,22 @@
 		
 		public function fetchAll($fetchStyle = PDO::FETCH_BOTH, $columnIndex = 0)
 		{
-			if($this -> cacheId == false)
+			if($fetchStyle == PDO::FETCH_COLUMN)
 			{
-				return $this -> stmt -> fetch($fetchStyle, $columnIndex);			
+				if($this -> cacheId == false)
+				{
+					return $this -> stmt -> fetch($fetchStyle, $columnIndex);			
+				}
+				return parent::fetchAll($fetchStyle, $columnIndex);
 			}
-			return parent::fetchAll($fetchStyle, $columnIndex);
+			else
+			{
+				if($this -> cacheId == false)
+				{
+					return $this -> stmt -> fetch($fetchStyle);			
+				}
+				return parent::fetchAll($fetchStyle);
+			}
 		} // end fetchAll();
 
 		public function fetchColumn($columnNumber = 1)

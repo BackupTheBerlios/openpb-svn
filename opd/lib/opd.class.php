@@ -325,7 +325,7 @@
 			if($prepare == true)
 			{
 				$this -> cacheIds[] = $id;
-				$this -> cachePeroids[] = $peroid;	
+				$this -> cachePeroids[] = $peroid;
 			}
 		} // end setCacheExpire();
 
