@@ -13,6 +13,9 @@
 	define('OPF_STANDARD_AJAX', 1);
 	define('OPF_SELECTIVE_AJAX', 2);
 
+	define('OPF_CONTROL_COOKIE', 'ap4ic8sdmhjk39');
+	define('OPF_CONTROL_COOKIE_TIME', 1800);
+
 	class opfVisit
 	{
 		public
@@ -29,12 +32,24 @@
 			$settings,
 			$requestMethod,
 			$secure = false,
-			$ajax,			// This flag is set by HTTP Context
-			$ajaxMode,		// This flag is set by HTTP Context
+			$cookiesEnabled,
+			$ajax,				// This flag is set by HTTP Context
+			$ajaxMode,			// This flag is set by HTTP Context
 			$ajaxControl;		// This flag is set by HTTP Context
-			
+
 		public function __construct()
 		{
+			// Check if cookies available
+			if(!isset($_COOKIE[OPF_CONTROL_COOKIE]))
+			{
+				$this -> cookiesEnabled = false;
+			}
+			else
+			{
+				$this -> cookiesEnabled = true;
+			}
+			setcookie(OPF_CONTROL_COOKIE, '1', time() + OPF_CONTROL_COOKIE_TIME);
+
 			// Get IP and similar stuff
 			$this -> ip = $_SERVER['REMOTE_ADDR'];
 			if(!isset($_SERVER['REMOTE_HOST']))

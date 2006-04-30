@@ -206,7 +206,13 @@
     	
     	public function createJavaScript($name)
     	{
-    		return '';
+    		switch($this -> type)
+    		{
+    			case MAP_GT:
+    				break;
+			
+			}
+			return '';
     	} // createJavaScript();
     	
     	private function setError($id)

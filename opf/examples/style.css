@@ -1,0 +1,31 @@
+body{
+	font-family: Tahoma, Verdana, Helvetica, Arial;
+}
+
+tr td{
+	background: #dddddd;
+}
+
+tr.revert td{
+	background: #ffcccc;
+}
+
+input.insert{
+	border: 1px solid #555555;
+	background: #eeeeee;
+}
+
+input.incorrect{
+	border: 1px solid #ff0000;
+	background: #ffdddd;
+}
+
+textarea.insert{
+	border: 1px solid #555555;
+	background: #eeeeee;
+}
+
+textarea.incorrect{
+	border: 1px solid #ff0000;
+	background: #ffdddd;
+}

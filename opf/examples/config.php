@@ -8,3 +8,4 @@ router = "default"
 
 root = "./templates/"
 compile = "./templates_c/"
+xmlsyntaxMode = 1

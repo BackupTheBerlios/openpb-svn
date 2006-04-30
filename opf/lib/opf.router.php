@@ -17,16 +17,25 @@
     interface iopfRouter
     {
         public function __construct();
+        public function getName();
         public function handleData($name);
+        public function __set($name, $value);
         public function createURL($file, $variables);	
     }
 
     class opfDefaultRouter implements iopfRouter
     {
+    	private $urlData = array();
+    
         public function __construct()
         {
         
         } // end __construct();
+        
+        public function getName()
+        {
+        	return 'default';
+        } // end getName();
         
         public function handleData($name)
         {
@@ -36,13 +45,27 @@
             }
             return NULL;   
         } // end handleData();
+        
+        public function __set($name, $value)
+        {
+        	$this -> urlData[$name] = $value;
+        } // end __set();
 
         public function createURL($file, $variables)
         {
             $url = $file;
-            if(($i = count($variables)) > 0)
+            if(($i = count($variables) + count($this -> urlData)) > 0)
             {
                 $url .= '?';
+                foreach($this -> urlData as $name => $value)
+                {
+                    $i--;
+                    $url .= $name.'='.$value;
+                    if($i > 0)
+                    {
+                        $url .= '&amp;';
+                    }
+                }
                 foreach($variables as $name => $value)
                 {
                     $i--;
@@ -60,9 +83,17 @@
     class opfNiceRouter implements iopfRouter
     {
         private $dataBuffer;
+        private $alternative;
+        private $urlData = array();
 
         public function __construct()
         {
+        	// The router allows to switch to the default router, when ?-style parameters sent
+        	if(!empty($_SERVER['QUERY_STRING']) && empty($_SERVER['PATH_INFO']))
+        	{
+        		$this -> alternative = new opfDefaultRouter;
+        	}
+        
             if(!empty($_SERVER['PATH_INFO']))
             {
                 $data = explode('/', substr($_SERVER['PATH_INFO'], 1));
@@ -80,22 +111,50 @@
                 }
             }
         } // end __construct();
+        
+        
+        public function getName()
+        {
+        	if(!is_null($this -> alternative))
+        	{
+        		return $this -> alternative -> getName();
+        	}
+        	return 'nice';
+        } // end getName();
 
         public function handleData($name)
         {
+        	if(!is_null($this -> alternative))
+        	{
+        		return $this -> alternative -> handleData($name);
+        	}
             if(isset($this -> dataBuffer[$name]))
             {
                 return $this -> dataBuffer[$name];
             }
             return NULL;   
         } // end handleData();
+        
+        public function __set($name, $value)
+        {
+        	$this -> urlData[$name] = $value;
+        } // end __set();
 
         public function createURL($file, $variables)
         {
             $url = $file;
-            if(($i = count($variables)) > 0)
+            if(($i = count($variables) + count($this -> urlData)) > 0)
             {
                 $url .= '/';
+                foreach($this -> urlData as $name => $value)
+                {
+                    $i--;
+                    $url .= $name.'/'.$value;
+                    if($i > 0)
+                    {
+                        $url .= '/';
+                    }
+                }
                 foreach($variables as $name => $value)
                 {
                     $i--;
@@ -146,6 +205,11 @@
             }
         } // end __construct();
 
+        public function getName()
+        {
+        	return 'value';
+        } // end getName();
+
         public function handleData($name)
         {
             switch($name)
@@ -163,6 +227,11 @@
                     return NULL;            
             }
         } // end handleData();
+        
+        public function __set($name, $value)
+        {
+        	$this -> urlData[$name] = $value;
+        } // end __set();
 
         public function createURL($file, $variables)
         {

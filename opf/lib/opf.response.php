@@ -12,59 +12,93 @@
 
 	class opfResponse extends optClass implements iopfResponse
 	{
-		private $context;
+		public $context;
 		private $headerList;
 		private $content = false;
 		private $headersSent = false;
 		
 		private $lock = true;
+		
+		public function __construct()
+		{
+			$this -> control[] = 'opfUrl';
+			$this -> control[] = 'opfForm';
+			$this -> components['opfInput'] = 1;
+			$this -> components['opfPassword'] = 1;
+			$this -> components['opfTextarea'] = 1;
+			$this -> components['opfQuestion'] = 1;
+			$this -> components['opfLabel'] = 1;
+			$this -> components['opfSelect'] = 1;
+			$this -> components['opfRadio'] = 1;
+			$this -> instructionFiles[] = OPF_DIR.'opf.template.php';
+		} // end __construct();
 	
 		public function setOpfInstance(opfClass $context)
 		{
 			$this -> context = $context;
+			$this -> assign('opfDesign', $context -> getDesign());
 		} // end setOpfInstance();
 
 		public function createCookie($name, $value, $time = NULL)
 		{
-			if($time == NULL)
+			if(!headers_sent())
 			{
-				setcookie($name, $value);
+				if($time == NULL)
+				{
+					setcookie($name, $value);
+				}
+				else
+				{
+					setcookie($name, $value, $time);
+				}
+				if(!$this -> context -> getVisit() -> cookiesEnabled)
+				{
+					output_add_rewrite_var($name, $value);
+				}
+				$_COOKIE[$name] = $value;
+				return true;
 			}
-			else
-			{
-				setcookie($name, $value, $time);
-			}
-			$_COOKIE[$name] = $value;		
+			return false;
 		} // end createCookie();
 
 		public function setCookieExpire($name, $time)
 		{
-			if(isset($_COOKIE[$name]))
+			if(!headers_sent())
 			{
-				setcookie($name, $_COOKIE[$name], $time);
-				return 1;
+				if(isset($_COOKIE[$name]))
+				{
+					setcookie($name, $_COOKIE[$name], $time);
+				}
+				if(!$this -> context -> getVisit() -> cookiesEnabled)
+				{
+					output_add_rewrite_var($name, $value);
+				}
+				return true;
 			}
-			return 0;
+			return false;
 		} // end setCookieExpire();
 
 		public function removeCookie($name)
 		{
-			if(isset($_COOKIE[$name]))
+			if(!headers_sent() && isset($_COOKIE[$name]))
 			{
 				setcookie($name, '', 0);
 				unset($_COOKIE[$name]);
+				return true;
 			}
+			return false;
 		} // end removeCookie();
 
 		public function addHeader($header)
-		{
-			if($this -> content == false)
+		{			
+			if(!headers_sent())
 			{
 				header($header);
+
 				$this -> headerList[] = $header;
 				
 				if(strpos('Location: ', $header) !== FALSE)
-				{
+				{					
 					die();
 				}
 				return true;
@@ -78,9 +112,8 @@
 		} // end listHeaders();
 		
 		public function httpHeaders($content, $cache = OPT_HTTP_CACHE)
-		{
-			
-			if(!$this -> headersSent)
+		{			
+			if(!headers_sent())
 			{
 				$this -> headersSent = true;
 				$charset = '';
@@ -88,7 +121,6 @@
 				{
 					$charset = ';charset='.$this -> charset;
 				}
-
 				switch($content)
 				{		
 					case OPT_HTML:
@@ -139,6 +171,11 @@
 				}
 			}
 		} // end httpHeaders();
+		
+		public function headersSent()
+		{		
+			return $this -> headersSent;		
+		} // end headersSent();
 
 		public function beginXMLResponse()
 		{
@@ -222,5 +259,11 @@
 				}			
 			}
 		} // end initAjaxConnection();
+		
+		public function getContext()
+		{
+			// For OPT components
+			return $this -> context;
+		} // end getContext();
 	}
 ?>

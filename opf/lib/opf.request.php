@@ -57,16 +57,33 @@
 					}
 					return 0;
 				case OPF_COOKIE:
-					if(!isset($_COOKIE[$name]))
+					if(!$this -> context -> getVisit() -> cookiesEnabled)
 					{
+						// Cookie-emulation data always go through GET.
+						if(!isset($_GET[$name]))
+						{
+							return 0;
+						}
+						if($container -> process($name, $type, $_GET[$name]))
+						{
+							$this -> __mappedData[$name] = &$_GET[$name];
+							return 1;
+						}
 						return 0;
 					}
-					if($container -> process($name, $type, $_COOKIE[$name]))
+					else
 					{
-						$this -> __mappedData[$name] = &$_COOKIE[$name];
-						return 1;
+						if(!isset($_COOKIE[$name]))
+						{
+							return 0;
+						}
+						if($container -> process($name, $type, $_COOKIE[$name]))
+						{
+							$this -> __mappedData[$name] = &$_COOKIE[$name];
+							return 1;
+						}
+						return 0;
 					}
-					return 0;
 				case OPF_FILE:
 					if(!isset($_FILES[$name]))
 					{
