@@ -51,7 +51,20 @@
 					$this -> defaultTreeProcess($node -> getFirstBlock());
 					break;
 				case OPT_TEXT:
-					$this -> compiler -> out(trim($node->__toString()), true);
+					preg_match('/([\s]*)(.+)([\s]*)/s', $node->__toString(), $found);
+					
+					if(strlen($found[1]) > 0)
+					{
+						$this -> compiler -> out(' ', true);
+					}
+				//	if(strlen($found[3]) > 0)
+				//	{
+				//		$this -> compiler -> out($found[2].' ', true);
+				//	}
+				//	else
+				//	{
+					$this -> compiler -> out($node->__toString(), true);
+				//	}
 					break;
 				case OPT_EXPRESSION:
 					$result = $this -> compiler -> compileExpression($node->getFirstBlock()->getAttributes(), 1);
@@ -85,6 +98,7 @@
 				}
 				
 				// pass the execution to the instruction processor
+				
 				$this -> compiler -> mapper[$node -> getName()] -> instructionNodeProcess($node);
 				return 1;
 			}	
@@ -125,7 +139,7 @@
 		public function instructionNodeProcess(ioptNode $node)
 		{
 			foreach($node as $block)
-			{				
+			{	
 				switch($block -> getName())
 				{
 					case 'show':

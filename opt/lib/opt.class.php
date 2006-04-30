@@ -68,6 +68,11 @@
 	}
 	# /OBJECT_I18N
 	
+	function optPostfilterStripWhitespaces(optClass $tpl, $code)
+	{
+		return preg_replace('/(\r|\n){1,2}[ \t\f]*\<\?(.+)\?\>[ \t\f]*(\r|\n){1,2}/s', '<'.'?$2?'.'>$3', $code);	
+	} // end optPostfilterStripWhitespaces();
+	
 	// OPT Parser class
 
 	class optClass
@@ -351,18 +356,18 @@
 			$this -> error(E_USER_ERROR, 'Specified value is not a valid resource function name.', 5);
 		} // end registerResource();
 
-		public function registerComponent()
+		public function registerComponent($name)
 		{
-			if(is_array($class))
+			if(is_array($name))
 			{
-				foreach($class as $componentName)
+				foreach($name as $componentName)
 				{
 					$this -> components[$componentName] = 1;
 				}		
 			}
 			else
 			{
-				$this -> components[] = $class;
+				$this -> components[$name] = 1;
 			}
 		} // end registerComponent();
 

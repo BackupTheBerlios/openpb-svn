@@ -320,9 +320,9 @@
 				
 				foreach($data as $name => $type)
 				{
-					$this -> translator[$name] = $type;
-					if($type == OPT_MASTER || $type == OPT_COMMAND)
+					if(is_string($name))
 					{
+						$this -> translator[$name] = $type;
 						$this -> mapper[$name] = $instruction;
 					}
 				}
@@ -491,7 +491,6 @@
 									$found[2] = '/'.$found[2];
 								}
 								$found[6] = $item;
-		
 								// general instructions
 								if(isset($this -> translator[$found[2]]))
 								{
@@ -522,7 +521,7 @@
 												$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
 											}
 											$currentBlock = $current -> restoreBlock();
-											break;							
+											break;	
 									}
 								}
 								# COMPONENTS
