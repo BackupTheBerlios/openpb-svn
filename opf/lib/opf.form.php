@@ -244,6 +244,7 @@
 				}
 				catch(opfShowFormException $exception)
 				{
+					$this -> addPreviousItems($items);
 					if($exception -> invalidData())
 					{
 						$this -> invalidData = true;
