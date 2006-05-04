@@ -16,19 +16,20 @@
 	{
 		define('OPD_DIR', './');
 	}
-	define('OPD_VERSION', '0.3');
+	define('OPD_VERSION', '0.4');
 	define('OPD_CACHE_PREPARE', true);
 	
 	require(OPD_DIR.'opd.statement.php');
 
 	function opdErrorHandler(PDOException $exc)
 	{
-		echo '<br/><b>Open Power Driver internal error #'.$exc->getCode().': </b> '.$exc->getMessage().'<br/>';
+		echo '<br/><b>Open Power Driver internal error #'.$exc->getCode().': </b> '.$exc->getMessage().'<br/>
+			Query used: <i>'.opdClass::$lastQuery.'</i><br/>';
 	}
 
 	class opdClass
 	{
-		public $lastQuery;
+		static public $lastQuery;
 		public $dsn;
 		public $debugConsole;
 		
@@ -41,9 +42,18 @@
 		private $counterRequested = 0;
 		private $counterTime = 0;
 		private $counterTimeExecuted = 0;
+		private $transactions = 0;
+		private $transactionsCommit = 0;
+		private $transactionsRollback = 0;
 
 		// PDO
 		private $pdo;
+		
+		// Connection
+		private $user;
+		private $password;
+		private $driverOpts;
+		private $connected;
 		
 		// Cache
 		private $cacheDir;
@@ -53,25 +63,47 @@
 
 		public function __construct($dsn, $user, $password, $driverOpts = array())
 		{
-			$this -> pdo = new PDO($this -> dsn = $dsn, $user, $password, $driverOpts);
-			$this -> pdo -> setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			$this -> dsn = $dsn;
+			$this -> user = $user;
+			$this -> password = $password;
+			$this -> driverOpts = $driverOpts;
 			$this -> queryCount = 0;
 			$this -> i = 0;
 		} // end __construct();
+		
+		private function makeConnection()
+		{
+			if(is_null($this -> connected))
+			{
+				$this -> connected = true;
+				$this -> pdo = new PDO($this -> dsn, $this -> user, $this -> password, $this -> driverOpts);
+				$this -> pdo -> setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			}	
+		} // end makeConnection();
 
 		public function __destruct()
 		{
 			if($this -> debugConsole)
 			{
+				if($this -> transactionsCommit + $this -> transactionsRollback != $this -> transactions)
+				{
+					// If any transaction closed automatically
+					$this -> transactionsCommit = $this -> transactions - $this -> transactionsRollback;
+				}
+			
 				$config = array(
 					'Open Power Driver version' => OPD_VERSION,
 					'DSN' => $this -> dsn,
+					'Database connection' => ($this -> connected ? 'Yes' : 'No'),
 					'Requested queries' => $this -> counterRequested,
 					'Executed queries' => $this -> counterExecuted,
 					'Total database time' => $this -> counterTime.' s',
-					'Executed queries time' => $this -> counterTimeExecuted.' s'
+					'Executed queries time' => $this -> counterTimeExecuted.' s',
+					'Transactions opened' => $this -> transactions,
+					'Commited transactions' => $this -> transactionsCommit,
+					'Rolled back transactions' => $this -> transactionsRollback
 				);
-			
+
 				eval($this->consoleCode);
 				if(isset($debugCode))
 				{
@@ -108,46 +140,64 @@
 
 		public function beginTransaction()
 		{
+			$this -> transactions++;
+			$this -> makeConnection();
 			return $this -> pdo -> beginTransaction();
 		} // end beginTransaction();
 
 		public function commit()
 		{
+			$this -> transactionsCommit++;
+			$this -> makeConnection();
 			return $this -> pdo -> commit();
 		} // end commit();
 
 		public function errorCode()
 		{
+			$this -> makeConnection();
 			return $this -> pdo -> errorCode();
 		} // end errorCode();
 
 		public function errorInfo()
 		{
+			$this -> makeConnection();
 			return $this -> pdo -> errorInfo();
 		} // end errorInfo();
 
-		public function exec($statement)
+		public function exec($statement, $id = NULL)
 		{
+			if(!is_null($id))
+			{
+				$stmt = $this -> prepare($statement);
+				$stmt -> bindValue(':id', $id, PDO::PARAM_INT);
+				return $stmt -> execute();			
+			}		
+			
+			$this -> makeConnection();		
 			$this -> beginDebugDefinition($statement);
 			$this -> startTimer(false, false);
 			$result = $this -> pdo -> exec($statement);
 			$this -> endTimer();
+			opdClass::$lastQuery = $statement;
 			$this -> endDebugDefinition($result);
 			return $result;
 		} // end exec();
 
 		public function getAttribute($attribute)
 		{
+			$this -> makeConnection();
 			return $this -> pdo -> getAttribute($attribute);
 		} // end getAttribute();	
 
 		public function getAvailableDrivers()
 		{
+			$this -> makeConnection();
 			return $this -> pdo -> getAvailableDrivers();
 		} // end getAvailableDrivers();
 
 		public function lastInsertId($sequence = NULL)
 		{
+			$this -> makeConnection();
 			if($sequence == NULL)
 			{
 				return $this -> pdo -> lastInsertId();
@@ -163,8 +213,9 @@
 				{
 					$options = array(PDO::ATTR_CURSOR, PDO::CURSOR_FWDONLY);
 				}
-	
+				$this -> makeConnection();
 				$result = $this -> pdo -> prepare($statement, $options);
+				opdClass::$lastQuery = $statement;
 				return new opdStatement($this, $result, $statement);
 			}
 			else
@@ -208,18 +259,19 @@
 						}
 					}			
 				}
-				
 				if($needsQuery)
 				{
 					if(count($options) == 0)
 					{
 						$options = array(PDO::ATTR_CURSOR, PDO::CURSOR_FWDONLY);
 					}
-		
+					$this -> makeConnection();
 					$result = $this -> pdo -> prepare($statement, $options);
+					opdClass::$lastQuery = $statement;
 				}
 				$this -> cacheIds = array();
 				$this -> cachePeroids = array();
+				$this -> cache = false;
 				return new opdPreparedCacheStatement($this, $cacheTests, $result, $statement);
 			}
 		} // end prepare();
@@ -246,18 +298,23 @@
 						return new opdCachedStatement($this, true, $this->cacheId);
 					}
 				}
+				$this -> makeConnection();
 				$this -> startTimer(true, false);
 				$result = $this -> pdo -> query($statement);
 				$this -> endTimer();
+				opdClass::$lastQuery = $statement;
 
 				$result -> setFetchMode($fetchMode);
 				return new opdCachedStatement($this, false, $result, $this->cacheId);
 			}
 			else
 			{
+				$this -> cache = false;
+				$this -> makeConnection();
 				$this -> startTimer(false, false);
 				$result = $this -> pdo -> query($statement);
 				$this -> endTimer();
+				opdClass::$lastQuery = $statement;
 	
 				$result -> setFetchMode($fetchMode);
 				return new opdStatement($this, $result);
@@ -266,16 +323,20 @@
 
 		public function quote($string, $parameterType = PDO::PARAM_STR)
 		{
+			$this -> makeConnection();
 			return $this -> pdo -> quote($string, $parameterType);
 		} // end quote();
 
 		public function rollBack()
 		{
+			$this -> transactionsRollback++;
+			$this -> makeConnection();
 			return $this -> pdo -> rollBack();
 		} // end rollBack();
 
 		public function setAttribute($name, $value)
 		{
+			$this -> makeConnection();
 			return $this -> pdo -> setAttribute($name, $value);
 		} // end setAttribute();
 		
@@ -294,6 +355,20 @@
 			$stmt -> closeCursor();
 			return NULL;
 		} // end get();
+		
+		public function getId($query, $id)
+		{
+			$stmt = $this -> prepare($query);
+			$stmt -> bindValue(':id', $id, PDO::PARAM_INT);
+			$stmt -> execute();
+			if($row = $stmt -> fetch(PDO::FETCH_NUM))
+			{
+				$stmt -> closeCursor();
+				return $row[0];
+			}
+			$stmt -> closeCursor();
+			return NULL;
+		} // end getId();
 
 		public function setCacheDirectory($dir)
 		{
