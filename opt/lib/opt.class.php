@@ -748,7 +748,7 @@
 				$this -> compiler = new optCompiler($this);
 			}
 			$this -> compiler -> parse($this -> compile.$compiled, $result[1]);
-			return $compiled;		
+			return $compiled;	
 		} // end needCompile();
 		
 		public function getTemplate($filename)

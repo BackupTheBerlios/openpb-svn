@@ -12,19 +12,26 @@
     
     $r = mysql_query('SELECT id, name FROM categories ORDER BY id');
     $categories = array();
+    $categoryMatch = array();
+    $i = 0;
     while($row = mysql_fetch_assoc($r))
     {
-    	$categories[$row['id']] = array(
+    	$categories[$i] = array(
 			'name' => $row['name']
-		);    
+		);
+		$categoryMatch[$row['id']] = $i;
+		$i++;
     }    
     
     $r = mysql_query('SELECT id, name, description, category FROM products ORDER BY category, id'); 
     $products = array(); 
     while($row = mysql_fetch_assoc($r)) 
     { 
+      // to be clear, we split the code into more commands
+      $category = $categoryMatch[$row['category']];
+
       // add the next item 
-      $products[$row['category']][] = array( 
+      $products[$category][] = array( 
           'id' => $row['id'], 
           'name' => $row['name'],
           'description' => $row['description']

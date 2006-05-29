@@ -111,11 +111,11 @@ One of directories you have specified has invalid access rights. Make sure the
 ?><span style="font-family: Courier;">
 HELP<br/><br/>
 OPT configurator is a simple script, which allows you to build your own versions of Open Power Template
-parser. This gives you lotf of benefits: you may remove from the source code the features you are not using
+parser. This gives you lots of benefits: you may remove the features from the source code you are not using
 or are unncessary. When you upload your application into the web, you will probably also remove all
 the debug options. OPT will work faster then.<br/>
 You must specify three things: 1/ the directory, where the original OPT code is placed; 2/ the output
-directory, where will be placed "new" OPT; 3/ the features you want to keep. Here are their descriptions:
+directory, where will be placed the "new" OPT; 3/ the features you want to keep. Here are their descriptions:
 
 <ul>
 <?php

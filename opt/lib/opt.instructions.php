@@ -14,12 +14,14 @@
 
 	class optInstruction
 	{
+		protected $tpl;
 		protected $compiler;
 		protected $output;
 		
 		public function __construct(optCompiler $compiler)
 		{
 			$this -> compiler = $compiler;
+			$this -> tpl = $compiler -> tpl;
 		} // end __construct();
 		
 		public function setOutput(&$output)
@@ -53,9 +55,12 @@
 				case OPT_TEXT:
 					preg_match('/([\s]*)(.+)([\s]*)/s', $node->__toString(), $found);
 					
-					if(strlen($found[1]) > 0)
+					if(is_array($found) && isset($found[1]))
 					{
-						$this -> compiler -> out(' ', true);
+						if(strlen($found[1]) > 0)
+						{
+							$this -> compiler -> out(' ', true);
+						}
 					}
 				//	if(strlen($found[3]) > 0)
 				//	{
@@ -689,7 +694,7 @@
 			if($this -> active)
 			{
 				$this -> active = false;
-				$this -> compiler -> out(' $this -> capture[\''.$this->name.'\'] = ob_end_clean(); ');
+				$this -> compiler -> out(' $this -> capture[\''.$this->name.'\'] = ob_get_clean(); ');
 			}
 			else
 			{
@@ -863,7 +868,7 @@
 	
 	class optDynamic extends optInstruction
 	{
-		private $active = 0;
+		public $active = 0;
 	
 		public function configure()
 		{

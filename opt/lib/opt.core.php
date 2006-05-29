@@ -122,6 +122,7 @@ opt_console.document.write(\'</table>\');
 opt_console.document.write(\'\');
 opt_console.document.write(\'</body>\');
 opt_console.document.write(\'</html>\');
+opt_console.document.close();
 </script>'; 
 	} // end optShowDebugConsole();
 	
@@ -233,7 +234,6 @@ opt_console.document.write(\'</html>\');
 			}
 			return true;		
 		}
-		return false;
 	} // end optCacheReset();
 	
 	function optCheckExpire($file, $time)

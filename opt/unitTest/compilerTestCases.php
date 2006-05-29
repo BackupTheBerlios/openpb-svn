@@ -22,14 +22,14 @@
 				switch($block -> getName())
 				{
 					case 'compiler':
-							$this -> output .= "BEGIN COMPILER SESSION\r\n";
+							$this -> compiler -> out("BEGIN COMPILER SESSION\r\n", true);
 							foreach($block as $subNode)
 							{
 								$this -> hardcoreTreeProcess($subNode);
 							}
 							break;
 					case '/compiler':
-							$this -> output .= "END COMPILER SESSION";
+							$this -> compiler -> out("END COMPILER SESSION", true);
 							break;
 				}
 			}
@@ -47,18 +47,18 @@
 				switch($block -> getType())
 				{
 					case OPT_MASTER:
-						$this -> output .= str_repeat('.',$this->level).'MASTER: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n";
+						$this -> compiler -> out(str_repeat('.',$this->level).'MASTER: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n", true);
 						$this -> level++;
 						break;
 					case OPT_ENDER:
 						$this -> level--;
-						$this -> output .= str_repeat('.',$this->level).'ENDER: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n";
+						$this -> compiler -> out(str_repeat('.',$this->level).'ENDER: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n", true);
 						break;
 					case OPT_COMMAND:
-						$this -> output .= str_repeat('.',$this->level).'CMD: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n";
+						$this -> compiler -> out(str_repeat('.',$this->level).'CMD: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n", true);
 						break;
 					case OPT_ALT:
-						$this -> output .= str_repeat('.',$this->level-1).'ALT: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n";
+						$this -> compiler -> out(str_repeat('.',$this->level-1).'ALT: '.$block->getName()." (".$attributes[3].")(".$node->getName().")\r\n", true);
 						break;				
 				}
 				foreach($block as $subNode)
@@ -109,12 +109,12 @@
 			);
 		
 			$this -> compiler -> parametrize('escaper', $block->getAttributes(), $params);
-			$this -> output .= ' Escaper started: '.$params['par1'].'<br/>';	
+			$this -> compiler -> out(' Escaper started: '.$params['par1'].'<br/>', true);	
 		} // end start();
 		
 		public function stop()
 		{	
-			$this -> output .= ' Escaper stopped<br/>';
+			$this -> compiler -> out(' Escaper stopped<br/>', true);
 		} // end stop();
 	}
 
@@ -365,7 +365,7 @@
 			{
 				optErrorHandler($exc);
 				$this -> fail('Exception returned');
-			}			
+			}		
 		} // end testExpressionTablePHPSyntax();
 		
 		public function testExpressionTableAlternativeSyntax()
@@ -531,7 +531,7 @@
 			{
 				optErrorHandler($exc);
 				$this -> fail('Exception returned');
-			}		
+			}
 		} // end testRealExpression4();
 		
 		public function testRealExpression5()
@@ -800,10 +800,10 @@
 					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 					'param3' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'cde')
 				);
-				
+
 				$matches = array(
 					3 => '=abc; !x; def',
-					4 => 'abc; !x; def'	
+					4 => 'abc; !x; def'
 				);
 				$parsingResult = $this->opt->compiler->parametrize('testCase', $matches, $params);
 			}
@@ -816,7 +816,7 @@
 			}
 			$this -> fail('Invalid marker exception not returned!');
 		} // end testParametrizeOptionalJump();
-		
+
 		public function testParametrizeEscapingUnnamed1()
 		{
 			try
@@ -825,7 +825,7 @@
 					'param1' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
 					'param2' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
 				);
-				
+
 				$matches = array(
 					3 => '=$abc + $cba; $bcb + 8',
 					4 => '$abc + $cba; $bcb + 8'
@@ -834,7 +834,7 @@
 				$this -> assertTrue(
 					$params['param1'] == '$this->data[\'abc\']+$this->data[\'cba\']' &&
 					$params['param2'] == '$this->data[\'bcb\']+8'
-				);				
+				);
 			}
 			catch(optException $exception)
 			{
@@ -986,12 +986,12 @@ ppp
 ppp
 {/ava}
 {/compiler}';
-$result = 'echo \'BEGIN COMPILER SESSION
+$result = 'BEGIN COMPILER SESSION
 MASTER: ava ()(ava)
 ALT: avaelse ()(ava)
 ENDER: /ava ()(ava)
-END COMPILER SESSION\';';
-			$this -> assertEquals($result, $this->opt->compiler->parse($template));		
+END COMPILER SESSION';
+			$this -> assertEquals($result, $this->opt->compiler->parse(NULL, $template));
 		} // end testCompilerSimple();
 		
 		public function testCompilerCommands()
@@ -999,10 +999,10 @@ END COMPILER SESSION\';';
 $template = '{compiler}
 {permate/}
 {/compiler}';
-$result = 'echo \'BEGIN COMPILER SESSION
+$result = 'BEGIN COMPILER SESSION
 CMD: permate ()(permate)
-END COMPILER SESSION\';';
-			$this -> assertEquals($result, $this->opt->compiler->parse($template));		
+END COMPILER SESSION';
+			$this -> assertEquals($result, $this->opt->compiler->parse(NULL, $template));		
 		} // end testCompilerCommands();
 		
 		public function testCompilerMegadeath()
@@ -1016,7 +1016,7 @@ $template = '{compiler}
 	{/sect2}
 {/sect1}
 {/compiler}';
-$result = 'echo \'BEGIN COMPILER SESSION
+$result = 'BEGIN COMPILER SESSION
 MASTER: sect1 (=test)(sect1)
 .MASTER: sect2 (=hope)(sect2)
 ..CMD: thereishope (=miracle)(thereishope)
@@ -1024,8 +1024,8 @@ MASTER: sect1 (=test)(sect1)
 ..CMD: thereisnohope ()(thereisnohope)
 .ENDER: /sect2 ()(sect2)
 ENDER: /sect1 ()(sect1)
-END COMPILER SESSION\';';
-			$this -> assertEquals($result, $this->opt->compiler->parse($template));		
+END COMPILER SESSION';
+			$this -> assertEquals($result, $this->opt->compiler->parse(NULL, $template));		
 		} // end testCompilerMegadeath();
 		
 		public function testCompilerInvalidTree()
@@ -1040,7 +1040,7 @@ $template = '{sect1=test}
 
 			try
 			{
-				$parsingResult = $this->opt->compiler->parse($template);
+				$parsingResult = $this->opt->compiler->parse(NULL, $template);
 			}
 			catch(optException $exception)
 			{
@@ -1051,6 +1051,54 @@ $template = '{sect1=test}
 			}
 			$this -> fail('Exception not returned!');	
 		} // end testCompilerInvalidTree();
+		
+		public function testCompilerInvalidEnclosingTag()
+		{
+$template = '{compiler}{tag1}
+{tag2}
+{tag3}
+{/tag2}
+{/tag3}
+{/tag1}{/compiler}';
+
+			try
+			{
+				$parsingResult = $this->opt->compiler->parse(NULL, $template);
+			}
+			catch(optException $exception)
+			{
+				if($exception -> getCode() == 115)
+				{
+					return 1;
+				}
+			}
+			$this -> fail("Exception not returned! The result: \r\n".$parsingResult);	
+		} // end testCompilerInvalidEnclosingTag();
+		
+		public function testStaticTextEntities()
+		{
+			try
+			{
+				$this -> assertEquals('foo { } bar', $this->opt->compiler->parse(NULL, 'foo &lb; &rb; bar'));
+			}
+			catch(optException $exc)
+			{
+				$this -> fail('Exception returned: '.$exc -> getMessage());
+			}
+		} // end testStaticTextEntities();
+		
+		public function testDynamicTextEntities()
+		{
+			$this -> opt -> entities = true;
+			try
+			{
+				$this -> assertEquals('<'.'?php echo "This is a text with entities: { } < >"."another text".\'another text\'; ?'.'>', $this->opt->compiler->parse(NULL, '{"This is a text with entities: &lb; &rb; &lt; &gt;"::&quot;another text&quot;::&apos;another text&apos;}'));
+			}
+			catch(optException $exc)
+			{
+				$this -> fail('Exception returned: '.$exc -> getMessage());
+			}
+		} // end testStaticTextEntities();
 /*
 		This test is not yet supported... and probably never will.	
 		public function testCompilerEscaping()
@@ -1065,7 +1113,7 @@ $template = '{sect1=test}
 			{
 				$this -> fail('Exception returned: '.$exception->getCode().' ('.$exception -> getMessage().')!');
 			}
-			return 1;			
+			return 1;
 		} // end testCompilerEscaping();
 */
 	}

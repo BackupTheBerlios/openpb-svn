@@ -223,7 +223,7 @@
 	
 		public function hasAttributes()
 		{
-			return $this -> attributes != NULL;
+			return isset($this -> attributes[3]);
 		} // end hasAttributes();
 		
 		public function getAttributes()
@@ -451,6 +451,7 @@
 							{
 								continue;
 							}
+							
 							// a command		
 							$textAssign = 0;
 		
@@ -482,6 +483,7 @@
 									}
 								}
 							}
+							$sortMatches[1] = $this -> parseEntities($sortMatches[1]);
 							if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sortMatches[1], $found))
 							{
 								// we have an instruction
@@ -631,9 +633,9 @@
 			{
 				file_put_contents($filename.'.dyn', serialize($this -> dynamicSeg));			
 			}
-			return $code;
+			return $this -> output;
 		} // end parse();
-		
+
 		public function debugBlockProcess(optBlock $block)
 		{
 			if($block -> hasChildNodes())
@@ -703,7 +705,7 @@
 					$this->rConfiguration.')/x', $expr, $match);
 			
 			$tokens = &$match[0];
-			
+
 			$wordOperators = array(
 				'eq' => '==',
 				'ne' => '!=',
@@ -1300,6 +1302,20 @@
 			$this -> tpl -> error(E_USER_ERROR, 'Unexpected token: '.$tokenType.' ('.$token.') in expression '.$expression, 108);
 		} // end expressionError();
 		
+		private function parseEntities($code)
+		{
+			if($this -> tpl -> xmlsyntaxMode == 1 || $this -> tpl -> entities == 1)
+			{
+				return str_replace(array(
+					'&amp;', '&quot;', '&lt;', '&gt;', '&lb;', '&rb;', '&apos;'				
+					),array(
+					'&', '"', '<', '>', '{', '}', '\''				
+					),
+					$code);
+			}
+			return $code;
+		} // end parseEntities();
+		
 		/*
 		 * INSTRUCTION WRITING TOOLS
 		 */
@@ -1506,16 +1522,6 @@
 
 		private function paramTest($instrName, $name, $type, $value)
 		{
-			// Entity parsing
-			if($this -> tpl -> xmlsyntaxMode == 1 || $this -> tpl -> entities == 1)
-			{
-				$value = str_replace(array(
-					'&amp;', '&quot;', '&lt;', '&gt;', '&lb;', '&rb;', '&apos;'				
-				),array(
-					'&', '"', '<', '>', '{', '}', '\''				
-				),
-				$value);
-			}
 			// Type checking		
 			switch($type)
 			{
@@ -1528,13 +1534,11 @@
 					break;
 				case OPT_PARAM_EXPRESSION:
 					return $this -> compileExpression($value);
-					break;
 				case OPT_PARAM_ASSIGN_EXPR:
 					$ret = $this -> compileExpression($value, true);
 					return $ret[0];
 				case OPT_PARAM_STRING:
 					return $value;
-					break;
 				case OPT_PARAM_NUMBER:
 					if(preg_match('/(0[xX][0-9a-fA-F]+)|([0-9]+(\.[0-9]+)?)/', $value))
 					{
