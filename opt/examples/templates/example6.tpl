@@ -8,9 +8,11 @@
 <p>Template including allows you to split the page to more smaller templates: header, footer, the body etc. This is especially useful,
 when you have to use the same piece of HTML code in many places.</p>
 <hr/>
-{include="header.tpl"; !x; tralala}
+{include="header.tpl"; !x; content}
 
-{@tralala}
+<p>The page:</p>
+
+{@content}
 
 <i>The body of the page</i>
 

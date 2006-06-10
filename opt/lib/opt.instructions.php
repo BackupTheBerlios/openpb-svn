@@ -402,13 +402,21 @@
 			{
 				$code .= ' $this -> vars[\''.$name.'\'] = '.$variable.'; ';		
 			}
+			if($params['assign'] != NULL)
+			{
+				$code .= ' ob_start(); ';
+			}
 			if($params['default'] != NULL)
 			{
 				$code .= ' if(!$this -> doInclude('.$params['file'].')){ $this -> doInclude('.$params['default'].'); } ';
 			}
 			else
 			{
-				$code .= '$this -> doInclude('.$params['file'].');';
+				$code .= '$this -> doInclude('.$params['file'].'); ';
+			}
+			if($params['assign'] != NULL)
+			{
+				$code .= '$this->vars[\''.$params['assign'].'\'] = ob_get_clean(); ';
 			}
 			$this -> compiler -> out($code);
 		} // end instructionNodeProcess();
