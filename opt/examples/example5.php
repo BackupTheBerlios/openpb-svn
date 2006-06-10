@@ -43,13 +43,21 @@
 			}
 			return $this->data[$group][$text_id]; 	
 		} // end put();
-		
+
 		public function apply($group, $text_id)
 		{
 			$args = func_get_args();
 			unset($args[0]);
 			unset($args[1]);
 			$this -> replacements[$group][$text_id] = vsprintf($this -> data[$group][$text_id], $args);
+		} // end apply();
+		
+		public function putApply($group, $text_id)
+		{
+			$args = func_get_args();
+			unset($args[0]);
+			unset($args[1]);
+			return vsprintf($this -> data[$group][$text_id], $args);
 		} // end apply();  
 	}
  

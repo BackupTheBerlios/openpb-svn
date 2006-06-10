@@ -82,9 +82,23 @@
 			$this -> parent = $parent;
 		} // end __construct();
 		
-		public function addItem($item)
+		public function addItem($item, $tpl = NULL)
 		{
-			$this -> blocks[] = $item;		
+			if(is_null($tpl))
+			{
+				$this -> blocks[] = $item;			
+			}
+			else
+			{
+				if(strpos($item -> getName(), $this -> name) !== false)
+				{
+					$this -> blocks[] = $item;
+				}
+				else
+				{
+					$tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "'.$item->getName().'".', OPT_E_ENCLOSING_STATEMENT);
+				}
+			}
 		} // end addBlock();
 		
 		public function getName()
@@ -175,12 +189,12 @@
 
 		public function storeBlock(optBlock $block)
 		{
-			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 116);
+			$this -> error(E_USER_ERROR, 'Unexpected "'.$this->getType().'"!', OPT_E_UNKNOWN);
 		} // end storeBlock();
 		
 		public function restoreBlock()
 		{
-			$this -> error(E_USER_ERROR, 'Unexpected `'.$this->getType().'`!', 116);
+			$this -> error(E_USER_ERROR, 'Unexpected "'.$this->getType().'"!', OPT_E_UNKNOWN);
 		} // end restoreBlock();
 
 		public function __toString()
@@ -240,6 +254,18 @@
 		{
 			return count($this -> nodes) > 0;
 		} // end hasChildNodes();
+		
+		public function getElementByTagName($tagName)
+		{
+			foreach($this -> nodes as $node)
+			{
+				if($node -> getName() == $tagName)
+				{
+					return $node;
+				}
+			}
+			return NULL;
+		} // end getElementByTagName();
 		
 		public function getIterator()
 		{
@@ -367,7 +393,7 @@
 					$this -> tpl -> delimiters[] = '\<()opt\:(.*?)(\/)\>';
 					$this -> tpl -> delimiters[] = 'opt\:put\=\"(.*?[^\\\\])\"';
 					
-					$blockRegex = '\<\!\-\-|\-\-\>|<\!\[CDATA\[|\]\]>|\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
+					$blockRegex = '<\!\[CDATA\[|\]\]>|\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
 				}
 				$regex = implode('|', $this -> tpl -> delimiters);
 			}
@@ -381,7 +407,7 @@
 			$commented = 0;
 			$literal = false;
 			$php = false;
-			
+
 			$textBlocks = preg_split('/('.$blockRegex.')/', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
 
 			foreach($textBlocks as $bid => $bval)
@@ -447,7 +473,7 @@
 						// comment usage
 						if(strlen($item) > 1)
 						{
-							if(preg_match('/{\*.+?\*\}/s', trim($item)) || preg_match('/\<\!\-\-.+\-\-\>/s', $item))
+							if(preg_match('/{\*.+?\*\}/s', trim($item)))
 							{
 								continue;
 							}
@@ -508,7 +534,7 @@
 											$current = new optNode($found[2], OPT_INSTRUCTION, $current);
 											$currentBlock -> addNode($current);
 											$currentBlock = new optBlock($found[2], $found, OPT_MASTER);
-											$current -> addItem($currentBlock);
+											$current -> addItem($currentBlock, $this -> tpl);
 											break;
 										case OPT_ALT:
 											$currentBlock = new optBlock($found[2], $found, OPT_ALT);
@@ -516,11 +542,11 @@
 											break;
 										case OPT_ENDER:
 											$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
-											$current -> addItem($currentBlock);
+											$current -> addItem($currentBlock, $this -> tpl);
 											$current = $current -> getParent();
 											if(!is_object($current))
 											{
-												$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+												$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "'.$found[2].'".', OPT_E_ENCLOSING_STATEMENT);
 											}
 											$currentBlock = $current -> restoreBlock();
 											break;	
@@ -533,11 +559,11 @@
 									if($sortMatches[0] == '/')
 									{
 										$currentBlock = new optBlock($found[2], $found);
-										$current -> addItem($currentBlock);
+										$current -> addItem($currentBlock, $this -> tpl);
 										$current = $current -> getParent();
 										if(!is_object($current))
 										{
-											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 113);
+											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "'.$found[2].'".', OPT_E_ENCLOSING_STATEMENT);
 										}
 										$currentBlock = $current -> restoreBlock();
 									}
@@ -547,7 +573,7 @@
 										$current = new optNode($realname, OPT_COMPONENT, $current);
 										$currentBlock -> addNode($current);
 										$currentBlock = new optBlock($realname, $found);
-										$current -> addItem($currentBlock);
+										$current -> addItem($currentBlock, $this -> tpl);
 									}
 								}
 								# /COMPONENTS
@@ -560,11 +586,11 @@
 									{
 										// ending command, like in XML: /command
 										$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
-										$current -> addItem($currentBlock);
+										$current -> addItem($currentBlock, $this -> tpl);
 										$current = $current -> getParent();
 										if(!($current instanceof ioptNode))
 										{
-											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: `'.$found[2].'`!', 115);
+											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "'.$found[2].'"!', OPT_E_ENCLOSING_STATEMENT);
 										}
 										$currentBlock = $current -> restoreBlock();
 									}
@@ -572,14 +598,14 @@
 									{
 										// standalone command, like XML: command/ 
 										$node = new optNode($found[2], OPT_UNKNOWN, $current);
-										$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND));
+										$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND), $this -> tpl);
 										$currentBlock -> addNode($node);
 									}
 									elseif($ending == 'else')
 									{
 										// alternative command, doesn't exist in XML: commandelse
 										$currentBlock = new optBlock($found[2], $found, OPT_ALT);
-										$current -> addItem($currentBlock);
+										$current -> addItem($currentBlock, $this -> tpl);
 									}
 									else
 									{
@@ -588,7 +614,7 @@
 										$current = new optNode($realname, OPT_UNKNOWN, $current);
 										$currentBlock -> addNode($current);
 										$currentBlock = new optBlock($realname, $found, OPT_MASTER);
-										$current -> addItem($currentBlock);
+										$current -> addItem($currentBlock, $this -> tpl);
 									}
 								}
 							}
@@ -625,6 +651,12 @@
 					$this -> output = $name($this -> tpl, $this -> output);
 				}
 			}
+			
+			if(!is_writeable($this -> tpl -> compile))
+			{
+				$this -> tpl -> error(E_USER_ERROR, $this->tpl->compile.' is not a writeable directory.', OPT_E_WRITEABLE);
+			}
+			
 			if(!is_null($filename))
 			{
 				file_put_contents($filename, $this -> output);
@@ -1192,7 +1224,7 @@
 			{
 				if($this -> tpl -> i18nType == 0 && !isset($this -> tpl -> i18n[$ns[0]][$ns[1]]))
 				{
-					$this -> tpl -> error(E_USER_WARNING, 'The language block `'.$name.'` does not exist.', 151);
+					$this -> tpl -> error(E_USER_WARNING, 'The language block "'.$name.'" does not exist.', OPT_W_LANG_NOT_FOUND);
 				}
 			}
 			if($state != OPCODE_PARENTHESIS && $heap != OPCODE_APPLY)
@@ -1254,7 +1286,7 @@
 			{
 				return $this -> tpl -> phpFunctions[$function].'(';
 			}
-			$this -> tpl -> error(E_USER_ERROR, 'Call to undefined function: '.$function, 112);
+			$this -> tpl -> error(E_USER_ERROR, 'Call to undefined function: "'.$function.'"', OPT_E_FUNCTION_NOT_FOUND);
 		} // end compileString();
 
 		private function compileOpt($namespace)
@@ -1284,7 +1316,7 @@
 					}
 					else
 					{
-						$this -> tpl -> error(E_USER_ERROR, 'Unknown constant: '.$namespace[2], 106);
+						$this -> tpl -> error(E_USER_ERROR, 'Unknown constant: "'.$namespace[2].'"', OPT_E_CONSTANT_NOT_FOUND);
 					}
 				case 'version':
 					return 'OPT_VERSION';
@@ -1293,13 +1325,13 @@
 					{
 						return $this -> processors[$namespace[1]] -> processOpt($namespace);
 					}
-					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT command: '.$namespace[1], 107);	
+					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT command: "'.$namespace[1].'"', OPT_E_COMMAND_NOT_FOUND);	
 			}
 		} // end compileOpt();
 		
 		private function expressionError($tokenType, $token, $expression)
 		{
-			$this -> tpl -> error(E_USER_ERROR, 'Unexpected token: '.$tokenType.' ('.$token.') in expression '.$expression, 108);
+			$this -> tpl -> error(E_USER_ERROR, 'Unexpected token: '.$tokenType.' ('.$token.') in expression '.$expression, OPT_E_EXPRESSION);
 		} // end expressionError();
 		
 		private function parseEntities($code)
@@ -1567,15 +1599,15 @@
 			switch($code)
 			{
 				case 1: 
-					$this -> tpl -> error(E_USER_ERROR, 'Required parameter `'.$number.'` not specified in instruction `'.$name.'`.', 110);
+					$this -> tpl -> error(E_USER_ERROR, 'Required parameter "'.$number.'" not specified in "'.$name.'" instruction.', OPT_E_REQUIRED_NOT_FOUND);
 				case 3:
-					$this -> tpl -> error(E_USER_ERROR, 'Invalid parameter #'.$number.' in `'.$name.'` instruction.', 111);
+					$this -> tpl -> error(E_USER_ERROR, 'Invalid parameter #'.$number.' in "'.$name.'" instruction.', OPT_E_INVALID_PARAMETER);
 				case 4:
-					$this -> tpl -> error(E_USER_ERROR, 'Cannot use !x marker for a required parameter in `'.$name.'` instruction.', 112);
+					$this -> tpl -> error(E_USER_ERROR, 'Cannot use !x marker for a required parameter in "'.$name.'" instruction.', OPT_E_DEFAULT_MARKER);
 				case 6:
-					$this -> tpl -> error(E_USER_ERROR, '__UNKNOWN__ is a reserved parameter name in instruction `'.$name.'`.', 113);
+					$this -> tpl -> error(E_USER_ERROR, '__UNKNOWN__ is a reserved parameter name in "'.$name.'" instruction.', OPT_E_UNKNOWN_PARAM);
 				case 7:
-					$this -> tpl -> error(E_USER_ERROR, 'The `'.$name.'` instruction requires '.$number.' style parameters.', 114);			
+					$this -> tpl -> error(E_USER_ERROR, 'The "'.$name.'" instruction requires '.$number.' style parameters.', OPT_E_PARAM_STYLE);			
 			}
 		} // end parametrizeError();
 	}

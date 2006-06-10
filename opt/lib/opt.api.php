@@ -16,7 +16,7 @@
 	define('OPT_SECTION_SINGLE', 1);
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
-	define('OPT_VERSION', '1.0.0');
+	define('OPT_VERSION', '1.0.0-RC3');
 
 	if(!defined('OPT_DIR'))
 	{
@@ -25,7 +25,7 @@
 
 	require(OPT_DIR.'opt.error.php');
 
-	abstract class optApi
+	class optApi
 	{
 		// Configuration
 		public $root = NULL;
@@ -58,7 +58,9 @@
 		public $data = array();
 		public $vars = array();
 		public $capture = array();
+		// Assotiative array: OPT function name => PHP function name
 		public $functions = array();
+		// Assotiative array: OPT function name => PHP function name
 		public $phpFunctions = array();
 		public $control = array();
 		# COMPONENTS
@@ -123,7 +125,7 @@
 			}
 			else
 			{
-				$this -> error(E_USER_ERROR, 'First parameter must be an array.', 2);
+				$this -> error(E_USER_ERROR, 'First parameter must be an array.', OPT_E_ARRAY_REQUIRED);
 			}
 		} // end setDefaultI18n();
 		
@@ -152,12 +154,114 @@
 				}
 			}
 		} // end registerInstruction();
-
-		public function doParse($file)
+		
+		public function parse($filename)
 		{
+			$this -> fetch($filename, true);
+		} // end parse();
 
-		} // end doParse();
+		public function fetch($filename, $display = false)
+		{
+			// Get the compiled file version name
+			$compiled = $this -> needCompile($filename);
 
-		abstract protected function doInclude($file, $nestingLevel);
+			// Only if we want to return the output as a text
+			if(!$display)
+			{
+				ob_start();
+			}
+
+			// Disable E_NOTICE and include the compiled version
+			$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+			include($this -> compile.$compiled);
+			error_reporting($oldErrorReporting);
+			
+			// Return the output, if needed.
+			if(!$display)
+			{
+				return ob_get_clean();
+			}
+		} // end fetch();
+
+		public function doInclude($filename, $default = false)
+		{
+			// Get the compiled file version name
+			$compiled = $this -> needCompile($filename, true);			
+			if($compiled === false)
+			{
+				// Template not found
+				return false;
+			}
+
+			// Only if we want to return the output as a text
+			if(!$display)
+			{
+				ob_start();
+			}
+
+			// Disable E_NOTICE and include the compiled version
+			$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+			include($this -> compile.$compiled);
+			error_reporting($oldErrorReporting);
+			
+			// Return the output, if needed.
+			if(!$display)
+			{
+				return ob_get_clean();
+			}
+		} // end doInclude();
+		
+		protected function needCompile($filename, $noException = false)
+		{
+			// This method returns the compiled file name. If the compiled version
+			// Does not exist, the template is compiled.
+			$compiled = optCompileFilename($filename);
+			
+			// Both the modification time and the file existence are checked by filemtime() function
+			// The fewer disk operation, the better
+			$compiledTime = @filemtime($this -> compile.$compiled);
+			$result = false;
+			$rootTime = @filemtime($this -> root.$filename);
+			if($rootTime === false)
+			{
+				if($noException)
+				{
+					return NULL;
+				}
+				$this -> error(E_USER_ERROR, '"'.$filename.'" not found in '.$this->root.' directory.', 6);
+			}
+			if($compiledTime === false || $compiledTime < $rootTime || $this -> alwaysRebuild)
+			{
+				// If it is the time to (re)compilation, read the file content to this variable
+				$result = file_get_contents($this -> root.$filename);
+			}
+			
+			if($result === false)
+			{
+				// The script goes here, if the source template is not loaded. It simply returns the
+				// Compiled version filename
+				return $compiled;
+			}
+
+			// Otherwise, we set up the compiler and parse the template.
+			if(!is_object($this -> compiler))
+			{
+				require_once(OPT_DIR.'opt.compiler.php');
+				$this -> compiler = new optCompiler($this);
+			}
+			$this -> compiler -> parse($this -> compile.$compiled, $result);
+			return $compiled;
+		} // end needCompile();
+		
+		public function getTemplate($filename)
+		{
+			$compiler = new optCompiler($this -> compiler);
+			return $compiler -> parse(NULL, file_get_contents($this -> root.$filename));
+		} // end getFilename();
 	}
+
+	function optCompileFilename($filename)
+	{
+		return '%%'.str_replace('/', '_', $filename);
+	} // end optCompileFilename();
 ?>

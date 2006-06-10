@@ -242,7 +242,7 @@
 						}
 						else
 						{
-							$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, 1);
+							$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, OPT_E_CONTENT_TYPE);
 						}
 			}
 			if($cache == OPT_NO_HTTP_CACHE)
@@ -290,7 +290,7 @@
 			}
 			else
 			{
-				$this -> error(E_USER_ERROR, 'First parameter must be an array.', 2);
+				$this -> error(E_USER_ERROR, 'First parameter must be an array.', OPT_E_ARRAY_REQUIRED);
 			}
 		} // end setDefaultI18n();
 
@@ -348,12 +348,12 @@
 
 		public function registerResource($name, $callback)
 		{
-			if(function_exists($callback))
+			if(function_exists('optResource'.$callback))
 			{
-				$this -> resources[$name] = $callback;
+				$this -> resources[$name] = 'optResource'.$callback;
 				return true;
 			}
-			$this -> error(E_USER_ERROR, 'Specified value is not a valid resource function name.', 5);
+			$this -> error(E_USER_ERROR, 'Specified value: "optResource'.$callback.'" is not a valid resource function name.', OPT_E_RESOURCE);
 		} // end registerResource();
 
 		public function registerComponent($name)
@@ -397,7 +397,7 @@
 			}
 			else
 			{
-				$this -> error(E_USER_ERROR, 'Specified '.$idx.' filter function: `'.$callback.'` does not exist!', 4);
+				$this -> error(E_USER_ERROR, 'Specified value: "'.$prefix.$callback.'" is not a valid OPT filter function name.', OPT_E_FILTER);
 			}
 		} // end registerFilter();
 
@@ -709,13 +709,13 @@
 					{
 						return NULL;
 					}
-					$this -> error(E_USER_ERROR, 'Specified resource type: '.$resource.' does not exist.', 8);
+					$this -> error(E_USER_ERROR, 'Specified resource type: "'.$resource.'" does not exist.', OPT_E_RESOURCE_NOT_FOUND);
 				}
 				$callback = $this -> resources[$resource];
 			}
 			
 			$compiledTime = @filemtime($this -> compile.$compiled);
-			$result = array(0 => false, '');
+			$result = false;
 			if($resource == 'file')
 			{
 				$rootTime = @filemtime($this -> root.$filename);
@@ -725,11 +725,11 @@
 					{
 						return NULL;
 					}
-					$this -> error(E_USER_ERROR, '`'.$filename.'` not found in '.$this->root.' directory.', 9);
+					$this -> error(E_USER_ERROR, '"'.$filename.'" not found in '.$this->root.' directory.', OPT_E_FILE_NOT_FOUND);
 				}
 				if($compiledTime === false || $compiledTime < $rootTime || $this -> alwaysRebuild)
 				{
-					$result = array(0 => true, file_get_contents($this -> root.$filename));
+					$result = file_get_contents($this -> root.$filename);
 				}
 			}
 			else
@@ -737,7 +737,7 @@
 				$result = $callback($this, $filename, $compiledTime);
 			}
 			
-			if(!$result[0])
+			if($result === false)
 			{
 				return $compiled;
 			}
@@ -747,13 +747,12 @@
 				require_once(OPT_DIR.'opt.compiler.php');
 				$this -> compiler = new optCompiler($this);
 			}
-			$this -> compiler -> parse($this -> compile.$compiled, $result[1]);
+			$this -> compiler -> parse($this -> compile.$compiled, $result);
 			return $compiled;	
 		} // end needCompile();
 		
 		public function getTemplate($filename)
 		{
-			$compiled = optCompileFilename($filename);
 			$resource = 'file';
 			if(strpos($filename, ':') !== FALSE)
 			{
@@ -763,19 +762,19 @@
 				
 				if(!isset($this -> resources[$resource]))
 				{
-					$this -> error(E_USER_ERROR, 'Specified resource type: '.$resource.' does not exist.', 8);
+					$this -> error(E_USER_ERROR, 'Specified resource type: '.$resource.' does not exist.', OPT_E_RESOURCE_NOT_FOUND);
 				}
 				$callback = $this -> resources[$resource];
 			}
+			$compiler = new optCompiler($this -> compiler);
 			if($resource == 'file')
 			{
 				$result = file_get_contents($this -> root.$filename);
 			}
 			else
 			{
-				$result = $callback($this, $filename, $compiledTime);
+				$result = $callback($this, $filename);
 			}
-			$compiler = new optCompiler($this -> compiler);
 			return $compiler -> parse(NULL, $result);
 		} // end getFilename();
 		
@@ -848,7 +847,7 @@
 				// Compile plugin database
 				if(!is_writeable($this -> plugins))
 				{
-					$this -> error(E_USER_ERROR, $this->plugins.' is not a writeable directory.', 10);
+					$this -> error(E_USER_ERROR, $this->plugins.' is not a writeable directory.', OPT_E_WRITEABLE);
 				}
 
 				$code = '';
@@ -917,7 +916,7 @@
 	
 	function optCompileFilename($filename)
 	{
-		return '%%'.str_replace('/', '_', $filename);
+		return '%%'.str_replace(array('/', ':'), array('_', '_'), $filename);
 	} // end optCompileFilename();
 	
 	function optCacheFilename($filename, $id = '')

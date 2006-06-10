@@ -53,23 +53,7 @@
 					$this -> defaultTreeProcess($node -> getFirstBlock());
 					break;
 				case OPT_TEXT:
-					preg_match('/([\s]*)(.+)([\s]*)/s', $node->__toString(), $found);
-					
-					if(is_array($found) && isset($found[1]))
-					{
-						if(strlen($found[1]) > 0)
-						{
-							$this -> compiler -> out(' ', true);
-						}
-					}
-				//	if(strlen($found[3]) > 0)
-				//	{
-				//		$this -> compiler -> out($found[2].' ', true);
-				//	}
-				//	else
-				//	{
 					$this -> compiler -> out($node->__toString(), true);
-				//	}
 					break;
 				case OPT_EXPRESSION:
 					$result = $this -> compiler -> compileExpression($node->getFirstBlock()->getAttributes(), 1);
@@ -79,7 +63,7 @@
 						$this -> compiler -> out($result[0].';');
 					}
 					else
-					{		
+					{
 						$this -> compiler -> out('echo '.$result[0].';');
 					}
 					break;
@@ -599,7 +583,7 @@
 		 	}
 			else
 			{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'ELSEIF called when not in IF.', 201);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'ELSEIF called when not in IF.', OPT_E_IF_ELSEIF);
 		 	}
 		 	# /nestingLevel
 		} // end ifElseif();
@@ -615,7 +599,7 @@
 		 	}
 			else
 			{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'ELSE called when not in IF.', 202);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'ELSE called when not in IF.', OPT_E_IF_ELSE);
 		 	}
 		 	# /nestingLevel
 		} // end ifElse();
@@ -632,7 +616,7 @@
 		 	}
 			else
 			{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/IF called when not in IF.', 203);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/IF called when not in IF.', OPT_E_IF_END);
 		 	}
 		 	# /nestingLevel
 		} // end ifEnd();
@@ -685,7 +669,7 @@
 			}
 			else
 			{
-				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$params['to'].')', 204);
+				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$params['to'].')', OPT_E_CAPTURE_SUB);
 			}
 		} // end captureBegin();
 		
@@ -698,7 +682,7 @@
 			}
 			else
 			{
-				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$matches[4].')', 205);
+				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$matches[4].')', OPT_E_CAPTURE_SUB);
 			}
 		} // end captureEnd();
 
@@ -769,7 +753,7 @@
 		 	}
 		 	else
 		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/FOR called when not in FOR.', 206);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/FOR called when not in FOR.', OPT_E_FOR_END);
 		 	}
 		 	# /nestingLevel
 		} // end forEnd();
@@ -842,7 +826,7 @@
 		 	# nestingLevel
 		 	if($this -> nesting == 0)
 		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'FOREACHELSE called when not in FOREACH.', 209);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'FOREACHELSE called when not in FOREACH.', OPT_E_FOREACH_ELSE);
 		 	}
 		 	# /nestingLevel
 		 	$this -> compiler -> out(' } }else{ { ');		
@@ -860,7 +844,7 @@
 		 	}
 		 	else
 		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/FOREACH called when not in FOREACH.', 207);
+		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/FOREACH called when not in FOREACH.', OPT_E_FOREACH_END);
 		 	}
 		 	# /nestingLevel
 		} // end foreachEnd();
@@ -912,7 +896,7 @@
 			}
 			else
 			{
-				$this -> compiler -> tpl -> error(E_USER_WARNING, 'Dynamic section already opened.', 301);
+				$this -> compiler -> tpl -> error(E_USER_WARNING, 'Dynamic section already opened.', OPT_W_DYNAMIC_OPENED);
 			}
 		} // end dynamicBegin();
 		
@@ -930,7 +914,7 @@
 			}
 			else
 			{
-				$this -> compiler -> tpl -> error(E_USER_WARNING, 'Dynamic section already closed.', 302);
+				$this -> compiler -> tpl -> error(E_USER_WARNING, 'Dynamic section already closed.', OPT_W_DYNAMIC_CLOSED);
 			}
 		} // end dynamicEnd();
 	}
@@ -1000,7 +984,7 @@
 			}
 			else
 			{
-				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Unknown bind identifier: `'.$params['name'].'`.', 209);
+				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Unknown bind identifier: "'.$params['name'].'".', OPT_E_BIND_NOT_FOUND);
 			}
 		} // end instructionNodeProcess();
 	} // end optInsert;

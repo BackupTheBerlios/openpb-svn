@@ -154,7 +154,8 @@
 15.7 ;
 -0.625 ;
 -37.68 ;
--5.87 ;', $result);		
+-5.87 ;
+', $result);
 		} // end testMath();
 
 		public function testParseInt()
@@ -175,7 +176,8 @@
 107 610,567 ;
 119 873,22 ;
 54 613,567 ;
-745 169 360,048 ;', $result);
+745 169 360,048 ;
+', $result);
 		} // end testParseInt();
 		
 		public function testPrefilterRegistration()

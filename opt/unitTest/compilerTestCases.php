@@ -1007,6 +1007,8 @@ END COMPILER SESSION';
 		
 		public function testCompilerMegadeath()
 		{
+			try
+			{
 $template = '{compiler}
 {sect1=test}
 	{sect2=hope}
@@ -1025,7 +1027,12 @@ MASTER: sect1 (=test)(sect1)
 .ENDER: /sect2 ()(sect2)
 ENDER: /sect1 ()(sect1)
 END COMPILER SESSION';
-			$this -> assertEquals($result, $this->opt->compiler->parse(NULL, $template));		
+			$this -> assertEquals($result, $this->opt->compiler->parse(NULL, $template));
+			}
+			catch(optException $exception)
+			{
+				$this -> fail('Exception returned');
+			}					
 		} // end testCompilerMegadeath();
 		
 		public function testCompilerInvalidTree()

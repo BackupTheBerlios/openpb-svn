@@ -11,6 +11,37 @@
   //  --------------------------------------------------------------------  //
   //
   // $Id$
+  
+	// Error message codes
+	define('OPT_E_CONTENT_TYPE', 1);
+	define('OPT_E_ARRAY_REQUIRED', 2);
+	define('OPT_E_RESOURCE', 3);
+	define('OPT_E_FILTER', 4);
+	define('OPT_E_RESOURCE_NOT_FOUND', 5);
+	define('OPT_E_FILE_NOT_FOUND', 6);
+	define('OPT_E_WRITEABLE', 7);
+	define('OPT_E_ENCLOSING_STATEMENT', 101);
+	define('OPT_E_UNKNOWN', 102);
+	define('OPT_E_FUNCTION_NOT_FOUND', 103);
+	define('OPT_E_CONSTANT_NOT_FOUND', 104);
+	define('OPT_E_COMMAND_NOT_FOUND', 105);
+	define('OPT_E_EXPRESSION', 106);
+	define('OPT_E_REQUIRED_NOT_FOUND', 107);
+	define('OPT_E_INVALID_PARAMETER', 108);
+	define('OPT_E_DEFAULT_MARKER', 109);
+	define('OPT_E_UNKNOWN_PARAM', 110);
+	define('OPT_E_PARAM_STYLE', 111);
+	define('OPT_W_LANG_NOT_FOUND', 151);
+	define('OPT_E_IF_ELSEIF', 201);
+	define('OPT_E_IF_ELSE', 202);
+	define('OPT_E_IF_END', 203);
+	define('OPT_E_CAPTURE_SUB', 204);
+	define('OPT_E_FOR_END', 205);
+	define('OPT_E_FOREACH_ELSE', 206);
+	define('OPT_E_FOREACH_END', 207);
+	define('OPT_E_BIND_NOT_FOUND', 208);
+	define('OPT_W_DYNAMIC_OPENED', 301);
+	define('OPT_W_DYNAMIC_CLOSED', 302);
 
 	class optException extends Exception
 	{

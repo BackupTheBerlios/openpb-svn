@@ -20,46 +20,17 @@ SHORT INSTALLATION
  5. Enjoy!
 
 More info on http://opt.openpb.net/
+Docs: /docs/manual_en.pdf
 
-****************************
-*  1.0.0 CHANGELOG         *
-****************************
-There is a lot of changes, 1.0.0 and 0.1.1 are completely different scripts.
+--------------------
+How to do unitTests:
 
- - [new] Everything is new, fresh and clean
- - [upd] License change to GNU LGPL
- - [fix] many problems with output cache (thanks to normanos)
- - [fix] bug #6
- - [fix] bug #5
- - [fix] bug #7
- - [fix] bug #8
- - [fix] bug #9
- - [fix] bug #12
- - [fix] bug #13
- - [fix] bug #14
- - [fix] bug #15
- - [fix] bug #16
- - [fix] bug #17
- - [fix] bug #18
- - [fix] bug #19
- - [fix] bug #21
+ 1. Go to http://pear.php.net/package/PHPUnit and download the latest 1.3.x version of PHPUnit package.
+ 2. Extract it to the /unitTest/PHPUnit directory. The "PHPUnit.php" file must be under the location /unitTest/PHPUnit/PHPUnit.php. Be sure you have kept the OPT source location, as it is in the archive.
+ 3. Run the test files.
 
-****************************
-*  0.1.1 CHANGELOG         *
-****************************
- - [new] API that allows you to write your own template parser using OPT compiler.
- - [new] Functions may be called one from another: {function_one(function_two($block))}
- - [new] Added methods parse_capture() and fetch()
- - [new] Added method compile_cache_reset() used for cleaning compile cache.
- - [upd] Licence changed from GNU GPL to GNU LGPL.
- - [upd] New E_NOTICE remover.
- - [upd] Compile cache files are now protected from opening them from a browser.
- - [upd] Most of the functions converted into native PHP function calls.
- - [upd] Some optimizations done.
- - [fix] Unknown tag format bug removed.
- - [fix] Unexisting compile directory bug removed.
- - [fix] Invalid root/compile directory names bug removed.
- - [fix] %%cache.dat is opened now only once, when there are some templates to recompile.
- - shutdown() function removed from the code.
- - "cache" directive renamed into "compile"
- - "cache_disabled" directive renamed into "compile_cache_disabled"
+Test files:
+ 1. testme.php - basic test cases of the main OPT parser.
+ 2. testme_html.php - browser-friendly version of the script above.
+ 3. testcompiler.php - compilation tests.
+ 4. testcompiler_html.php - browser-friendly version of the script above.
