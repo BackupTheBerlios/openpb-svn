@@ -16,7 +16,7 @@
 	{
 		define('OPD_DIR', './');
 	}
-	define('OPD_VERSION', '0.4');
+	define('OPD_VERSION', '0.5');
 	define('OPD_CACHE_PREPARE', true);
 	
 	require(OPD_DIR.'opd.statement.php');

@@ -115,4 +115,5 @@ opd_console.document.write(\'</tbody>\');
 opd_console.document.write(\'</table>\');
 opd_console.document.write(\'\');
 opd_console.document.write(\'</body>\');
-opd_console.document.write(\'</html>\');';
+opd_console.document.write(\'</html>\');
+opd_console.document.close(); ';

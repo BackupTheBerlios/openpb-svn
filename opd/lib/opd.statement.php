@@ -133,9 +133,17 @@
 			return $result;
 		} // end execute();
 
-		public function fetch($fetchStyle = PDO::FETCH_BOTH, $orientation = PDO::FETCH_ORI_NEXT, $offset = NULL)
+		public function fetch($fetchStyle = NULL, $orientation = PDO::FETCH_ORI_NEXT, $offset = NULL)
 		{
-			if($offset == NULL)
+			if(is_null($fetchStyle))
+			{
+				if($data = $this -> stmt -> fetch())
+				{
+					$this -> items++;
+					return $data;
+				}
+			}
+			elseif($offset == NULL)
 			{
 				if($data = $this -> stmt -> fetch($fetchStyle, $orientation))
 				{
@@ -143,7 +151,7 @@
 					return $data;
 				}
 			}
-			if($data = $this -> stmt -> fetch($fetchStyle, $orientation, $offset))
+			elseif($data = $this -> stmt -> fetch($fetchStyle, $orientation, $offset))
 			{
 				$this -> items++;
 				return $data;
@@ -196,13 +204,22 @@
 			return $this -> stmt -> setAttribute($attribute, $value);
 		} // end setAttribute();
 
-		public function setFetchMode($mode, $className = NULL, $args = array())
+		public function setFetchMode($mode, $className = NULL, $args = NULL)
 		{
-			if($mode == PDO::FETCH_CLASS)
+			switch($mode)
 			{
-				return $this -> stmt -> setFetchMode($mode, $className, $args);
+				case PDO::FETCH_CLASS:
+					if(is_null($args))
+					{
+						return $this -> stmt -> setFetchMode($mode, $className);
+					}
+					return $this -> stmt -> setFetchMode($mode, $className, $args);
+				case PDO::FETCH_INTO:
+				case PDO::FETCH_COLUMN:
+					return $this -> stmt -> setFetchMode($mode, $className);
+				default:
+					return $this -> stmt -> setFetchMode($mode);			
 			}
-			return $this -> stmt -> setFetchMode($mode);
 		} // end setFetchMode();
 		
 		public function rowNumber()
@@ -332,7 +349,15 @@
 		{
 			if(!$this -> cache)
 			{
-				if($offset == NULL)
+				if(is_null($fetchStyle))
+				{
+					if($data = $this -> stmt -> fetch())
+					{
+						$this -> items++;
+						return $data;
+					}
+				}
+				elseif($offset == NULL)
 				{
 					if($data = $this -> stmt -> fetch($fetchStyle, $orientation))
 					{
@@ -422,11 +447,21 @@
 			{
 				return 1;
 			}
-			if($mode == PDO::FETCH_CLASS)
+			switch($mode)
 			{
-				return $this -> stmt -> setFetchMode($mode, $className);
+				case PDO::FETCH_CLASS:
+					if(is_null($args))
+					{
+						return $this -> stmt -> setFetchMode($mode, $className);
+					}
+					return $this -> stmt -> setFetchMode($mode, $className, $args);
+					break;
+				case PDO::FETCH_INTO:
+				case PDO::FETCH_COLUMN:
+					return $this -> stmt -> setFetchMode($mode, $className);
+				default:
+					return $this -> stmt -> setFetchMode($mode);			
 			}
-			return $this -> stmt -> setFetchMode($mode);
 		} // end setFetchMode();
 		
 		public function setCache($id)
