@@ -452,11 +452,11 @@
 			{
 				require_once(OPT_DIR.'opt.functions.php');
 				# GZIP_SUPPORT
-				if($this -> gzipCompression == true && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0)
+				if($this -> gzipCompression == true && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0 && !$this -> outputBufferEnabled)
 				{
 					ob_start('ob_gzhandler');
 					ob_implicit_flush(0);
-					$this -> outputBufferEnabled = true;		
+					$this -> outputBufferEnabled = true;
 				}
 				# /GZIP_SUPPORT
 				# PLUGIN_AUTOLOAD
@@ -668,7 +668,7 @@
 			}
 			# /GZIP_SUPPORT
 			# DEBUG_CONSOLE
-			if($this -> debugConsole)
+			if($this -> debugConsole && count($this -> debugOutput) > 0)
 			{
 				// Warning! This line doesn't work in PHP 5.1.2 or lower!
 				// Enable, if you have better one

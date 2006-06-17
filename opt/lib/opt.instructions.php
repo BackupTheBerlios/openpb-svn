@@ -632,8 +632,8 @@
 	
 	class optCapture extends optInstruction
 	{
-		private $active = false;
-		private $name = '';
+		private $nesting = 0;
+		private $names = array();
 	
 		public function configure()
 		{
@@ -669,24 +669,17 @@
 				'to' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
 			);
 			$this -> compiler -> parametrize('capture', $group, $params);
-			if(!$this -> active)
-			{
-				$this -> active = true;
-				$this -> name = $params['to'];
-				$this -> compiler -> out(' ob_start(); ');
-			}
-			else
-			{
-				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$params['to'].')', OPT_E_CAPTURE_SUB);
-			}
+			$this -> names[$this->nesting] = $params['to'];
+			$this -> compiler -> out(' ob_start(); ');
+			$this -> nesting++;
 		} // end captureBegin();
 		
 		private function captureEnd()
 		{
-			if($this -> active)
+			if($this -> nesting > 0)
 			{
-				$this -> active = false;
-				$this -> compiler -> out(' $this -> capture[\''.$this->name.'\'] = ob_get_clean(); ');
+				$this -> nesting--;
+				$this -> compiler -> out(' $this -> capture[\''.$this->names[$this->nesting].'\'] = ob_get_clean(); ');
 			}
 			else
 			{
