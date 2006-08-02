@@ -72,6 +72,12 @@
 		} // end defaultTreeProcess();	
 	}
 	
+	class optFakeSection
+	{
+		public $nesting = 1;
+		public $sectionList = array(0 => 'section');
+	}
+	
 	class optEscaper extends optInstruction
 	{
 		public function configure()
@@ -135,7 +141,7 @@
 			return $this -> compiler -> parse($code);
 		} // end doParse();
 	
-		protected function doInclude($name, $nestingLevel)
+		protected function doInclude($filename, $default = false)
 		{
 			// actually do nothing at the moment
 		} // end doInclude();
@@ -250,6 +256,33 @@
 				$this -> fail('Exception returned');
 			}	
 		} // end testExpressionOperatorStrings();
+		
+		public function testExpressionIncOperatorGood()
+		{
+			try
+			{
+				$this -> assertEquals('$this->data[\'a\']++', $this->opt->compiler->compileExpression('$a++'));
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
+		} // end testExpressionIncOperatorGood();
+		
+		public function testExpressionIncOperatorBad()
+		{
+			try
+			{
+				// Currently not supported
+				$this->opt->compiler->compileExpression('++$a');
+			}
+			catch(optException $exc)
+			{
+				return 1;				
+			}
+			$this -> fail('Exception not returned');
+		} // end testExpressionIncOperatorGood();
 		
 		public function testExpressionNumbers()
 		{
@@ -385,8 +418,7 @@
 		{
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
 				$this -> assertEquals('$__section_val[\'block\']', $this->opt->compiler->compileExpression('$section.block'));		
 			}
 			catch(optException $exc)
@@ -394,7 +426,21 @@
 				optErrorHandler($exc);
 				$this -> fail('Exception returned');
 			}	
-		} // end testExpressionTablePHPSyntax();
+		} // end testExpressionSectionSyntax();
+		
+		public function testExpressionSectionSyntax2()
+		{
+			try
+			{
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> assertEquals('$this->data[\'table\'][\'block\']', $this->opt->compiler->compileExpression('$table.block'));		
+			}
+			catch(optException $exc)
+			{
+				optErrorHandler($exc);
+				$this -> fail('Exception returned');
+			}	
+		} // end testExpressionSectionSyntax();
 		
 		public function testExpressionAssignmentBasic()
 		{
@@ -456,8 +502,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> opt -> compiler -> processors['section'] -> sectionList = array(0 => 'Posts');
 				$this -> assertEquals('!$__Posts_val[\'is_topic_start\']&&((optcheckrole($this,"board_delete_own_posts")&&$this->'.
 'vars[\'timeFromPosting\']<=2&&$__Posts_val[\'user_id\']==$this->'.
 'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||(optcheckrole($this,'.
@@ -477,8 +523,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> opt -> compiler -> processors['section'] -> sectionList = array(0 => 'Topics');
 				$this -> assertEquals('$this->data[\'ReadTopics\'][$__Topics_val[\'id\']]&&$this->'.
 'data[\'ReadTopics\'][$__Topics_val[\'id\']][\'content\']==$this->data[\'Forum\'][\'id\'].":1"',
 					$this->opt->compiler->compileExpression('$ReadTopics[$Topics.id] && $ReadTopics[$Topics.id][content] == $Forum[id]::":1"'));
@@ -495,8 +541,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> opt -> compiler -> processors['section'] -> sectionList = array(0 => 'Posts');
 				$this -> assertEquals('(optcheckrole($this,"board_edit_own_posts")&&$this->'.
 'vars[\'timeFromPosting\']<=5&&$__Posts_val[\'user_id\']==$this->'.
 'data[\'UserData\'][\'id\']&&!$__Posts_val[\'is_moderated\'])||(optcheckrole($this,'.
@@ -539,8 +585,8 @@
 			// Expression sent by Denver
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> opt -> compiler -> processors['section'] -> sectionList = array(0 => 'ranks');
 				$this -> assertEquals('$this->vars[\'prank\']==$__ranks_val[\'id\']',
 					$this->opt->compiler->compileExpression('@prank==$ranks.id'));
 			}
@@ -556,8 +602,8 @@
 			// Expression sent by Denver
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> opt -> compiler -> processors['section'] -> sectionList = array(0 => 'ranks');
 				$this -> assertEquals('$__ranks_val[\'id\']==$this->vars[\'prank\']',
 					$this->opt->compiler->compileExpression('$ranks.id==@prank'));
 			}
@@ -574,8 +620,8 @@
 			// Expression sent by eXtreme (http://exsite.edigo.pl)
 			try
 			{
-				$this -> opt -> compiler -> processors['section'] = new stdClass;
-				$this -> opt -> compiler -> processors['section'] -> nesting = 1;
+				$this -> opt -> compiler -> processors['section'] = new optFakeSection;
+				$this -> opt -> compiler -> processors['section'] -> sectionList = array(0 => 'Posts');
 				$this -> assertEquals('($this->vars[\'gmttime\']-$__Posts_val[\'date\'])/60',
 					$this->opt->compiler->compileExpression('(@gmttime-$Posts.date)/60'));
 			}
@@ -673,7 +719,7 @@
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 110)
+				if($exception -> getCode() == 107)
 				{
 					return 1;
 				}
@@ -809,7 +855,7 @@
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 112)
+				if($exception -> getCode() == 109)
 				{
 					return 1;
 				}
@@ -1051,7 +1097,7 @@ $template = '{sect1=test}
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 115)
+				if($exception -> getCode() == 101)
 				{
 					return 1;
 				}
@@ -1067,14 +1113,14 @@ $template = '{compiler}{tag1}
 {/tag2}
 {/tag3}
 {/tag1}{/compiler}';
-
+			$parsingResult = '';
 			try
 			{
-				$parsingResult = $this->opt->compiler->parse(NULL, $template);
+				$parsingResult = $this->opt->compiler->parse(NULL, $template);				
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 115)
+				if($exception -> getCode() == 101)
 				{
 					return 1;
 				}

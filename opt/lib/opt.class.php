@@ -30,7 +30,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.0.0-RC3');
+	define('OPT_VERSION', '1.0.0');
 	
 	if(!defined('OPT_DIR'))
 	{
@@ -121,7 +121,7 @@
 								'trim' => 'trim',
 								'length' => 'strlen',
 								'count_words' => 'str_word_count',
-								'count' => 'count',
+								'count' => 'sizeof',
 								'date' => 'date'			
 							);
 		public $control = array(0 =>
@@ -153,9 +153,9 @@
 								'\{(\/?)(.*?)(\/?)\}'
 							);
 		public $filters = array(
-								'pre' => NULL,
-								'post' => NULL,
-								'output' => NULL
+								'pre' => array(),
+								'post' => array(),
+								'output' => array()
 							);
 		public $instructionFiles = array();
 		
@@ -166,6 +166,7 @@
 		# DEBUG_CONSOLE
 		private $debugOutput = array();
 		private $totalTime = 0;
+		private $realPath = '';
 		# /DEBUG_CONSOLE
 		
 		// Output cache
@@ -450,6 +451,7 @@
 			static $init;
 			if(is_null($init))
 			{
+				$init = 1;
 				require_once(OPT_DIR.'opt.functions.php');
 				# GZIP_SUPPORT
 				if($this -> gzipCompression == true && extension_loaded('zlib') && ini_get('zlib.output_compression') == 0 && !$this -> outputBufferEnabled)
@@ -465,9 +467,15 @@
 					$this -> loadPlugins();
 				}
 				# /PLUGIN_AUTOLOAD
+				# DEBUG_CONSOLE
+				if($this -> debugConsole)
+				{
+					$this -> realPath = realpath(OPT_DIR.'opt.core.php');
+				}
+				# /DEBUG_CONSOLE
 			}
 			
-			if(!$display || count($this -> filters['output']) > 0)
+			if(!$display || sizeof($this -> filters['output']) > 0)
 			{
 				ob_start();
 			}
@@ -532,9 +540,6 @@
 				# DEBUG_CONSOLE
 				if($this -> debugConsole)
 				{
-					// Because of a bug in PHP 5.1.2 or lower we have to include this file here, not in destructor
-					// Disable it, if you have better version and go to the destructor
-					require_once(OPT_DIR.'opt.core.php');
 					$this -> totalTime += $time = microtime(true) - $time;
 					$this -> debugOutput[] = array(
 						'template' => $filename,
@@ -547,7 +552,7 @@
 				# /DEBUG_CONSOLE
 			}
 			// Parse output filters
-			if(count($this -> filters['output']) > 0)
+			if(sizeof($this -> filters['output']) > 0)
 			{
 				$content = ob_get_clean();
 				foreach($this -> filters['output'] as $filter)
@@ -563,11 +568,12 @@
 			// Return by default
 			if(!$display)
 			{
-				return ob_get_clean();
+				$text = ob_get_clean();
+				return $text;
 			}
 		} // end fetch();
 		
-		public function doInclude($filename, $default = false)
+		private function doInclude($filename, $default = false)
 		{
 			if($this -> performance)
 			{
@@ -670,9 +676,9 @@
 			# DEBUG_CONSOLE
 			if($this -> debugConsole && count($this -> debugOutput) > 0)
 			{
-				// Warning! This line doesn't work in PHP 5.1.2 or lower!
-				// Enable, if you have better one
-				// require_once(OPT_DIR.'opt.core.php');
+				// Including opt.core.php
+				// This solution is used because of PHP bug #36454
+				require_once($this -> realPath);
 				
 				optShowDebugConsole(array(
 					'Root directory' => $this -> root,

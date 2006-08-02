@@ -30,7 +30,7 @@
 		
 		protected $tpl;
 
-		public function __construct()
+		public function __construct($name = '')
 		{
 			$this -> _list = array();
 			$this -> message = NULL;
@@ -119,7 +119,7 @@
 		protected $tagParameters = array();
 		protected $tpl;
 
-		public function __construct()
+		public function __construct($name = '')
 		{
 			$this -> message = NULL;		
 		} // end __construct();
@@ -204,7 +204,7 @@
 		private $buttons;
 		protected $tpl;
 
-		public function __construct()
+		public function __construct($name = '')
 		{
 			$this -> buttons = array();
 		} // end __construct();

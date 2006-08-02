@@ -16,7 +16,7 @@
 	define('OPT_SECTION_SINGLE', 1);
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
-	define('OPT_VERSION', '1.0.0-RC3');
+	define('OPT_VERSION', '1.0.0');
 
 	if(!defined('OPT_DIR'))
 	{
@@ -70,9 +70,9 @@
 								'\{(\/?)(.*?)(\/?)\}'
 							);
 		public $filters = array(
-								'pre' => NULL,
-								'post' => NULL,
-								'output' => NULL
+								'pre' => array(),
+								'post' => array(),
+								'output' => array()
 							);
 		public $instructionFiles = array();
 		
@@ -183,7 +183,7 @@
 			}
 		} // end fetch();
 
-		public function doInclude($filename, $default = false)
+		protected function doInclude($filename, $default = false)
 		{
 			// Get the compiled file version name
 			$compiled = $this -> needCompile($filename, true);			

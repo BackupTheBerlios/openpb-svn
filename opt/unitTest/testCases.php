@@ -213,6 +213,34 @@
 			$this -> opt -> registerFilter(OPT_OUTPUTFILTER, 'Test');
 			$this -> assertEquals('Hello World', $this -> opt -> fetch('outputfilters.tpl'));		
 		} // end testRuntimeFilters();
+		
+		public function testSections()
+		{
+			$this -> opt -> assign('sect', array(0 =>
+				array('val' => 'foo'),
+				array('val' => 'bar')
+			));
+			$this -> opt -> assign('table', array(
+				'value1' => 'abc',
+				'value2' => 'def'
+			));
+			$result = $this -> opt -> fetch('sections.tpl');
+			$this -> assertEquals('foo - abc - def
+bar - abc - def
+', $result);
+		} // end testSections();
+		
+		public function testFor()
+		{
+			$result = $this -> opt -> fetch('for.tpl');
+			$this -> assertEquals('1
+2
+3
+4
+5
+6
+', $result);
+		} // end testFor();
 	}
 
 ?>

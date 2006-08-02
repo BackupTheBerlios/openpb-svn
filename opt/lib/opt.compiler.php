@@ -303,7 +303,7 @@
 		private $rDecimalNumber = '[0-9]+\.?[0-9]*';
 		private $rLanguageBlock = '\$[a-zA-Z0-9\_]+@[a-zA-Z0-9\_]+';
 		private $rVariableBlock = '(\$|@)[a-zA-Z0-9\_\.]+';
-		private $rOperators = '\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+|\-|\*|\/|\[|\]|\.|\:\:|';
+		private $rOperators = '\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+\+|\-\-|\+|\-|\*|\/|\[|\]|\.|\:\:|';
 		private $rConfiguration = '\#?[a-zA-Z0-9\_]+';
 
 		// Administrative methods
@@ -366,15 +366,12 @@
 			$this -> dynamicSeg = array(0 => '');
 			$this -> di = 0;
 
-			if(count($this -> tpl -> filters['pre']) > 0)
+			foreach($this -> tpl -> filters['pre'] as $name)
 			{
-				foreach($this -> tpl -> filters['pre'] as $name)
-				{
-					// @ used because of stupid notice
-					// "Object of class opt_template to string conversion".
-					// Whatever it means, I couldn't recognize, why PHP does such things.
-					$code = @$name($this -> tpl, $code);
-				}
+				// @ used because of stupid notice
+				// "Object of class opt_template to string conversion".
+				// Whatever it means, I couldn't recognize, why PHP does such things.
+				$code = @$name($this -> tpl, $code);
 			}
 			
 			$code = str_replace(array(
@@ -644,26 +641,22 @@
 			// execute the tree
 			$this -> processors['generic'] -> nodeProcess($root);
 			// apply postfilters
-			if(count($this -> tpl -> filters['post']) > 0)
+			foreach($this -> tpl -> filters['post'] as $name)
 			{
-				foreach($this -> tpl -> filters['post'] as $name)
-				{
-					$this -> output = $name($this -> tpl, $this -> output);
-				}
-			}
-			
-			if(!is_writeable($this -> tpl -> compile))
-			{
-				$this -> tpl -> error(E_USER_ERROR, $this->tpl->compile.' is not a writeable directory.', OPT_E_WRITEABLE);
+				$this -> output = $name($this -> tpl, $this -> output);
 			}
 			
 			if(!is_null($filename))
 			{
+				if(!is_writeable($this -> tpl -> compile))
+				{
+					$this -> tpl -> error(E_USER_ERROR, $this->tpl->compile.' is not a writeable directory.', OPT_E_WRITEABLE);
+				}
 				file_put_contents($filename, $this -> output);
-			}
-			if($this -> dynamicEnabled)
-			{
-				file_put_contents($filename.'.dyn', serialize($this -> dynamicSeg));			
+				if($this -> dynamicEnabled)
+				{
+					file_put_contents($filename.'.dyn', serialize($this -> dynamicSeg));			
+				}
 			}
 			return $this -> output;
 		} // end parse();
@@ -864,6 +857,13 @@
 							$state['first'] = 0;
 						}
 						break;
+					case '++':
+					case '--':
+						if($state['prev'] != OPCODE_VARIABLE)
+						{
+							$this -> expressionError('OPCODE_OPERATOR', $token, $expr);						
+						}
+						break;
 					case '-':
 						// signed values support, less restrictions
 						if($state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_STRING)
@@ -940,7 +940,7 @@
 					case 'mod':
 					case 'div':					
 					case 'add':						
-					case 'sub':		
+					case 'sub':	
 					case 'mul':
 						if($state['prev'] == OPCODE_OBJECT_CALL)
 						{
@@ -1191,10 +1191,9 @@
 				// section match
 				if(isset($this -> processors['section']))
 				{
-					if($this -> processors['section'] -> nesting > 0)
+					if(in_array($ns[0], $this -> processors['section'] -> sectionList))
 					{
-						$cnt = count($ns);
-						if($cnt >= 2)
+						if(($cnt = sizeof($ns)) >= 2)
 						{
 							return '$__'.$ns[$cnt-2].'_val[\''.$ns[$cnt-1].'\']';
 						}

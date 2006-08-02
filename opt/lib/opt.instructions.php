@@ -108,6 +108,7 @@
 	class optSection extends optInstruction
 	{
 		private $sections = array(0 => array());
+		public $sectionList = array();
 		public $nesting = 0;
 	
 		public function configure()
@@ -165,6 +166,7 @@
 				'state' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
 				'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
+			
 			$this -> compiler -> parametrize('show', $paramStr, $params);
 			$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], true);
 		} // end showBegin();
@@ -176,17 +178,17 @@
 			$output = '';
 			if(is_null($state))
 			{
-				$output .= ' if(is_array('.$link.') && ($__'.$name.'_cnt = count('.$link.')) > 0){ ';
+				$output .= ' if(is_array('.$link.') && ($__'.$name.'_cnt = sizeof('.$link.')) > 0){ ';
 			}
 			else
 			{
 				if($this -> compiler -> tpl -> statePriority == OPT_PRIORITY_NORMAL)
 				{
-					$output .= ' if('.$state.' && is_array('.$link.') && ($__'.$name.'_cnt = count('.$link.')) > 0){ ';
+					$output .= ' if('.$state.' && is_array('.$link.') && ($__'.$name.'_cnt = sizeof('.$link.')) > 0){ ';
 				}
 				else
 				{
-					$output .= ' if('.$state.'){ if(is_array('.$link.') && ($__'.$name.'_cnt = count('.$link.')) > 0){ ';
+					$output .= ' if('.$state.'){ if(is_array('.$link.') && ($__'.$name.'_cnt = sizeof('.$link.')) > 0){ ';
 				}
 			}
 
@@ -238,7 +240,7 @@
 				$this -> compiler -> parametrize('section', $paramStr, $params);
 				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], false);			
 			}
-			$name = $this->sections[$this->nesting]['name'];
+			$this -> sectionList[$this -> nesting] = $name = $this->sections[$this->nesting]['name'];
 
 			if($this->sections[$this->nesting]['order'] == 'reversed')
 			{
@@ -250,7 +252,7 @@
 			}
 			$this -> nesting++;
 		} // end sectionBegin();
-		
+
 		public function sectionElse()
 		{
 			if($this->sections[$this->nesting-1]['show'] == false)
@@ -259,7 +261,7 @@
 				$this -> compiler -> out(' } } else { ');		
 			}
 		} // end sectionElse();
-		
+
 		public function sectionEnd()
 		{
 			$this -> nesting--;
@@ -277,6 +279,7 @@
 				{
 					$this -> compiler -> out(' } } ');
 				}
+				unset($this -> sectionList[$this -> nesting]);
 				unset($this -> sections[$this -> nesting]);
 			}
 		} // end sectionEnd();
@@ -346,7 +349,7 @@
 				case 'id':
 					return '$__'.$namespace[2].'_id';
 				case 'size':
-					return 'count($__'.$namespace[2].'_val)';
+					return 'sizeof($__'.$namespace[2].'_val)';
 				case 'first':
 					foreach($this -> sections as $id => &$void)
 					{
@@ -814,11 +817,11 @@
 	
 			if($params['value'] == NULL)
 			{
-				$this -> compiler -> out(' if(count('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['id'].'\'] = &$__f_'.$this -> nesting.'_val; ');
+				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['id'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
 			else
 			{
-				$this -> compiler -> out(' if(count('.$params['table'].') > 0){ foreach('.$params['table'].' as $__f_'.$this -> nesting.'_id => &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = $__f_'.$this -> nesting.'_id; $this -> vars[\''.$params['value'].'\'] = &$__f_'.$this -> nesting.'_val; ');
+				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ foreach('.$params['table'].' as $__f_'.$this -> nesting.'_id => &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = $__f_'.$this -> nesting.'_id; $this -> vars[\''.$params['value'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
 		} // end foreachBegin();
 		
