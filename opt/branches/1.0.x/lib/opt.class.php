@@ -30,7 +30,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.0.0');
+	define('OPT_VERSION', '1.0.1');
 	
 	if(!defined('OPT_DIR'))
 	{
@@ -104,6 +104,7 @@
 		// Parser and compiler data
 		protected $init = false;
 		protected $outputBufferEnabled = false;
+		private $filenames = array();
 		public $compiler;
 		public $data = array();
 		public $vars = array();
@@ -249,8 +250,8 @@
 			if($cache == OPT_NO_HTTP_CACHE)
 			{
 				header('Expires: 0'); 
-				header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); 
-				// HTTP/1.1 
+				header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+				// HTTP/1.1
 				header('Cache-Control: no-store, no-cache, must-revalidate'); 
 				header('Cache-Control: post-check=0, pre-check=0', false);
 				// HTTP/1.0 
@@ -333,8 +334,8 @@
 		{
 			if(is_array($name))
 			{
-				$this -> functions = $name;
-				return 1;
+				$this -> functions = array_merge($this -> functions, $name);
+				return true;
 			}
 			else
 			{
@@ -346,6 +347,24 @@
 			}
 			return false;
 		} // end registerFunction();
+		
+		public function registerPhpFunction($name, $callback = NULL)
+		{
+			if(is_array($name))
+			{
+				$this -> phpFunctions = array_merge($this -> phpFunctions, $name);
+				return true;
+			}
+			else
+			{
+				if(strlen($name) > 0)
+				{
+					$this -> phpFunctions[$name] = $callback;
+					return true;
+				}
+			}
+			return false;
+		} // end registerPhpFunction();
 
 		public function registerResource($name, $callback)
 		{
@@ -475,6 +494,8 @@
 				# /DEBUG_CONSOLE
 			}
 			
+			array_push($this -> filenames, $filename);
+			
 			if(!$display || sizeof($this -> filters['output']) > 0)
 			{
 				ob_start();
@@ -551,6 +572,9 @@
 				}
 				# /DEBUG_CONSOLE
 			}
+			
+			array_pop($this -> filenames);
+			
 			// Parse output filters
 			if(sizeof($this -> filters['output']) > 0)
 			{
@@ -575,6 +599,7 @@
 		
 		private function doInclude($filename, $default = false)
 		{
+			array_push($this -> filenames, $filename);
 			if($this -> performance)
 			{
 				if($default == true)
@@ -605,6 +630,7 @@
 				include($this -> compile.$compiled);
 				error_reporting($oldErrorReporting);
 			}
+			array_pop($this -> filenames);
 			return true;	
 		} // end doInclude();
 
@@ -674,21 +700,26 @@
 			}
 			# /GZIP_SUPPORT
 			# DEBUG_CONSOLE
-			if($this -> debugConsole && count($this -> debugOutput) > 0)
+			if($this -> debugConsole)
 			{
 				// Including opt.core.php
 				// This solution is used because of PHP bug #36454
-				require_once($this -> realPath);
-				
-				optShowDebugConsole(array(
-					'Root directory' => $this -> root,
-					'Compile directory' => $this -> compile,
-					'Plugin directory' => (!is_null($this -> plugins) ? $this -> plugins : '&nbsp;'),
-					'Cache directory' => (!is_null($this -> cache) ? $this -> cache : '&nbsp;'),
-					'GZip compression' => $this -> gzipCompression,
-					'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),
-					'Total template time' => round($this -> totalTime, 6).' s'				
-				),$this -> debugOutput);
+				if($this -> realPath != '')
+				{
+					require_once($this -> realPath);
+					
+					optShowDebugConsole(array(
+						'Root directory' => $this -> root,
+						'Compile directory' => $this -> compile,
+						'Plugin directory' => (!is_null($this -> plugins) ? $this -> plugins : '&nbsp;'),
+						'Cache directory' => (!is_null($this -> cache) ? $this -> cache : '&nbsp;'),
+						'GZip compression' => $this -> gzipCompression,
+						'Always rebuild' => ($this->alwaysRebuild==true ? '<font color="red">Yes</font> (Please turn off this option to improve performance)' : 'No'),
+						'Performance tuning' => ($this->performance==true ? '<font color="green">Yes</font>' : 'No'),
+						'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),
+						'Total template time' => round($this -> totalTime, 6).' s'				
+					),$this -> debugOutput);
+				}
 			}
 			# /DEBUG_CONSOLE
 		} // end __destruct();
@@ -696,7 +727,7 @@
 		public function error($type, $message, $code)
 		{
 			require_once(OPT_DIR.'opt.core.php');
-			optErrorMessage($this, $type, $message, $code);
+			optErrorMessage($this, $type, $message, $code, end($this->filenames));
 		} // end error();
 		
 		private function needCompile($filename, $noException = false)
@@ -917,16 +948,16 @@
 			$resource = explode(':', $filename);
 			$filename = $resource[1];
 		}
-		return '%%'.str_replace('/', '_', $filename);
+		return '%%'.str_replace(array('/', '\\'), '_', $filename);
 	} // end optCompileFilenameFull();
 	
 	function optCompileFilename($filename)
 	{
-		return '%%'.str_replace(array('/', ':'), array('_', '_'), $filename);
+		return '%%'.str_replace(array('/', ':', '\\'), '_', $filename);
 	} // end optCompileFilename();
 	
 	function optCacheFilename($filename, $id = '')
 	{
-		return str_replace(array('|', '/'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
+		return str_replace(array('|', '/', '\\'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
 	} // end cd();
 ?>

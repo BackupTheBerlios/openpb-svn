@@ -390,7 +390,7 @@
 					$this -> tpl -> delimiters[] = '\<()opt\:(.*?)(\/)\>';
 					$this -> tpl -> delimiters[] = 'opt\:put\=\"(.*?[^\\\\])\"';
 					
-					$blockRegex = '<\!\[CDATA\[|\]\]>|\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
+					$blockRegex = '\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
 				}
 				$regex = implode('|', $this -> tpl -> delimiters);
 			}
@@ -1223,7 +1223,7 @@
 			{
 				if($this -> tpl -> i18nType == 0 && !isset($this -> tpl -> i18n[$ns[0]][$ns[1]]))
 				{
-					$this -> tpl -> error(E_USER_WARNING, 'The language block "'.$name.'" does not exist.', OPT_W_LANG_NOT_FOUND);
+					$this -> tpl -> error(E_USER_WARNING, 'The language block "$'.$ns[0].'@'.$ns[1].'" does not exist.', OPT_W_LANG_NOT_FOUND);
 				}
 			}
 			if($state != OPCODE_PARENTHESIS && $heap != OPCODE_APPLY)
