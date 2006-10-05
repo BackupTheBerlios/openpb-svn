@@ -20,6 +20,7 @@
 	define('OPT_XML', 2);
 	define('OPT_WML', 3);
 	define('OPT_TXT', 4);
+	define('OPT_FORCED_XHTML', 5);
 
 	define('OPT_PREFILTER', 0);
 	define('OPT_POSTFILTER', 1);
@@ -30,7 +31,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.0.1');
+	define('OPT_VERSION', '1.0.2');
 	
 	if(!defined('OPT_DIR'))
 	{
@@ -104,6 +105,7 @@
 		// Parser and compiler data
 		protected $init = false;
 		protected $outputBufferEnabled = false;
+		protected $contentType = '';
 		private $filenames = array();
 		public $compiler;
 		public $data = array();
@@ -123,7 +125,8 @@
 								'length' => 'strlen',
 								'count_words' => 'str_word_count',
 								'count' => 'sizeof',
-								'date' => 'date'			
+								'date' => 'date',
+								'array' => 'array'		
 							);
 		public $control = array(0 =>
 								'optSection',
@@ -196,7 +199,7 @@
 			foreach($values as $name => &$value)
 			{
 				$this -> data[$name] = $value;
-			}	
+			}
 		} // end assignGroup();
 
 		public function assignRef($name, &$value)
@@ -216,46 +219,76 @@
 			switch($content)
 			{		
 				case OPT_HTML:
-						header('Content-type: text/html'.$charset);
+						$this -> contentType = 'text/html';
 						break;
 				case OPT_XHTML:
+						if(preg_match('/application\/xhtml\+xml(?![+a-z])(;q=(0\.\d{1,3}|[01]))?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+						{
+							$xhtmlQ = isset($matches[2]) ? ($matches[2]+0.2) : 1;
+							if(preg_match('/text\/html(;q=(0\.\d{1,3}|[01]))s?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+							{
+								$htmlQ = isset($matches[2]) ? $matches[2] : 1;
+								if($xhtmlQ >= $htmlQ)
+								{
+									$this -> contentType = 'application/xhtml+xml';
+									break;
+								}
+							}
+							else
+							{
+								$this -> contentType = 'application/xhtml+xml';
+								break;
+							}
+						}
+						$this -> contentType = 'text/html';
+						break;
+				case OPT_FORCED_XHTML:
 						if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
 						{
-							header('Content-type: application/xhtml+xml'.$charset);
+							$this -> contentType = 'application/xhtml+xml';
 						}
 						else
 						{
-							header('Content-type: text/html'.$charset);
+							$this -> contentType = 'text/html';
 						}
 						break;
 				case OPT_XML:
-						header('Content-type: application/xml'.$charset);
+						$this -> contentType = 'application/xml';
 						break;
 				case OPT_WML:
-						header('Content-type: text/vnd.wap.wml'.$charset);
+						$this -> contentType = 'text/vnd.wap.wml';
 						break;
 				case OPT_TXT:
-						header('Content-type: text/plain'.$charset);
+						$this -> contentType = 'text/plain';
 						break;
 				default:
 						if(is_string($content))
 						{
-							header('Content-type: '.$content.$charset);						
+							$this -> contentType = $content;
 						}
 						else
 						{
 							$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, OPT_E_CONTENT_TYPE);
 						}
 			}
+			if($this -> contentType == 'application/xhtml+xml' && $this -> debugConsole)
+			{
+				$this -> contentType .= ' (text/html used for debug purposes)';
+				$this -> header('Content-type: text/html'.$charset);
+			}
+			else
+			{ 
+				$this -> header('Content-type: '.$this -> contentType.$charset);
+			}
 			if($cache == OPT_NO_HTTP_CACHE)
 			{
-				header('Expires: 0'); 
-				header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+				$this -> header('Expires: 0'); 
+				$this -> header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
 				// HTTP/1.1
-				header('Cache-Control: no-store, no-cache, must-revalidate'); 
-				header('Cache-Control: post-check=0, pre-check=0', false);
+				$this -> header('Cache-Control: no-store, no-cache, must-revalidate'); 
+				$this -> header('Cache-Control: post-check=0, pre-check=0', false);
 				// HTTP/1.0 
-				header('Pragma: no-cache');
+				$this -> header('Pragma: no-cache');
 			}
 		} // end httpHeaders();
 		# /HTTP_HEADERS
@@ -279,7 +312,7 @@
 				if(isset($data[$name]))
 				{
 					$this -> $name = $data[$name];
-				}			
+				}
 			}
 		} // end loadConfig();
 
@@ -300,7 +333,7 @@
 		public function setObjectI18n(ioptI18n $i18n)
 		{
 			$this -> i18nType = 1;
-			$this -> i18n = $i18n;		
+			$this -> i18n = $i18n;
 		} // end setObjectI18n();
 		# /OBJECT_I18N
 		# REGISTER_FAMILY
@@ -408,11 +441,11 @@
 						$idx = 'output';
 						break;
 				default:
-						return false;			
+						return false;
 			}
 			if(function_exists($prefix.$callback))
 			{
-				$this -> filters[$idx][] = $prefix.$callback;			
+				$this -> filters[$idx][] = $prefix.$callback;
 				return true;
 			}
 			else
@@ -631,7 +664,7 @@
 				error_reporting($oldErrorReporting);
 			}
 			array_pop($this -> filenames);
-			return true;	
+			return true;
 		} // end doInclude();
 
 		public function compileCacheReset($filename = NULL)
@@ -668,20 +701,20 @@
 			$this -> cacheFilename = optCacheFilename($filename, $id);
 			if(!isset($this -> cacheData[$hash]))
 			{
-				// Need to check, hasn't done yet			
+				// Need to check, hasn't been done yet
 				$header = @unserialize(file_get_contents($this -> cache.$this -> cacheFilename.'.def'));
 				
 				if(!is_array($header))
 				{
 					$this -> cacheBuffer[$hash]['ok'] = false;
-					return false;				
+					return false;
 				}
 				
 				$this -> cacheDynamic = $header['dynamic'];
 				if($header['timestamp'] < (time() - (int)$header['expire']))
 				{
 					$this -> cacheBuffer[$hash]['ok'] = false;
-					return false;				
+					return false;
 				}
 				$this -> cacheBuffer[$hash]['ok'] = true;
 				return true;
@@ -717,6 +750,7 @@
 						'Always rebuild' => ($this->alwaysRebuild==true ? '<font color="red">Yes</font> (Please turn off this option to improve performance)' : 'No'),
 						'Performance tuning' => ($this->performance==true ? '<font color="green">Yes</font>' : 'No'),
 						'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),
+						'Content-type' => $this -> contentType,
 						'Total template time' => round($this -> totalTime, 6).' s'				
 					),$this -> debugOutput);
 				}
@@ -785,7 +819,7 @@
 				$this -> compiler = new optCompiler($this);
 			}
 			$this -> compiler -> parse($this -> compile.$compiled, $result);
-			return $compiled;	
+			return $compiled;
 		} // end needCompile();
 		
 		public function getTemplate($filename)
@@ -870,6 +904,14 @@
 			}
 		} // end cacheWrite();
 		# /OUTPUT_CACHING
+		
+		# HTTP_HEADERS
+		protected function header($header)
+		{
+			header($header);
+		} // end header();
+		
+		# /HTTP_HEADERS
 		
 		private function loadPlugins()
 		{	

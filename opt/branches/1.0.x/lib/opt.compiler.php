@@ -303,7 +303,7 @@
 		private $rDecimalNumber = '[0-9]+\.?[0-9]*';
 		private $rLanguageBlock = '\$[a-zA-Z0-9\_]+@[a-zA-Z0-9\_]+';
 		private $rVariableBlock = '(\$|@)[a-zA-Z0-9\_\.]+';
-		private $rOperators = '\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+\+|\-\-|\+|\-|\*|\/|\[|\]|\.|\:\:|';
+		private $rOperators = '\-\>|!==|===|==|!=|\=\>|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+\+|\-\-|\+|\-|\*|\/|\[|\]|\.|\:\:|';
 		private $rConfiguration = '\#?[a-zA-Z0-9\_]+';
 
 		// Administrative methods
@@ -405,11 +405,10 @@
 			$literal = false;
 			$php = false;
 
-			$textBlocks = preg_split('/('.$blockRegex.')/', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
-
+			$textBlocks = preg_split('/('.$blockRegex.')/ms', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
 			foreach($textBlocks as $bid => $bval)
 			{
-				if(preg_match('/'.$blockRegex.'/', $bval))
+				if(preg_match('/'.$blockRegex.'/ms', $bval))
 				{
 
 					// Escape the OPT namespace, if in XML Syntax mode
@@ -457,7 +456,7 @@
 				elseif($literal == false && $php == false)
 				{
 					// tokenizer
-					preg_match_all('#({\*.+?\*\}|'.$regex.'|(.?))#si', $bval, $result, PREG_PATTERN_ORDER);
+					preg_match_all('#({\*.+?\*\}|'.$regex.'|(.?))#msi', $bval, $result, PREG_PATTERN_ORDER);
 					foreach($result as $i => &$void)
 					{
 						if($i != 0)
@@ -470,7 +469,7 @@
 						// comment usage
 						if(strlen($item) > 1)
 						{
-							if(preg_match('/{\*.+?\*\}/s', trim($item)))
+							if(preg_match('/{\*.+?\*\}/ms', trim($item)))
 							{
 								continue;
 							}
@@ -480,8 +479,8 @@
 		
 							// grep the data
 							$sortMatches = array(0 => '', 1 => '', 2 => '');
-							preg_match('/'.$regex.'/', $item, $matches);
-		
+							preg_match('/'.$regex.'/ms', $item, $matches);
+
 							$foundCommand = false;
 							foreach($matches as $id => $val)
 							{
@@ -507,7 +506,7 @@
 								}
 							}
 							$sortMatches[1] = $this -> parseEntities($sortMatches[1]);
-							if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sortMatches[1], $found))
+							if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/ms', $sortMatches[1], $found))
 							{
 								// we have an instruction
 								$realname = $found[2];
@@ -814,6 +813,7 @@
 					case '>>':
 					case '<=':
 					case '>=':
+					case '=>':
 					case '&&':
 					case '||':
 						if($state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_NULL)
@@ -1106,7 +1106,9 @@
 							{
 								$state['prev'] = OPCODE_METHOD;
 							}
-							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_ASSIGN)
+							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR ||
+								$state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_ASSIGN ||
+								$state['prev'] == OPCODE_SEPARATOR)
 							{
 								if($token == 'apply')
 								{
@@ -1420,7 +1422,7 @@
 					preg_match_all('/(?:'.
 						$this -> rDoubleQuoteString.'|'.
 						$this -> rSingleQuoteString.'|'.
-						$this -> rReversedQuoteString.'|;|[^"\'`;]*)/x', $matches[4], $found);
+						$this -> rReversedQuoteString.'|;|[^"\'`;]*)/mx', $matches[4], $found);
 					$params = array(0 => '');
 					$i = 0;
 					foreach($found[0] as $item)
@@ -1496,7 +1498,7 @@
 					$this -> parametrizeError($instruction, 7, 'OPT_STYLE_XML');
 				}
 				// use named parameters
-				preg_match_all('#([a-zA-Z0-9\_]+)\="((.*?)[^\\\\])"#s', $matches[4], $found);
+				preg_match_all('#([a-zA-Z0-9\_]+)\s*\=\s*"((.*?)[^\\\\])"#ms', $matches[4], $found);
 
 				// Parse all matches
 				foreach($found[1] as $id => $name)

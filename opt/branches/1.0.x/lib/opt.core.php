@@ -2,7 +2,7 @@
 
 	function optShowDebugConsole($config, $templates)
 	{
-echo '<script language="JavaScript">
+echo '<script type="text/javascript">
 opt_console = window.open("","OPT debug console","width=680,height=350,resizable,scrollbars=yes");
 opt_console.document.write(\'<html>\');
 opt_console.document.write(\'<head>\');

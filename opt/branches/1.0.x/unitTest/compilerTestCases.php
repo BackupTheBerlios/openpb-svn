@@ -1152,23 +1152,21 @@ $template = '{compiler}{tag1}
 				$this -> fail('Exception returned: '.$exc -> getMessage());
 			}
 		} // end testStaticTextEntities();
-/*
-		This test is not yet supported... and probably never will.	
-		public function testCompilerEscaping()
+
+		public function testTagWhitespaces()
 		{
 			try
 			{
-				$template = '{escaper=$a+"foo } bar"}{/escaper}';
-				$result = 'echo \' Escaper started: $this->data[\'a\']+\'foo } bar\'<br/>Escaper stopped<br/>\';';
-				$this -> assertEquals($result, $this->opt->compiler->parse($template));	
+				$this->opt->compiler->parse(NULL, '{instruction
+test="foo"
+  bar = "bar" }');
+  				return 1;
 			}
-			catch(optException $exception)
+			catch(optException $exc)
 			{
-				$this -> fail('Exception returned: '.$exception->getCode().' ('.$exception -> getMessage().')!');
+				$this -> fail('Exception returned: '.$exc -> getMessage());
 			}
-			return 1;
-		} // end testCompilerEscaping();
-*/
+		} // end testStaticTextEntities();
 	}
 
 ?>

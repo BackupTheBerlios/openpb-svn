@@ -372,6 +372,13 @@
 						return '($__'.$namespace[2].'_id == 0)';
 					}					
 					return '($__'.$namespace[2].'_id == $__'.$namespace[2].'_cnt - 1)';
+				case 'far':
+					foreach($this -> sections as $id => &$void)
+					{
+						if($void['name'] == $namespace[2]);
+						$sid = $id;
+					}
+					return '(($__'.$namespace[2].'_id == $__'.$namespace[2].'_cnt - 1) || ($__'.$namespace[2].'_id == 0))';
 				default:
 					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT section command: '.$namespace[3], 105);
 			}
@@ -505,7 +512,7 @@
 			);
 			$this -> compiler -> parametrize('default', $block -> getAttributes(), $params);
 			
-			$this -> compiler -> out(' echo (isset('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].'); ');
+			$this -> compiler -> out(' echo (!empty('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].'); ');
 		} // end process();
 	}
 
