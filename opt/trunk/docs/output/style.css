@@ -1,0 +1,59 @@
+body{
+	font-family: Arial;
+}
+
+.example{
+	position: relative;
+	left: 30px;
+}
+
+thead {
+  background-color: black;
+  color: white;
+}
+
+table,
+tbody,thead,tfoot,
+tr,td {
+  border: 1px solid #8F8F8F;
+  border-collapse: collapse;
+}
+
+td.cat{
+  background: #AFAFAF;
+}
+
+p.title b{
+	color: #777777;
+}
+
+div.orange{
+	border-left: 4px solid #FFD200;
+	padding-left: 5px;
+}
+
+div.red{
+	border-left: 4px solid #FF0000;
+	padding-left: 5px;
+}
+
+div.blue{
+	border-left: 4px solid #00A2FF;
+	padding-left: 5px;
+}
+
+pre.programlisting{
+	width: 95%;
+	background: #E8E8E8;
+	border: 1px solid #D6D6D6;
+	padding: 2px;
+}
+
+div.prototype{
+	font-family: Courier New;
+	font-size: 16px;
+}
+
+div.prototype span.funcname{
+	font-weight: bold;
+}

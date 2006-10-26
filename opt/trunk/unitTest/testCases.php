@@ -14,6 +14,19 @@
 	{
 		return trim($code);	
 	} // end optOutputfilterTest();
+	
+	class optTestClass extends optClass
+	{
+		public $hh = '';
+		
+		protected function header($header)
+		{
+			if(strpos($header, 'Content-type') !== false)
+			{
+				$this -> hh = $header;
+			}		
+		} // end header();	
+	}
 
 	class optTest extends PHPUnit_TestCase
 	{
@@ -26,7 +39,7 @@
 		
 		public function setUp()
 		{
-			$this -> opt = new optClass;
+			$this -> opt = new optTestClass;
 			$this -> opt -> root = './templates/';
 			$this -> opt -> compile = './templates_c/';
 			$this -> opt -> gzipCompression = 0;
@@ -241,6 +254,41 @@ bar - abc - def
 6
 ', $result);
 		} // end testFor();
+		
+		public function testContentTypeDetection1()
+		{
+			$_SERVER['HTTP_ACCEPT'] = 'text/html;q=1';
+			$this -> opt -> httpHeaders(OPT_XHTML);			
+			$this -> assertEquals('Content-type: text/html', $this -> opt -> hh);	
+		} // end testContentTypeDetection1();
+		
+		public function testContentTypeDetection2()
+		{
+			$_SERVER['HTTP_ACCEPT'] = 'text/html;q=0.5,application/xhtml+xml;q=0.8';
+			$this -> opt -> httpHeaders(OPT_XHTML);			
+			$this -> assertEquals('Content-type: application/xhtml+xml', $this -> opt -> hh);	
+		} // end testContentTypeDetection2();
+	
+		public function testContentTypeDetection3()
+		{
+			$_SERVER['HTTP_ACCEPT'] = 'text/html;q=0.8,application/xhtml+xml;q=0.5';
+			$this -> opt -> httpHeaders(OPT_XHTML);			
+			$this -> assertEquals('Content-type: text/html', $this -> opt -> hh);	
+		} // end testContentTypeDetection3();
+		
+		public function testContentTypeDetection4()
+		{
+			$_SERVER['HTTP_ACCEPT'] = 'text/html;q=0.8,application/xhtml+xml;q=0.5';
+			$this -> opt -> httpHeaders(OPT_FORCED_XHTML);			
+			$this -> assertEquals('Content-type: application/xhtml+xml', $this -> opt -> hh);	
+		} // end testContentTypeDetection4();
+		
+		public function testContentTypeDetection5()
+		{
+			$_SERVER['HTTP_ACCEPT'] = 'text/html;q=0.8';
+			$this -> opt -> httpHeaders(OPT_FORCED_XHTML);			
+			$this -> assertEquals('Content-type: text/html', $this -> opt -> hh);	
+		} // end testContentTypeDetection5();
 	}
 
 ?>

@@ -17,6 +17,7 @@
 		protected $tpl;
 		protected $compiler;
 		protected $output;
+		protected $requestedMasterLevel = 2;
 		
 		public function __construct(optCompiler $compiler)
 		{
@@ -73,6 +74,9 @@
 				case OPT_COMPONENT:
 					$this -> compiler -> processors['component'] -> instructionNodeProcess($node);
 					break;
+				case OPT_ATTRIBUTE:
+					$this -> compiler -> mapper[$node -> getName()] -> processAttribute($node->getFirstBlock());
+					break;
 			}
 		} // end nodeProcess();
 		
@@ -87,8 +91,10 @@
 				}
 				
 				// pass the execution to the instruction processor
-				
-				$this -> compiler -> mapper[$node -> getName()] -> instructionNodeProcess($node);
+				if($this -> compiler -> mapper[$node -> getName()] -> requestedMasterLevel <= $this -> compiler -> masterLevel)
+				{
+					$this -> compiler -> mapper[$node -> getName()] -> instructionNodeProcess($node);
+				}
 				return 1;
 			}	
 			return 0;
@@ -98,6 +104,11 @@
 		{
 			
 		} // end instructionNodeProcess();
+		
+		public function processAttribute(optBlock $block)
+		{
+		
+		} // end processAttribute();
 		
 		public function processOpt($namespace)
 		{
@@ -110,7 +121,7 @@
 		private $sections = array(0 => array());
 		public $sectionList = array();
 		public $nesting = 0;
-	
+
 		public function configure()
 		{
 			return array(
@@ -122,7 +133,10 @@
 				'/section' => OPT_ENDER,
 				'show' => OPT_MASTER,
 				'showelse' => OPT_ALT,
-				'/show' => OPT_ENDER
+				'/show' => OPT_ENDER,
+				'opt:sectionfirst' => OPT_ATTRIBUTE,
+				'opt:sectionlast' => OPT_ATTRIBUTE,
+				'opt:sectioncycle' => OPT_ATTRIBUTE
 			);
 		} // end configure();
 		
@@ -173,16 +187,35 @@
 		
 		private function showAction($name, $order, $state, $datasource, $show)
 		{
-			$link = '';
-			$syntax = $this -> getLink($name, $datasource, $link); 
-			$output = '';
+			if($this -> tpl -> sectionDynamic == OPT_SECTION_COMPILE)
+			{
+				if($this -> tpl -> data[$name] instanceof optDynamicData)
+				{
+					// This is a dynamic section
+					$output = ' if(is_object($this->data[\''.$name.'\'])){ $__'.$name.'_data = $this->data[\''.$name.'\']->call(); }else{ $__'.$name.'_data = array(); }';
+					$syntax = $this -> getLink($name, $datasource, $link);
+					$link = '$__'.$name.'_data';
+				}
+				else
+				{
+					$link = '';
+					$syntax = $this -> getLink($name, $datasource, $link); 
+					$output = '';
+				}
+			}
+			else
+			{
+				$syntax = $this -> getLink($name, $datasource, $link);
+				$output = 'if(is_object('.$link.')){ $__'.$name.'_data = '.$link.'->call(); }else{ $__'.$name.'_data = '.$link.'; }';
+				$link = '$__'.$name.'_data';
+			}
 			if(is_null($state))
 			{
 				$output .= ' if(is_array('.$link.') && ($__'.$name.'_cnt = sizeof('.$link.')) > 0){ ';
 			}
 			else
 			{
-				if($this -> compiler -> tpl -> statePriority == OPT_PRIORITY_NORMAL)
+				if($this -> tpl -> statePriority == OPT_PRIORITY_NORMAL)
 				{
 					$output .= ' if('.$state.' && is_array('.$link.') && ($__'.$name.'_cnt = sizeof('.$link.')) > 0){ ';
 				}
@@ -372,6 +405,13 @@
 						return '($__'.$namespace[2].'_id == 0)';
 					}					
 					return '($__'.$namespace[2].'_id == $__'.$namespace[2].'_cnt - 1)';
+				case 'far':
+					foreach($this -> sections as $id => &$void)
+					{
+						if($void['name'] == $namespace[2]);
+						$sid = $id;
+					}
+					return '(($__'.$namespace[2].'_id == $__'.$namespace[2].'_cnt - 1) || ($__'.$namespace[2].'_id == 0))';
 				default:
 					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT section command: '.$namespace[3], 105);
 			}
@@ -461,6 +501,8 @@
 	
 	class optVar extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
+	
 		public function configure()
 		{
 			return array(
@@ -505,12 +547,13 @@
 			);
 			$this -> compiler -> parametrize('default', $block -> getAttributes(), $params);
 			
-			$this -> compiler -> out(' echo (isset('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].'); ');
+			$this -> compiler -> out(' echo (!empty('.$params['test'].') ? '.$params['test'].' : '.$params['alt'].'); ');
 		} // end process();
 	}
 
 	class optIf extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
 		private $nesting = 0;
 	
 		public function configure()
@@ -635,7 +678,9 @@
 	
 	class optCapture extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
 		private $nesting = 0;
+		private $oldMaster = 0;
 		private $names = array();
 	
 		public function configure()
@@ -675,12 +720,17 @@
 			$this -> names[$this->nesting] = $params['to'];
 			$this -> compiler -> out(' ob_start(); ');
 			$this -> nesting++;
+			
+			$this -> oldMaster = $this -> compiler -> masterLevel;
+			$this -> compiler -> setMasterLevel(2);
 		} // end captureBegin();
 		
 		private function captureEnd()
 		{
 			if($this -> nesting > 0)
 			{
+				$this -> compiler -> setMasterLevel($this -> oldMaster, 2);
+			
 				$this -> nesting--;
 				$this -> compiler -> out(' $this -> capture[\''.$this->names[$this->nesting].'\'] = ob_get_clean(); ');
 			}
@@ -698,6 +748,7 @@
 	
 	class optFor extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
 		private $nesting;
 	
 		public function configure()
@@ -765,6 +816,7 @@
 	
 	class optForeach extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
 		private $nesting;
 		private $else;
 	
@@ -925,6 +977,7 @@
 	
 	class optBind extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
 		public $buffer;
 	
 		public function configure()
@@ -946,7 +999,9 @@
 				switch($block -> getName())
 				{
 					case 'bind':
+							$this -> compiler -> setMasterLevel(2);
 							$this -> buffer[$this->getName($block->getAttributes())] = $block;
+							$this -> compiler -> setMasterLevel(0);
 							break;
 				}
 			}
@@ -995,6 +1050,7 @@
 
 	class optBindEvent extends optInstruction
 	{
+		protected $requestedMasterLevel = 0;
 		public $buffer = array();
 	
 		public function configure()
@@ -1033,6 +1089,60 @@
 			}
 		} // end instructionNodeProcess();
 	} // end optBindEvent;
+	
+	class optBindGroup extends optInstruction
+	{
+		protected $requestedMasterLevel = 0;
+		public $buffer;
+	
+		public function configure()
+		{
+			$this -> compiler -> genericBuffer['bindGroup'] = array();
+			return array(
+				// processor name
+				0 => 'bindGroup',
+				// instructions
+				'bindGroup' => OPT_MASTER,
+				'/bindGroup' => OPT_ENDER
+			);
+		} // end configure();
+
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			foreach($node as $block)
+			{
+				switch($block -> getName())
+				{
+					case 'bindGroup':
+							$this -> compiler -> setMasterLevel(2);
+							$this -> doBind($this->getName($block->getAttributes()), $block);
+							$this -> compiler -> setMasterLevel(0);
+							break;
+				}
+			}
+		} // end instructionNodeProcess();
+
+		public function doBind($name, $block)
+		{
+			$this -> compiler -> genericBuffer['bindGroup'][$name] = array();
+			foreach($block as $node)
+			{
+				if($node -> getType() == OPT_INSTRUCTION || $node -> getType() == OPT_UNKNOWN)
+				{
+					$this -> compiler -> genericBuffer['bindGroup'][$name][$node->getName()] = $node;		
+				}
+			}
+		} // end doBind();
+
+		public function getName($attributes)
+		{
+			$params = array(
+				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID)
+			);
+			$this -> compiler -> parametrize('bindGroup', $attributes, $params);
+			return $params['name'];
+		} // end getName();
+	} // end optBindGroup;
 	
 	# COMPONENTS
 	class optComponent extends optInstruction

@@ -39,6 +39,7 @@
 	define('OPT_ALT', 1);
 	define('OPT_ENDER', 2);
 	define('OPT_COMMAND', 3);
+	define('OPT_ATTRIBUTE', 6);
 	
 	define('OPCODE_NULL', -1);
 	define('OPCODE_STRING', 0);
@@ -81,7 +82,7 @@
 			$this -> type = $type;
 			$this -> parent = $parent;
 		} // end __construct();
-		
+
 		public function addItem($item, $tpl = NULL)
 		{
 			if(is_null($tpl))
@@ -294,6 +295,8 @@
 		private $di = 0;
 		private $dynamicSeg = array(0 => '');
 		private $output;
+		private $master = false;
+		public $masterLevel = 2;
 		
 		// EXPRESSION REGEX		
 		private $rDoubleQuoteString = '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"';
@@ -303,7 +306,7 @@
 		private $rDecimalNumber = '[0-9]+\.?[0-9]*';
 		private $rLanguageBlock = '\$[a-zA-Z0-9\_]+@[a-zA-Z0-9\_]+';
 		private $rVariableBlock = '(\$|@)[a-zA-Z0-9\_\.]+';
-		private $rOperators = '\-\>|!==|===|==|!=|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+\+|\-\-|\+|\-|\*|\/|\[|\]|\.|\:\:|';
+		private $rOperators = '\-\>|!==|===|==|!=|\=\>|<>|<<|>>|<=|>=|\&\&|\|\||\(|\)|,|\!|\^|=|\&|\~|<|>|\||\%|\+\+|\-\-|\+|\-|\*|\/|\[|\]|\.|\:\:|';
 		private $rConfiguration = '\#?[a-zA-Z0-9\_]+';
 
 		// Administrative methods
@@ -356,24 +359,34 @@
 		} // end translate();
 
 		// General compiler
-		public function parse($filename, $code)
+		public function parse($filename, $code, $master = false)
 		{
 			static $regex;
 			static $blockRegex;
-			
+
+			$this -> master = false;
+			$this -> masterLevel = 2;
 			$this -> dynamic = false;
 			$this -> dynamicEnabled = false;
 			$this -> dynamicSeg = array(0 => '');
 			$this -> di = 0;
 
-			foreach($this -> tpl -> filters['pre'] as $name)
+			$pre = 'pre';
+			if($master)
+			{
+				$this -> master = true;
+				$this -> setMasterLevel(0);
+				$pre = 'preMaster';
+			}
+
+			foreach($this -> tpl -> filters[$pre] as $name)
 			{
 				// @ used because of stupid notice
-				// "Object of class opt_template to string conversion".
+				// "Object of class optClass to string conversion".
 				// Whatever it means, I couldn't recognize, why PHP does such things.
 				$code = @$name($this -> tpl, $code);
 			}
-			
+
 			$code = str_replace(array(
 				'<'.'?'
 			),array(
@@ -386,11 +399,11 @@
 				if($this -> tpl -> xmlsyntaxMode == 1)
 				{
 					$regex = '';
-					$this -> tpl -> delimiters[] = '\<(\/?)opt\:(.*?)(\/?)\>';
-					$this -> tpl -> delimiters[] = '\<()opt\:(.*?)(\/)\>';
-					$this -> tpl -> delimiters[] = 'opt\:put\=\"(.*?[^\\\\])\"';
+					$this -> tpl -> delimiters[] = '\<(\/?)([a-zA-Z]*)\:(.*?)(\/?)\>';
+					$this -> tpl -> delimiters[] = '\<()([a-zA-Z]*)\:(.*?)(\/)\>';
+					$this -> tpl -> delimiters[] = '([a-zA-Z]*)\:put\=\"(.*?[^\\\\])\"';
 					
-					$blockRegex = '<\!\[CDATA\[|\]\]>|\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
+					$blockRegex = '\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
 				}
 				$regex = implode('|', $this -> tpl -> delimiters);
 			}
@@ -405,13 +418,12 @@
 			$literal = false;
 			$php = false;
 
-			$textBlocks = preg_split('/('.$blockRegex.')/', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
+			$textBlocks = preg_split('/('.$blockRegex.')/ms', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
 
 			foreach($textBlocks as $bid => $bval)
-			{
-				if(preg_match('/'.$blockRegex.'/', $bval))
+			{				
+				if(preg_match('/'.$blockRegex.'/ms', $bval))
 				{
-
 					// Escape the OPT namespace, if in XML Syntax mode
 					if($this -> tpl -> xmlsyntaxMode == 1)
 					{
@@ -457,37 +469,85 @@
 				elseif($literal == false && $php == false)
 				{
 					// tokenizer
-					preg_match_all('#({\*.+?\*\}|'.$regex.'|(.?))#si', $bval, $result, PREG_PATTERN_ORDER);
-					foreach($result as $i => &$void)
-					{
-						if($i != 0)
-						{
-							unset($result[$i]);
-						}
-					}
+					preg_match_all('#({\*.+?\*\}|'.$regex.'|(.?))#msi', $bval, $result, PREG_PATTERN_ORDER);
+					$resolution = sizeof($result);
 					foreach($result[0] as $i => $item)
 					{
 						// comment usage
 						if(strlen($item) > 1)
 						{
-							if(preg_match('/{\*.+?\*\}/s', trim($item)))
+							if(preg_match('/{\*.+?\*\}/ms', trim($item)))
 							{
 								continue;
 							}
 							
-							// a command		
-							$textAssign = 0;
-		
-							// grep the data
-							$sortMatches = array(0 => '', 1 => '', 2 => '');
-							preg_match('/'.$regex.'/', $item, $matches);
-		
-							$foundCommand = false;
-							foreach($matches as $id => $val)
+							// an attribute
+							if($result[8][$i] == ':')
 							{
-								$val = trim($val);
+								// namespace checking
+								$fakeAttribute = false;								
+
+								if($result[7][$i] == 'opt')
+								{
+									$attribute = $result[9][$i];									
+								}
+								elseif(in_array($result[7][$i], $this->tpl->namespaces))
+								{
+									$attribute = $result[7][$i].':'.$result[9][$i];
+								}
+								else
+								{
+									$fakeAttribute = true;
+								}
+								if(!$fakeAttribute)
+								{
+									if(isset($this -> translator[$attribute]))
+									{
+										if($this -> translator[$attribute] == OPT_ATTRIBUTE)
+										{
+											$node = new optNode($attribute, OPT_ATTRIBUTE, $current);
+											$node -> addItem(new optBlock(NULL, $result[10][$i]));
+											$currentBlock -> addNode($node);
+											$textAssign = 0;
+										}
+										else
+										{
+											$fakeAttribute = true;
+										}
+									}
+									else
+									{
+										$fakeAttribute = true;
+									}							
+								}
+								
+								if($fakeAttribute)
+								{
+									// text item
+									if($textAssign == 0)
+									{
+										$text = new optTextNode(NULL, OPT_TEXT, $current);
+										$currentBlock -> addNode($text);
+									}
+									$text -> addItem($item);
+									$textAssign = 1;
+								}
+								continue;
+							}
+							
+							// a command
+							$textAssign = 0;							
+							$sortMatches = array(0 => NULL, 1 => NULL, 2 => NULL, 3 => NULL);
+							$foundCommand = false;
+							for($id = 1; $id < $resolution; $id++)
+							{
+								$val = trim($result[$id][$i]);
 								if($val != '')
 								{
+									if($val[strlen($val)-1] == ':')
+									{
+										continue;
+									}
 									if($val == '/')
 									{
 										if(!$foundCommand)
@@ -499,15 +559,32 @@
 											$sortMatches[2] = '/';
 										}
 									}
-									elseif($id != 0 )
+									elseif($id != 1)
 									{
-										$sortMatches[1] = $val;
+										// Namespace support
+										if(!is_null($sortMatches[1]))
+										{
+											if($sortMatches[1] == 'opt')
+											{
+												$sortMatches[1] = $val;
+											}
+											else
+											{
+												$sortMatches[3] = $sortMatches[1];
+												$sortMatches[1] .= ':'.$val;
+											}
+										}
+										else
+										{
+											$sortMatches[3] = 'opt';
+											$sortMatches[1] = $val;
+										}
 										$foundCommand = true;
 									}
 								}
 							}
 							$sortMatches[1] = $this -> parseEntities($sortMatches[1]);
-							if(preg_match('/^(([a-zA-Z0-9\_]+)([= ]{1}(.*))?)$/', $sortMatches[1], $found))
+							if(preg_match('/^(([a-zA-Z0-9\_\:]+)([= ]{1}(.*))?)$/ms', $sortMatches[1], $found))
 							{
 								// we have an instruction
 								$realname = $found[2];
@@ -577,41 +654,56 @@
 								else
 								{
 									// here comes the undefined command. The instruction programmer may do with them whatever he wants
-									// the compiler is going to recognize, what sort of command is it.
-									$ending = substr($found[2], strlen($found[2]) - 4, 4);
-									if($sortMatches[0] == '/')
+									// the compiler is going to recognize, what sort of command is it. But first - a small check. The
+									// command must belong to the "opt" namespace. Otherwise it will be simply displayed.
+									if($sortMatches[3] == 'opt' || in_array($sortMatches[3], $this->tpl->namespaces))
 									{
-										// ending command, like in XML: /command
-										$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
-										$current -> addItem($currentBlock, $this -> tpl);
-										$current = $current -> getParent();
-										if(!($current instanceof ioptNode))
+										$ending = substr($found[2], strlen($found[2]) - 4, 4);
+										if($sortMatches[0] == '/')
 										{
-											$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "'.$found[2].'"!', OPT_E_ENCLOSING_STATEMENT);
+											// ending command, like in XML: /command
+											$currentBlock = new optBlock($found[2], $found, OPT_ENDER);
+											$current -> addItem($currentBlock, $this -> tpl);
+											$current = $current -> getParent();
+											if(!($current instanceof ioptNode))
+											{
+												$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "'.$found[2].'"!', OPT_E_ENCLOSING_STATEMENT);
+											}
+											$currentBlock = $current -> restoreBlock();
 										}
-										$currentBlock = $current -> restoreBlock();
-									}
-									elseif($sortMatches[2] == '/')
-									{
-										// standalone command, like XML: command/ 
-										$node = new optNode($found[2], OPT_UNKNOWN, $current);
-										$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND), $this -> tpl);
-										$currentBlock -> addNode($node);
-									}
-									elseif($ending == 'else')
-									{
-										// alternative command, doesn't exist in XML: commandelse
-										$currentBlock = new optBlock($found[2], $found, OPT_ALT);
-										$current -> addItem($currentBlock, $this -> tpl);
+										elseif($sortMatches[2] == '/')
+										{
+											// standalone command, like XML: command/ 
+											$node = new optNode($found[2], OPT_UNKNOWN, $current);
+											$node -> addItem(new optBlock($found[2], $found, OPT_COMMAND), $this -> tpl);
+											$currentBlock -> addNode($node);
+										}
+										elseif($ending == 'else')
+										{
+											// alternative command, doesn't exist in XML: commandelse
+											$currentBlock = new optBlock($found[2], $found, OPT_ALT);
+											$current -> addItem($currentBlock, $this -> tpl);
+										}
+										else
+										{
+											// beginning command: command
+											$current -> storeBlock($currentBlock);
+											$current = new optNode($realname, OPT_UNKNOWN, $current);
+											$currentBlock -> addNode($current);
+											$currentBlock = new optBlock($realname, $found, OPT_MASTER);
+											$current -> addItem($currentBlock, $this -> tpl);
+										}
 									}
 									else
 									{
-										// beginning command: command
-										$current -> storeBlock($currentBlock);
-										$current = new optNode($realname, OPT_UNKNOWN, $current);
-										$currentBlock -> addNode($current);
-										$currentBlock = new optBlock($realname, $found, OPT_MASTER);
-										$current -> addItem($currentBlock, $this -> tpl);
+										// Display the undefined command that doesn't belong to the "opt" namespace
+										if($textAssign == 0)
+										{
+											$text = new optTextNode(NULL, OPT_TEXT, $current);
+											$currentBlock -> addNode($text);
+										}
+										$text -> addItem($item);
+										$textAssign = 1;
 									}
 								}
 							}
@@ -640,25 +732,30 @@
 			}
 			// execute the tree
 			$this -> processors['generic'] -> nodeProcess($root);
-			// apply postfilters
-			foreach($this -> tpl -> filters['post'] as $name)
-			{
-				$this -> output = $name($this -> tpl, $this -> output);
-			}
 			
-			if(!is_null($filename))
+			if(!$master)
 			{
-				if(!is_writeable($this -> tpl -> compile))
+				// apply postfilters
+				foreach($this -> tpl -> filters['post'] as $name)
 				{
-					$this -> tpl -> error(E_USER_ERROR, $this->tpl->compile.' is not a writeable directory.', OPT_E_WRITEABLE);
+					$this -> output = $name($this -> tpl, $this -> output);
 				}
-				file_put_contents($filename, $this -> output);
-				if($this -> dynamicEnabled)
+				
+				if(!is_null($filename))
 				{
-					file_put_contents($filename.'.dyn', serialize($this -> dynamicSeg));			
+					if(!is_writeable($this -> tpl -> compile))
+					{
+						$this -> tpl -> error(E_USER_ERROR, $this->tpl->compile.' is not a writeable directory.', OPT_E_WRITEABLE);
+					}
+					file_put_contents($filename, $this -> output);
+					if($this -> dynamicEnabled)
+					{
+						file_put_contents($filename.'.dyn', serialize($this -> dynamicSeg));			
+					}
 				}
+				return $this -> output;
 			}
-			return $this -> output;
+			return true;
 		} // end parse();
 
 		public function debugBlockProcess(optBlock $block)
@@ -687,6 +784,9 @@
 					break;
 				case OPT_EXPRESSION:
 					echo '<li>Expression: '.$node->getFirstBlock()->getAttributes().'</li>';
+					break;
+				case OPT_ATTRIBUTE:
+					echo '<li>Attribute: '.$node->getName().'('.$node->getFirstBlock()->getAttributes().')</li>';
 					break;
 				case OPT_INSTRUCTION:
 					echo '<li>Instruction: '.$node->getName();
@@ -814,6 +914,7 @@
 					case '>>':
 					case '<=':
 					case '>=':
+					case '=>':
 					case '&&':
 					case '||':
 						if($state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_OBJECT_CALL || $state['prev'] == OPCODE_NULL)
@@ -1106,7 +1207,9 @@
 							{
 								$state['prev'] = OPCODE_METHOD;
 							}
-							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR || $state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_ASSIGN)
+							elseif($state['prev'] == OPCODE_FUNCTION || $state['prev'] == OPCODE_METHOD || $state['prev'] == OPCODE_OPERATOR ||
+								$state['prev'] == OPCODE_PARENTHESIS || $state['prev'] == OPCODE_NULL || $state['prev'] == OPCODE_ASSIGN ||
+								$state['prev'] == OPCODE_SEPARATOR)
 							{
 								if($token == 'apply')
 								{
@@ -1223,7 +1326,7 @@
 			{
 				if($this -> tpl -> i18nType == 0 && !isset($this -> tpl -> i18n[$ns[0]][$ns[1]]))
 				{
-					$this -> tpl -> error(E_USER_WARNING, 'The language block "'.$name.'" does not exist.', OPT_W_LANG_NOT_FOUND);
+					$this -> tpl -> error(E_USER_WARNING, 'The language block "$'.$ns[0].'@'.$ns[1].'" does not exist.', OPT_W_LANG_NOT_FOUND);
 				}
 			}
 			if($state != OPCODE_PARENTHESIS && $heap != OPCODE_APPLY)
@@ -1353,22 +1456,67 @@
 
 		public function out($code, $static = false)
 		{
-			if($static)
+			if($this -> masterLevel == 2)
 			{
-				$this -> output .= $code;
+				// The normal compilation mode - both static and dynamic output enabled
+				if($static)
+				{
+					$this -> output .= $code;
+					if($this -> dynamic)
+					{
+						$this -> dynamicSeg[$this->di] .= $code;	
+					}
+					return;
+				}
+				$this -> output .= '<'.'?php '.$code.' ?'.'>';
 				if($this -> dynamic)
 				{
-					$this -> dynamicSeg[$this->di] .= $code;	
+					$this -> dynamicSeg[$this->di] .= '<'.'?php '.$code.' ?'.'>';
 				}
-				return;
 			}
-			$this -> output .= '<'.'?php '.$code.' ?'.'>';
-			if($this -> dynamic)
+			else
 			{
-				$this -> dynamicSeg[$this->di] .= '<'.'?php '.$code.' ?'.'>';
+				// Master page - only dynamic output available
+				if(!$static)
+				{
+					$this -> output .= ' '.$code.' ';
+					if($this -> dynamic)
+					{
+						$this -> dynamicSeg[$this->di] .= ' '.$code.' ';
+					}
+				}
 			}
 		} // end out();
-		
+
+		public function setMasterLevel($level, $from =  NULL)
+		{
+			// Administration works that are required, when the master level changes
+			if($from == NULL)
+			{
+				$from = $this -> masterLevel;
+			}			
+			if($this -> master && $this -> masterLevel == $from)
+			{
+				if($level == 2 && $from < 2)
+				{
+					$this -> output .= ' ?'.'>';
+					if($this -> dynamic)
+					{
+						$this -> dynamicSeg[$this->di] .= ' ?'.'>';
+					}
+				}
+				if($level < 2 && $from == 2)
+				{
+					$this -> output .= '<'.'?php ';
+					if($this -> dynamic)
+					{
+						$this -> dynamicSeg[$this->di] .= '<'.'?php ';
+					}
+				}
+				$this -> masterLevel = $level;
+			}
+		} // end setMasterLevel();
+
 		public function dynamic($state)
 		{
 			if($state == true)
@@ -1420,7 +1568,7 @@
 					preg_match_all('/(?:'.
 						$this -> rDoubleQuoteString.'|'.
 						$this -> rSingleQuoteString.'|'.
-						$this -> rReversedQuoteString.'|;|[^"\'`;]*)/x', $matches[4], $found);
+						$this -> rReversedQuoteString.'|;|[^"\'`;]*)/mx', $matches[4], $found);
 					$params = array(0 => '');
 					$i = 0;
 					foreach($found[0] as $item)
@@ -1496,7 +1644,7 @@
 					$this -> parametrizeError($instruction, 7, 'OPT_STYLE_XML');
 				}
 				// use named parameters
-				preg_match_all('#([a-zA-Z0-9\_]+)\="((.*?)[^\\\\])"#s', $matches[4], $found);
+				preg_match_all('#([a-zA-Z0-9\_]+)\s*\=\s*"((.*?)[^\\\\])"#ms', $matches[4], $found);
 
 				// Parse all matches
 				foreach($found[1] as $id => $name)

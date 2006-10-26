@@ -20,6 +20,7 @@
 	define('OPT_XML', 2);
 	define('OPT_WML', 3);
 	define('OPT_TXT', 4);
+	define('OPT_FORCED_XHTML', 5);
 
 	define('OPT_PREFILTER', 0);
 	define('OPT_POSTFILTER', 1);
@@ -27,21 +28,56 @@
 	
 	define('OPT_SECTION_MULTI', 0);
 	define('OPT_SECTION_SINGLE', 1);
+	define('OPT_SECTION_COMPILE', 0);
+	define('OPT_SECTION_RUNTIME', 1);
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.0.0');
+	define('OPT_VERSION', '1.1.0-dev');
+	
+	define('OPT_E_CONTENT_TYPE', 1);
+	define('OPT_E_ARRAY_REQUIRED', 2);
+	define('OPT_E_RESOURCE', 3);
+	define('OPT_E_FILTER', 4);
+	define('OPT_E_RESOURCE_NOT_FOUND', 5);
+	define('OPT_E_FILE_NOT_FOUND', 6);
+	define('OPT_E_WRITEABLE', 7);
+	define('OPT_E_ENCLOSING_STATEMENT', 101);
+	define('OPT_E_UNKNOWN', 102);
+	define('OPT_E_FUNCTION_NOT_FOUND', 103);
+	define('OPT_E_CONSTANT_NOT_FOUND', 104);
+	define('OPT_E_COMMAND_NOT_FOUND', 105);
+	define('OPT_E_EXPRESSION', 106);
+	define('OPT_E_REQUIRED_NOT_FOUND', 107);
+	define('OPT_E_INVALID_PARAMETER', 108);
+	define('OPT_E_DEFAULT_MARKER', 109);
+	define('OPT_E_UNKNOWN_PARAM', 110);
+	define('OPT_E_PARAM_STYLE', 111);
+	define('OPT_W_LANG_NOT_FOUND', 151);
+	define('OPT_E_IF_ELSEIF', 201);
+	define('OPT_E_IF_ELSE', 202);
+	define('OPT_E_IF_END', 203);
+	define('OPT_E_CAPTURE_SUB', 204);
+	define('OPT_E_FOR_END', 205);
+	define('OPT_E_FOREACH_ELSE', 206);
+	define('OPT_E_FOREACH_END', 207);
+	define('OPT_E_BIND_NOT_FOUND', 208);
+	define('OPT_W_DYNAMIC_OPENED', 301);
+	define('OPT_W_DYNAMIC_CLOSED', 302);
 	
 	if(!defined('OPT_DIR'))
 	{
 		define('OPT_DIR', './');
 	}
 	
-	// Additional interfaces
+	// Additional things
 	
-	include_once(OPT_DIR.'opt.error.php');
-	# COMPONENTS
+	function optPostfilterStripWhitespaces(optClass $tpl, $code)
+	{
+		return preg_replace('/(\r|\n){1,2}[ \t\f]*\<\?(.+)\?\>[ \t\f]*(\r|\n){1,2}/s', '<'.'?$2?'.'>$3', $code);	
+	} // end optPostfilterStripWhitespaces();
 	
+	# COMPONENTS	
 	interface ioptComponent
 	{
 		public function __construct($name = '');
@@ -68,13 +104,33 @@
 	}
 	# /OBJECT_I18N
 	
-	function optPostfilterStripWhitespaces(optClass $tpl, $code)
+	class optDynamicData
 	{
-		return preg_replace('/(\r|\n){1,2}[ \t\f]*\<\?(.+)\?\>[ \t\f]*(\r|\n){1,2}/s', '<'.'?$2?'.'>$3', $code);	
-	} // end optPostfilterStripWhitespaces();
+		private $callback = NULL;
+		private $args = NULL;
+
+		public function __construct($arg1, $arg2, $arg3 = NULL)
+		{
+			if(is_null($arg3))
+			{
+				// A function
+				$this -> callback = $arg1;
+				$this -> args = $arg2;
+			}
+			else
+			{
+				$this -> callback = array($arg1, $arg2);
+				$this -> args = $arg3;
+			}
+		} // end __construct();
+		
+		public function call()
+		{
+			return call_user_func_array($this -> callback, $this -> args);
+		} // end call();	
+	} // end optDynamicData;
 	
 	// OPT Parser class
-
 	class optClass
 	{
 		// Configuration
@@ -95,6 +151,7 @@
 		public $strictSyntax = false;
 		public $entities = false;
 		public $sectionStructure = OPT_SECTION_MULTI;
+		public $sectionDynamic = OPT_SECTION_COMPILE;
 		public $statePriority = OPT_PRIORITY_NORMAL;
 
 		public $parseintDecPoint = '.';
@@ -104,10 +161,15 @@
 		// Parser and compiler data
 		protected $init = false;
 		protected $outputBufferEnabled = false;
+		protected $contentType = '';
+		private $filenames = array();
 		public $compiler;
 		public $data = array();
 		public $vars = array();
 		public $capture = array();
+		
+		protected $compileMasterPages = array();
+		
 		public $functions = array(
 								'parse_int' => 'PredefParseInt',
 								'wordwrap' => 'PredefWordwrap',
@@ -122,7 +184,8 @@
 								'length' => 'strlen',
 								'count_words' => 'str_word_count',
 								'count' => 'sizeof',
-								'date' => 'date'			
+								'date' => 'date',
+								'array' => 'array'		
 							);
 		public $control = array(0 =>
 								'optSection',
@@ -137,8 +200,9 @@
 								'optDefault',
 								'optBind',
 								'optInsert',
-								'optBindEvent'		
+								'optBindEvent'
 							);
+		public $namespaces = array(0 => 'opt');
 		# COMPONENTS
 		public $components = array(
 							# PREDEFINED_COMPONENTS
@@ -150,10 +214,12 @@
 							);
 		# /COMPONENTS
 		public $delimiters = array(0 => 
-								'\{(\/?)(.*?)(\/?)\}'
+								'\{(\/?)(([a-zA-Z]+)\:)?(.*?)(\/?)\}',
+								'([a-zA-Z]*)(\:)([a-zA-Z0-9\_]*)\=\"(.*?[^\\\\])\"'
 							);
 		public $filters = array(
 								'pre' => array(),
+								'preMaster' => array(),
 								'post' => array(),
 								'output' => array()
 							);
@@ -184,6 +250,11 @@
 		{
 			$this -> data[$name] = $value;		
 		} // end assign();
+		
+		public function assignDynamic($name, $arg1, $arg2 = array(), $arg3 = NULL)
+		{
+			$this -> data[$name] = new optDynamicData($arg1, $arg2, $arg3);
+		} // end assignDynamic();
 
 		public function assignGroup($values)
 		{
@@ -195,7 +266,7 @@
 			foreach($values as $name => &$value)
 			{
 				$this -> data[$name] = $value;
-			}	
+			}
 		} // end assignGroup();
 
 		public function assignRef($name, &$value)
@@ -215,46 +286,76 @@
 			switch($content)
 			{		
 				case OPT_HTML:
-						header('Content-type: text/html'.$charset);
+						$this -> contentType = 'text/html';
 						break;
 				case OPT_XHTML:
+						if(preg_match('/application\/xhtml\+xml(?![+a-z])(;q=(0\.\d{1,3}|[01]))?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+						{
+							$xhtmlQ = isset($matches[2]) ? ($matches[2]+0.2) : 1;
+							if(preg_match('/text\/html(;q=(0\.\d{1,3}|[01]))s?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+							{
+								$htmlQ = isset($matches[2]) ? $matches[2] : 1;
+								if($xhtmlQ >= $htmlQ)
+								{
+									$this -> contentType = 'application/xhtml+xml';
+									break;
+								}
+							}
+							else
+							{
+								$this -> contentType = 'application/xhtml+xml';
+								break;
+							}
+						}
+						$this -> contentType = 'text/html';
+						break;
+				case OPT_FORCED_XHTML:
 						if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
 						{
-							header('Content-type: application/xhtml+xml'.$charset);
+							$this -> contentType = 'application/xhtml+xml';
 						}
 						else
 						{
-							header('Content-type: text/html'.$charset);
+							$this -> contentType = 'text/html';
 						}
 						break;
 				case OPT_XML:
-						header('Content-type: application/xml'.$charset);
+						$this -> contentType = 'application/xml';
 						break;
 				case OPT_WML:
-						header('Content-type: text/vnd.wap.wml'.$charset);
+						$this -> contentType = 'text/vnd.wap.wml';
 						break;
 				case OPT_TXT:
-						header('Content-type: text/plain'.$charset);
+						$this -> contentType = 'text/plain';
 						break;
 				default:
 						if(is_string($content))
 						{
-							header('Content-type: '.$content.$charset);						
+							$this -> contentType = $content;
 						}
 						else
 						{
 							$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, OPT_E_CONTENT_TYPE);
 						}
 			}
+			if($this -> contentType == 'application/xhtml+xml' && $this -> debugConsole)
+			{
+				$this -> contentType .= ' (text/html used for debug purposes)';
+				$this -> header('Content-type: text/html'.$charset);
+			}
+			else
+			{ 
+				$this -> header('Content-type: '.$this -> contentType.$charset);
+			}
 			if($cache == OPT_NO_HTTP_CACHE)
 			{
-				header('Expires: 0'); 
-				header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT'); 
-				// HTTP/1.1 
-				header('Cache-Control: no-store, no-cache, must-revalidate'); 
-				header('Cache-Control: post-check=0, pre-check=0', false);
+				$this -> header('Expires: 0'); 
+				$this -> header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+				// HTTP/1.1
+				$this -> header('Cache-Control: no-store, no-cache, must-revalidate'); 
+				$this -> header('Cache-Control: post-check=0, pre-check=0', false);
 				// HTTP/1.0 
-				header('Pragma: no-cache');
+				$this -> header('Pragma: no-cache');
 			}
 		} // end httpHeaders();
 		# /HTTP_HEADERS
@@ -278,7 +379,7 @@
 				if(isset($data[$name]))
 				{
 					$this -> $name = $data[$name];
-				}			
+				}
 			}
 		} // end loadConfig();
 
@@ -299,9 +400,15 @@
 		public function setObjectI18n(ioptI18n $i18n)
 		{
 			$this -> i18nType = 1;
-			$this -> i18n = $i18n;		
+			$this -> i18n = $i18n;
 		} // end setObjectI18n();
 		# /OBJECT_I18N
+		
+		public function setMasterPage($filename)
+		{
+			$this -> compileMasterPages[] = $filename;		
+		} // end setMasterPage();
+		
 		# REGISTER_FAMILY
 		public function registerInstruction($class)
 		{
@@ -333,8 +440,8 @@
 		{
 			if(is_array($name))
 			{
-				$this -> functions = $name;
-				return 1;
+				$this -> functions = array_merge($this -> functions, $name);
+				return true;
 			}
 			else
 			{
@@ -346,7 +453,25 @@
 			}
 			return false;
 		} // end registerFunction();
-
+		
+		public function registerPhpFunction($name, $callback = NULL)
+		{
+			if(is_array($name))
+			{
+				$this -> phpFunctions = array_merge($this -> phpFunctions, $name);
+				return true;
+			}
+			else
+			{
+				if(strlen($name) > 0)
+				{
+					$this -> phpFunctions[$name] = $callback;
+					return true;
+				}
+			}
+			return false;
+		} // end registerPhpFunction();
+		# CUSTOM_RESOURCES
 		public function registerResource($name, $callback)
 		{
 			if(function_exists('optResource'.$callback))
@@ -356,7 +481,7 @@
 			}
 			$this -> error(E_USER_ERROR, 'Specified value: "optResource'.$callback.'" is not a valid resource function name.', OPT_E_RESOURCE);
 		} // end registerResource();
-
+		# /CUSTOM_RESOURCES
 		public function registerComponent($name)
 		{
 			if(is_array($name))
@@ -389,11 +514,11 @@
 						$idx = 'output';
 						break;
 				default:
-						return false;			
+						return false;
 			}
 			if(function_exists($prefix.$callback))
 			{
-				$this -> filters[$idx][] = $prefix.$callback;			
+				$this -> filters[$idx][] = $prefix.$callback;
 				return true;
 			}
 			else
@@ -401,6 +526,26 @@
 				$this -> error(E_USER_ERROR, 'Specified value: "'.$prefix.$callback.'" is not a valid OPT filter function name.', OPT_E_FILTER);
 			}
 		} // end registerFilter();
+
+		public function registerInstructionFile($file)
+		{
+			$this -> instructionFiles[] = $file;
+		} // end registerInstructionFile();
+		
+		public function registerNamespace($namespace)
+		{
+			$this -> namespaces[] = $namespace;
+		} // end registerNamespace();
+
+		public function unregisterNamespace($namespace)
+		{
+			if(($id = array_search($namespace, $this -> namespaces)) !== false)
+			{
+				unset($this -> namespaces[$id]);
+				return true;
+			}
+			return false;
+		} // end unregisterNamespace();
 
 		public function unregisterFilter($type, $callback)
 		{
@@ -431,11 +576,6 @@
 			return false;
 		} // end unregisterFilter();
 		# /REGISTER_FAMILY
-		public function registerInstructionFile($file)
-		{
-			$this -> instructionFiles[] = $file;
-		} // end registerInstructionFile();
-		
 		public function parse($filename)
 		{
 			$this -> fetch($filename, true);
@@ -474,6 +614,8 @@
 				}
 				# /DEBUG_CONSOLE
 			}
+			
+			array_push($this -> filenames, $filename);
 			
 			if(!$display || sizeof($this -> filters['output']) > 0)
 			{
@@ -551,6 +693,9 @@
 				}
 				# /DEBUG_CONSOLE
 			}
+			
+			array_pop($this -> filenames);
+			
 			// Parse output filters
 			if(sizeof($this -> filters['output']) > 0)
 			{
@@ -575,6 +720,7 @@
 		
 		private function doInclude($filename, $default = false)
 		{
+			array_push($this -> filenames, $filename);
 			if($this -> performance)
 			{
 				if($default == true)
@@ -605,7 +751,8 @@
 				include($this -> compile.$compiled);
 				error_reporting($oldErrorReporting);
 			}
-			return true;	
+			array_pop($this -> filenames);
+			return true;
 		} // end doInclude();
 
 		public function compileCacheReset($filename = NULL)
@@ -642,20 +789,20 @@
 			$this -> cacheFilename = optCacheFilename($filename, $id);
 			if(!isset($this -> cacheData[$hash]))
 			{
-				// Need to check, hasn't done yet			
+				// Need to check, hasn't been done yet
 				$header = @unserialize(file_get_contents($this -> cache.$this -> cacheFilename.'.def'));
 				
 				if(!is_array($header))
 				{
 					$this -> cacheBuffer[$hash]['ok'] = false;
-					return false;				
+					return false;
 				}
 				
 				$this -> cacheDynamic = $header['dynamic'];
 				if($header['timestamp'] < (time() - (int)$header['expire']))
 				{
 					$this -> cacheBuffer[$hash]['ok'] = false;
-					return false;				
+					return false;
 				}
 				$this -> cacheBuffer[$hash]['ok'] = true;
 				return true;
@@ -674,34 +821,43 @@
 			}
 			# /GZIP_SUPPORT
 			# DEBUG_CONSOLE
-			if($this -> debugConsole && count($this -> debugOutput) > 0)
+			if($this -> debugConsole)
 			{
 				// Including opt.core.php
 				// This solution is used because of PHP bug #36454
-				require_once($this -> realPath);
-				
-				optShowDebugConsole(array(
-					'Root directory' => $this -> root,
-					'Compile directory' => $this -> compile,
-					'Plugin directory' => (!is_null($this -> plugins) ? $this -> plugins : '&nbsp;'),
-					'Cache directory' => (!is_null($this -> cache) ? $this -> cache : '&nbsp;'),
-					'GZip compression' => $this -> gzipCompression,
-					'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),
-					'Total template time' => round($this -> totalTime, 6).' s'				
-				),$this -> debugOutput);
+				if($this -> realPath != '')
+				{
+					require_once($this -> realPath);
+					
+					optShowDebugConsole(array(
+						'Root directory' => $this -> root,
+						'Compile directory' => $this -> compile,
+						'Plugin directory' => (!is_null($this -> plugins) ? $this -> plugins : '&nbsp;'),
+						'Cache directory' => (!is_null($this -> cache) ? $this -> cache : '&nbsp;'),
+						'GZip compression' => $this -> gzipCompression,
+						'Always rebuild' => ($this->alwaysRebuild==true ? '<font color="red">Yes</font> (Please turn off this option to improve performance)' : 'No'),
+						'Performance tuning' => ($this->performance==true ? '<font color="green">Yes</font>' : 'No'),
+						'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),
+						'Content-type' => $this -> contentType,
+						'Total template time' => round($this -> totalTime, 6).' s'				
+					),$this -> debugOutput,
+					$this -> compileMasterPages);
+				}
 			}
 			# /DEBUG_CONSOLE
 		} // end __destruct();
 		
 		public function error($type, $message, $code)
 		{
+			include_once(OPT_DIR.'opt.error.php');
 			require_once(OPT_DIR.'opt.core.php');
-			optErrorMessage($this, $type, $message, $code);
+			optErrorMessage($this, $type, $message, $code, end($this->filenames));
 		} // end error();
 		
 		private function needCompile($filename, $noException = false)
 		{
 			$compiled = optCompileFilename($filename);
+			# CUSTOM_RESOURCES
 			$resource = 'file';
 			if(strpos($filename, ':') !== FALSE)
 			{
@@ -719,11 +875,13 @@
 				}
 				$callback = $this -> resources[$resource];
 			}
-			
+			# /CUSTOM_RESOURCES
 			$compiledTime = @filemtime($this -> compile.$compiled);
 			$result = false;
+			# CUSTOM_RESOURCES
 			if($resource == 'file')
 			{
+			# /CUSTOM_RESOURCES
 				$rootTime = @filemtime($this -> root.$filename);
 				if($rootTime === false)
 				{
@@ -737,28 +895,40 @@
 				{
 					$result = file_get_contents($this -> root.$filename);
 				}
+			# CUSTOM_RESOURCES
 			}
 			else
 			{
 				$result = $callback($this, $filename, $compiledTime);
 			}
-			
+			# /CUSTOM_RESOURCES
+
 			if($result === false)
 			{
 				return $compiled;
 			}
-			
+
 			if(!is_object($this -> compiler))
 			{
 				require_once(OPT_DIR.'opt.compiler.php');
 				$this -> compiler = new optCompiler($this);
+
+				if(sizeof($this -> compileMasterPages) > 0)
+				{
+					// Load master pages now
+					foreach($this -> compileMasterPages as $page)
+					{
+						$this -> getTemplate($page, $this -> compiler, true);
+					}
+				}
 			}
 			$this -> compiler -> parse($this -> compile.$compiled, $result);
-			return $compiled;	
+			return $compiled;
 		} // end needCompile();
 		
-		public function getTemplate($filename)
+		public function getTemplate($filename, $compiler = NULL, $master = false)
 		{
+			# CUSTOM_RESOURCES
 			$resource = 'file';
 			if(strpos($filename, ':') !== FALSE)
 			{
@@ -772,16 +942,24 @@
 				}
 				$callback = $this -> resources[$resource];
 			}
-			$compiler = new optCompiler($this -> compiler);
+			# /CUSTOM_RESOURCES
+			if(is_null($compiler))
+			{
+				$compiler = new optCompiler($this -> compiler);
+			}
+			# CUSTOM_RESOURCES
 			if($resource == 'file')
 			{
+			# /CUSTOM_RESOURCES
 				$result = file_get_contents($this -> root.$filename);
+			# CUSTOM_RESOURCES
 			}
 			else
 			{
 				$result = $callback($this, $filename);
 			}
-			return $compiler -> parse(NULL, $result);
+			# /CUSTOM_RESOURCES
+			return $compiler -> parse(NULL, $result, $master);
 		} // end getFilename();
 		
 		# OUTPUT_CACHING
@@ -839,6 +1017,13 @@
 			}
 		} // end cacheWrite();
 		# /OUTPUT_CACHING
+		
+		# HTTP_HEADERS
+		protected function header($header)
+		{
+			header($header);
+		} // end header();		
+		# /HTTP_HEADERS
 		
 		private function loadPlugins()
 		{	
@@ -912,21 +1097,23 @@
 	
 	function optCompileFilenameFull($filename)
 	{
+		# CUSTOM_RESOURCES
 		if(strpos($filename, ':') !== FALSE)
 		{
 			$resource = explode(':', $filename);
 			$filename = $resource[1];
 		}
-		return '%%'.str_replace('/', '_', $filename);
+		# /CUSTOM_RESOURCES
+		return '%%'.str_replace(array('/', '\\'), '_', $filename);
 	} // end optCompileFilenameFull();
 	
 	function optCompileFilename($filename)
 	{
-		return '%%'.str_replace(array('/', ':'), array('_', '_'), $filename);
+		return '%%'.str_replace(array('/', ':', '\\'), '_', $filename);
 	} // end optCompileFilename();
 	
 	function optCacheFilename($filename, $id = '')
 	{
-		return str_replace(array('|', '/'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
+		return str_replace(array('|', '/', '\\'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);
 	} // end cd();
 ?>

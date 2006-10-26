@@ -1,5 +1,5 @@
 <?php
-	define('OPT_VERSION', '1.0.0');
+	define('OPT_VERSION', '1.1.0');
 	$availableDirectives = array(
 		'PLUGIN_AUTOLOAD' => array(
 			'title' => 'Autoloading plugins support',
@@ -12,10 +12,6 @@
 		'DEBUG_CONSOLE' => array(
 			'title' => 'Debug console',
 			'description' => 'When in debug mode, the console shows much useful information about parsed templates, configuration etc. However, if you have already developed the script and you want to upload it into a webserver, you may remove the console from the code, because now it will be unnecessary.'	
-		),
-		'DISABLED_CC' => array(
-			'title' => 'disableCompileCache',
-			'description' => 'Removes the disableCompileCache directive from OPT and all the code supporting it.'	
 		),
 		'GZIP_SUPPORT' => array(
 			'title' => 'GZip compression support',

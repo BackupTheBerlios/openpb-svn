@@ -1,0 +1,3384 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE book PUBLIC "-//Norman Walsh//DTD DocBk XML V4.4//EN"
+                         "dtds/docbookx.dtd">
+<book id="opt" lang="en">
+	<bookinfo id="bookinfo">
+		<title>Open Power Template</title>
+		<subtitle>Reference manual - version 1.1.0</subtitle>
+		<authorgroup id="authors">
+			<author>
+				<firstname>Tomasz</firstname>
+				<surname>Jędrzejewski</surname>
+			</author>
+			<author>
+				<firstname>Tomasz</firstname>
+				<surname>Szczupliński</surname>
+			</author>
+		</authorgroup>
+		<copyright>
+			<year>2006</year>
+			<holder>Tomasz Jędrzejewski, Tomasz Szczupliński</holder>
+		</copyright>
+	</bookinfo>
+	<title>Open Power Template</title>
+	<preface id="preface">
+		<title>Preface</title>
+		<para>Open Power Template is a template engine written in PHP 5. While developing it we chose two
+		main goals for it: to be fast, and to be flexible. We managed to do that. OPT uses a very effective
+		template parsing algorithm, which compiles the templates into the PHP code. Of course they are stored
+		on a HDD, so that we don't have to recompile them every time someone enters our website. When it
+		comes to the flexibility, you may change here everything: from the instruction set and the syntax
+		structure to... whole template engine. Yes! You may remove the original heart of the library and write
+		your own, based on the OPT Compiler.</para>
+		<para>The feature issue also looks good. OPT provides both low and high level template syntax structures.
+		Using programming instructions, like <emphasis>if</emphasis> or <emphasis>foreach</emphasis> you manage
+		to do almost everything, whereas sections and components make your live easier. The full list contains:</para>
+		<orderedlist>
+			<listitem>Fully flexible template syntax. You may set both your own tag delimiters and the way you are
+			passing the parameters to instructions.</listitem>
+			<listitem>XML-Syntax mode, where OPT uses XML-based tag delimiters instead of default. This allows
+			your template to pass the W3C tests and also use it in WYSIWYG editors.</listitem>
+			<listitem>Control structures, such as if, for, foreach, and expressions known from programming
+			languages implemented.</listitem>
+			<listitem>High-level structures that make the template writing easier. They don't require almost
+			any knowledge of any programming language.</listitem>
+			<listitem>Tree data rendering system.</listitem>
+			<listitem>Components that improve form building etc.</listitem>
+			<listitem>Support for compound types from PHP: arrays and objects. In the second ones calling
+			methods allowed.</listitem>
+			<listitem>High speed. There are implemented several optimizations, and you may speed up the
+			template executing using such tools, as Zend Optimizer (this is because the templates are
+			compiled into the PHP code).</listitem>
+			<listitem>Built-in internationalization support.</listitem>
+			<listitem>Object-oriented architecture.</listitem>
+			<listitem>Custom template functions/instructions support.</listitem>
+			<listitem>It is very easy to link the OPT configuration with your website one.</listitem>
+			<listitem>HTTP header manager.</listitem>
+			<listitem>GZip output compression.</listitem>
+			<listitem>Output caching.</listitem>
+			<listitem>Support for code filters.</listitem>
+			<listitem>Support for custom resources (ie. templates are stored in the database).</listitem>
+			<listitem>Built-in debug console.</listitem>
+			<listitem>OPT API that allows you to build your own template engines based on the OPT Compiler.</listitem>
+			<listitem>Additional tools: OPT Compiler (manual template compilator) and OPT Configurator (remove
+			unused features from the library source code).</listitem>		
+		</orderedlist>
+		<para>The library is available under GNU Lesser General Public License. You may use it and modify for free,
+		even in commercial projects unless you remove copyright notes and do not earn money for just because of it.</para>
+		<para>Open Power Template is a part of bigger project: Open Power Board. Its goal is to create open-source
+		and qood-quality discussion board. There are also another Open Power projects. Open Power Forms is the official
+		add-on to OPT allowing to build really dynamic HTML forms connected with data validation and user info collecting.
+		Open Power Driver is a layer for PHP Data Objects library with almost the same API, but extended with data caching
+		feature. All the projects are developed mostly by Polish PHP community, but we do not forget about the rest.</para>
+		<para>Before we start, remember one thing... <emphasis>OPT is not a Smarty™ clone</emphasis>.</para>	
+	</preface>
+	<chapter id="installation">
+		<title>Installation</title>
+		<para>Open Power Template requires a web server running PHP 5.0.0 or later. The Zlib extension is recommended,
+		if you want to compress the HTTP output.</para>
+		<para>Note: we test every release on the latest available PHP6 snapshot. Version 1.0.2, released on 6 October
+		2006, still seems to have problems with gZip compression on the snapshot from 24 September.</para>
+		<sect1 id="installation.simple">
+			<title>Simple installation</title>
+			<para>A typical installation process is done in two stages. Firstly, copying files. The project
+			contains several PHP scripts named <filename>opt.filename.php</filename>. These files need to be
+			copied into your project directory tree, wherever you want. You may create a separate directory for
+			them, or mix with other core files. It is recommended to make the directory unavailable from the
+			browser level. Then you have to make two directories for the templates: <filename>templates</filename>
+			and <filename>templates_c</filename>. The former contains all the templates we use in our website.
+			The latter is a kind of cache for precompiled templates generated by OPT.</para>
+			<para>Secondly, the script building:</para>
+			<orderedlist>
+				<listitem>Set the <constant>OPT_DIR</constant> constant containing the path to the library files.
+				OPT may create it on its own, if the files are in the current directory. We <emphasis>do not</emphasis> recommend
+				to put here null value:
+				<programlisting><![CDATA[define('OPT_DIR', '');]]></programlisting>
+				This may cause the application gets slower - PHP has to check every predefined path.
+				</listitem>
+				<listitem>Include <filename>opt.class.php</filename> file containing the main library class.</listitem>
+				<listitem>1.Place the rest of the code inside <emphasis>try{ ... } catch(){ ... }</emphasis> block.
+				OPT reports the errors using PHP exception system and we need it to catch them. If you do not want
+				to write your own exception handler, you may use the standard one placed in
+				<function>optErrorHandler()</function> function.</listitem>
+				<listitem>Create <classname>optClass</classname> object.</listitem>
+				<listitem>Create a configuration. You may set the directives manually (at least root and compile
+				containing paths to the templates and their compiled versions) or load them using
+				<function>loadConfig()</function> method.</listitem>
+				<listitem>Optionally you may send HTTP headers using <function>httpHeaders()</function> method.</listitem>			
+			</orderedlist>
+			<para>Now your script is ready to work. A sample application looks like this:</para>
+			<example id="example.installation.simple">
+				<title>Sample OPT script</title>
+				<programlisting><![CDATA[<?php 
+  // set the path to the library 
+  define('OPT_DIR', '../lib/'); 
+  // load the library 
+  require(OPT_DIR.'opt.class.php'); 
+  try{  
+    // create parser object 
+    $tpl = new optClass; 
+    // configure OPT 
+    $tpl -> root = './templates/'; 
+    $tpl -> compile = './templates_c/'; 
+    $tpl -> gzipCompression = 1; 
+    // send headers 
+    $tpl -> httpHeaders(OPT_HTML);  
+  
+    // process the template 
+    $tpl -> assign('current_date', date('d.m.Y, H:i'));  
+    $tpl -> parse('example1.tpl');  
+  }catch(optException $exception){  
+    optErrorHandler($exception);  
+  }  
+?>				]]></programlisting>
+			</example>
+			<para>Notice, how we configure the library. We just set the fields inside the class.
+			<emphasis>root</emphasis> is the path to the location, where the templates are stored.
+			<emphasis>compile</emphasis> is the second location we have created. Here OPT will save
+			precompiled templates. Third directive, <emphasis>gzipCompression</emphasis> tells that
+			the output should be compressed, if the browser supports such option.</para>
+			<para>The configuration may be also stored as array:</para>
+			<programlisting><![CDATA[$config = array(
+	'root' => './templates/',
+	'compile' => './templates_c/',
+	'gzipCompression' => 1
+);
+$tpl -> loadConfig($config);]]></programlisting>
+			<para>Or even a configuration file:</para>
+			<programlisting><![CDATA[; <?php die(); ?>
+; OPT configuration
+root = "./templates/"
+compile = "./templates_c/"
+gzipCompression = 1]]></programlisting>
+			<para>It may be loaded in this way:</para>
+			<programlisting><![CDATA[$tpl -> loadConfig('my_config.php');]]></programlisting>
+		</sect1>
+		<sect1 id="installation.advanced">
+			<title>Advanced installation</title>
+			<para>Unlike to other PHP 5 template engines, OPT does not have a native singleton design pattern implemented.
+			Thanks to this fact, you may extend the default <classname>optClass</classname> with additional methods, and
+			add this pattern manually, if you really need it. Let's take a look at the sample aplication that extends the
+			base class and adds some commonly used parts of code to the OPT.</para>
+			<example id="example.installation.advanced">
+				<title>Advanced installation</title>
+				<programlisting><![CDATA[<?php 
+	define('OPT_DIR', '../lib/');
+	require('../lib/opt.class.php');
+	
+	class myParser extends optClass
+	{
+		public $pageTitle;
+
+		public function __construct()
+		{
+			$this -> root = './templates/';
+			$this -> compile = './templates_c/';
+			$this -> cache = './cache/';
+			$this -> gzipCompression = 1;
+			$this -> httpHeaders(OPT_HTML); 
+		} // end __construct();
+		
+		public function display($template)
+		{
+			$this -> assign('pageTitle', $this -> pageTitle);
+			$this -> parse('overall_header.tpl');
+			$this -> parse($template);
+			$this -> parse('overall_footer.tpl');
+		} // end display();
+	}
+ 
+	try
+	{ 
+		$tpl = new myParser;
+		$tpl -> pageTitle = 'My page';
+		$tpl -> assign('current_date', date('d.m.Y, H:i')); 
+		$tpl -> display('document.tpl');
+	}
+	catch(optException $exception)
+	{ 
+		optErrorHandler($exception); 
+	}
+?>				]]></programlisting>
+			</example>
+			<para>Using this way, you may extend the engine with additional features or enclose some commonly made
+			operations in additional methods. The main example that shows, how brilliant idea it is, is the official
+			OPT add-on called Open Power Forms. It contains a class <classname>opfResponse</classname> that is both
+			a template engine and an application response sender.</para>
+		</sect1>
+		<sect1 id="installation.opt_api">
+			<title>OPT API</title>
+			<para>OPT is designed to work with every kind of text data, not only XML documents, like some other engines.
+			It is also designed to be as much extendable, as it's possible. Here comes the OPT API. It allows you to
+			develop your own template parser using the native OPT template compiler. You find it useful, if you want
+			to write an e-mailer class, which parser the e-mail templates. You do not need all those Gzip compressions,
+			HTTP output caching, so you use just the template compiler and a simplified parser.</para>
+			<para>OPT API contains all the basic methods, like <function>assign()</function> or <function>fetch()</function>.
+			Let's take a look at the sample script:</para>
+			<example id="example.installation.opt_api">
+				<title>OPT API usage</title>
+				<programlisting><![CDATA[<?php 
+	define('OPT_DIR', '../lib/');
+	require('../lib/opt.api.php');
+	
+	class optParser extends optApi
+	{
+		// Your code goes here
+	}
+
+	try{ 
+		$tpl = new optParser; 
+		$tpl -> root = './templates/';
+		$tpl -> compile = './templates_c/';
+		$tpl -> assign('current_date', date('d.m.Y'));
+		$tpl -> parse('my_template.tpl');
+	}
+	catch(optException $exception)
+	{ 
+		optErrorHandler($exception); 
+	}
+?>				]]></programlisting>
+			</example>
+			<para>The <emphasis>compile</emphasis> directive is required by the compiler, so even such APIs should provide
+			it for the programmer. Runtime compilation is much slower than executing precompiled templates.</para>
+		</sect1>
+	</chapter>
+	<chapter id="syntax">
+		<title>Template syntax</title>
+		<para>In this chapter we will describe the template syntax used in the templates. The syntax is inspired by
+		XML. If you are familiar with this language, you will find here some similar elements, like opening and enclosing
+		tags, parameters etc. However, OPT is intended to work with all the text content and includes the features that
+		XML does not have. There is a mode called <emphasis>XML Syntax Mode</emphasis>. It makes the tags look like in
+		XML language, but remember - it is only an emulation, which accepts even invalid code.</para>
+		<para>Firstly, the manual provides basic information about tags and comments. Next, the blocks and expressions
+		are explained. Finally, we describe all the functions, instructions and components, and end with the XML Syntax
+		Mode.</para>
+		<para>This chapter is intended to the template designers. We know that some of them may not know any of the programming
+		languages, and no doubt, the OPT syntax has the power of such language. If you are such person, remember that you do not
+		have to use all of the programming features (probably you will use only the simplest parts). We tried to make the descriptions
+		as simple as possible, however we had also to describe the whole syntax (it is a reference manual, not a tutorial).
+		We marked the text with colored bars that tell more about the programming experience required from the reader.</para>
+		<itemizedlist>
+			<listitem>No bar - for everyone</listitem>
+			<listitem>Orange bar - a programming feature, but easy to understand and in fact the template designers may
+				find it sometimes useful.</listitem>
+			<listitem>Red bar - a programming feature, which requires to be a bit experienced. If you are a template designer,
+				you do not have to know it.</listitem>
+		</itemizedlist>
+		<sect1 id="syntax.introduction">
+			<title>Introduction</title>
+			<para>A template is a single file with a static text content and OPT template tags. They are parsed by
+			the compiler and allow to modify or put the script data into the template. In the end, we have a
+			ready output document.</para>
+			<para>All OPT template tags are enclosed within delimiters. By default, they are <emphasis>{</emphasis> and
+			<emphasis>}</emphasis>, but they can be changed. XML Syntax Mode provides additional delimiters which emulate
+			the XML language. In this manual we will assume that you use the default delimiters. Here are some sample tags:</para>
+			<programlisting><![CDATA[{tag}
+{multiline
+	tag}	]]></programlisting>
+			<para>The tag must not contain any delimiter character in its content; the code <emphasis>{tag } tag}</emphasis>
+			is invalid.</para>
+			<para>The template processing consists of two stages. The first one is called <emphasis>compilation stage</emphasis>.
+			The template is changed there to the PHP code by a group of special algorithms, in order to make the execution easier
+			and faster. The compilation is done only, if the template source changes. The second stage is the execution - the compiled
+			template is executed here by the PHP parser and produces the output (for example, the complete HTML code for the browser).
+			Most of the instructions provided by OPT work both in the compilation and execution stage, but there is a small group
+			that exists only in the first one, because they are designed just to support the template designer and the template compiler.
+			It will be mentioned in such instructions.</para>
+		</sect1>
+		<sect1 id="syntax.comments">
+			<title>Comments</title>
+			<para>Template comments are surrounded by asterisks and may contain both static text and OPT tags.
+			They are not displayed in the final output, unlike HTML comments. They are useful for making internal
+			notes in the templates or in debugging purposes.</para>
+			<example id="example.syntax.comments">
+				<title>Template comments</title>
+				<programlisting><![CDATA[{* This is a single line comment *}
+{* This is a
+multiline comment *}
+<p>This is a static code</p>
+{* show the $date block here *}
+{$date}
+&lt;!-- This comment is sent to the browser --&gt;]]></programlisting>
+			</example>
+		</sect1>
+		<sect1 id="syntax.blocks">
+			<title>Blocks and variables</title>
+			<para>A block is a place in the template, where you can put the results of your application. It
+			starts with a dollar sign and can contain numbers, letters and underscores, just like PHP variables.
+			The block may have both simple values, for example strings or numbers, and the complex types: arrays
+			and objects. The block values are passed to the templates, using <function>optClass::assign()</function>
+			method. This is a sample template that allows to put a dynamic date into the static text:</para>
+			<example id="example.syntax.blocks1">
+				<title>Simple block</title>
+				<programlisting><![CDATA[<p>Hello my friend, do you need {$thing}?</p>]]></programlisting>
+			</example>
+			<para>Now, if the application programmer assigns the text "sunglasses" into the <emphasis>$thing</emphasis>
+			block, the guest will see:</para>
+			<programlisting><![CDATA[<p>Hello my friend, do you need sunglasses?</p>]]></programlisting>
+			<mark type="orange">
+			<para>Blocks can handle not only strings or numbers. They support also compound types known from PHP, like
+			arrays and objects. An array is a set of variables grouped under the same name. For example, instead of writing
+			<emphasis>$person_name, $person_surname</emphasis>, we use <emphasis>$person.name, $person.surname</emphasis>.
+			You can say, it is almost the same, but the main difference is in the PHP code, where the data are more simply
+			assigned to the templates. You should consult your PHP programmer, where you are going to use them.</para>
+			<para>Arrays bring also some more dynamics. For example, we have two of them: <variable>$titles</variable> and
+			<variable>$values</variable>. They contain different kinds of data, and the titles for them, but we have another
+			block: <variable>$id</variable> that describes, what record should be shown. OPT allows to do it:</para>
+			<example id="example.syntax.blocks2">
+				<title>Blocks and arrays</title>
+				<programlisting><![CDATA[<p><strong>{$titles[$what]}</strong>: {$values[$what]}</p>]]></programlisting>
+			</example>
+			<para>This code tells: take the element from <variable>$titles</variable>, whose key (identifier) is in the <variable>$what</variable>
+			block. The identifiers of array elements may be both numbers and strings. The full list of possible ways to access
+			array data is shown below:</para>
+			<programlisting><![CDATA[{$foo}           {* display a simple data (numbers, strings) *}
+{$foo[4]         {* display the 5th element of a zero-indexed array *}
+{$foo.bar}       {* display the "bar" key value of an array *}
+{$foo[bar]}      {* display the "bar" key value of an array *}
+{$foo.bar[pub]}  {* display the "pub" key of "bar" array in $foo block. *}
+{$foo[$bar]}     {* display value of an array, whose name is in the $bar block *}]]></programlisting>
+			<para>The notation with dots can be used, if we define the key statically. The notation with
+			brackets allows to use dynamic keys, stored in some other blocks. Note also that we can mix
+			those two notations in this way: firstly dot-based access, later brackets. The way, where the
+			brackets are first and dots last, like <emphasis>$foo[bar].joe</emphasis> is not allowed.</para>
+			</mark>
+			<mark type="red">
+			<para>Another compound type supported by OPT are objects. Unsually there is no need to use them
+			in templates, although some programmers may find them important. An object is more than array. It contains
+			not only the grouped data, but also the <emphasis>methods</emphasis>, which may perform some operations on
+			them. The methods can take parameters, which are both static values, like "5" and "Mike", and other blocks.
+			The code below shows, how to access the object data in OPT:</para>
+			<programlisting><![CDATA[{$foo->bar}			{* the "bar" field of the object *}
+{$foo->method()}			{* the method "method" of the $foo object called *}
+{$foo->method(5)}			{* the method with a static parameter called *}
+{$foo->method($bar)}		{* the method with a dynamic parameter $foo called *}
+{$foo->method($abc, $def)}	{* the method with more than one parameters *}]]></programlisting>
+			<para>Consult with the script programmer, which elements of the syntax you are going to use.</para>
+			</mark>
+			<para>Block names can contain letters, numbers and underscores, where the first character must not
+			be a number. OPT has only one reserved block name: <emphasis>$opt</emphasis>. It allows to access various
+			information about different elements of the system. Note that the programmer may extend the field of use of
+			this block, and here we will describe only the built-in options:</para>
+			<programlisting><![CDATA[$opt.get.name - reads the "name" parameter from the URL address
+$opt.post.name - reads the "name" field sent to the script by the HTML form
+$opt.cookie.name - reads the "name" cookie value
+$opt.session.name - reads the "name" value from the session data
+$opt.server.name - reads the "name" value from the server information
+$opt.env.name - reads the "name" value from the server information
+$opt.request.name - reads the "name" value from the URL, the form or the cookie
+$opt.now - returns the current time in seconds from 1.1.1970
+$opt.const.name - returns the value of "name" PHP constant
+$opt.version - returns the OPT version]]></programlisting>
+			<para>Sometimes the template engine must set some values for the template designer, but as we said, it
+			must not use blocks for this. All the data generated by OPT can be displayed, using the next syntax structure
+			that is called <emphasis>variable</emphasis>. Its name begins with an at character, but it also can contain
+			numbers, strings and compound types. The only difference is that it is set by the template engine, not the
+			script. In the example below, we will define a variable inside a template and display it:</para>
+			<example id="example.syntax.blocks3">
+				<title>Variables</title>
+				<programlisting><![CDATA[{var=variable; "This is a variable"}
+<p>{@variable}</p>]]></programlisting>
+			</example>
+			<para>The first line defines a new variable. It will be explained later.</para>
+			<mark type="red">
+			<para>OPT allows to access directly its configuration, using <emphasis>configuration directives</emphasis>. Their
+			names are followed by the hash character (#): <emphasis>{#root}</emphasis>.</para>			
+			</mark>
+			<para>Some websites may use multilingual interfaces. The messages displayed on the page are dynamically loaded
+			depending on the selected language. OPT has a special kind of block, <emphasis>language blocks</emphasis>. They
+			allow to read the texts directly from the language system used by the script. Each message is identified by the
+			ID and belongs to a group. The language block looks like this: <emphasis>{$group@id}</emphasis>. The i18n system
+			used by OPT is described later.</para>
+		</sect1>
+		<sect1 id="syntax.expressions">
+			<title>Expressions</title>
+			<mark type="orange">
+			<para>Blocks and variables can be combined in bigger structures called expressions. Let's say that the programmer
+			passed to the template the amount of active and inactive users. Can you still display the total number of accounts?
+			The answer is: yes. Take a look at the example:</para>
+			<example id="example.syntax.expressions1">
+				<title>Variables</title>
+				<programlisting><![CDATA[<p>Active accounts: {$active}</p>
+<p>Inactive accounts: {$inactive}</p>
+<p>Total accounts: {$active + $inactive}</p>]]></programlisting>
+			</example>
+			<para>As you see, the blocks are connected with an operator that sums the values and returns the result. OPT allows to
+			create compound expressions built of many different operators.</para>
+			<para>An expression contains:</para>
+			<orderedlist>
+				<listitem>Numbers in decimal and hexadecimal format: 1234567890 or 0x123456789ABCDEF0 or 0x123456789abcdef0</listitem>
+				<listitem>Strings enclosed with:
+				<orderedlist>
+					<listitem>Single quotes: <emphasis>'this is a text'</emphasis></listitem>
+					<listitem>Double quotes: <emphasis>"this is a text"</emphasis></listitem>
+					<listitem>Reversed quotes: <emphasis>`this is a text`</emphasis></listitem>
+					<listitem>Single words may be written without quotes, only if they are not operators and are not located on an
+						operator place.</listitem>
+					<listitem>To write a quote as a part of text, you follow it with backslash: <emphasis>"double \" quote in a text"</emphasis></listitem>
+				</orderedlist>
+				</listitem>
+				<listitem>Operators: connect two smaller expressions and return the value. The precedence of an operator specifies
+					how "tightly" it binds two expressions together. For example, in the expression <emphasis>1 + 5 * 3</emphasis>,
+					the answer is 16 and not 18 because the multiplication ("*") operator has a higher precedence than the addition
+					("+") operator. Parentheses may be used to force precedence, if necessary. The precendence in OPT is the same,
+					as in PHP.</listitem>
+				<listitem>Functions - they take some parameters (arguments) and generate a result for them, like in maths or PHP.
+					The syntax: <emphasis>functionName(parameters)</emphasis> where parameters is a list of expressions divided
+					with a comma. For example, the function <emphasis>foo(1, 2, 3)</emphasis> takes three parameters: 1, 2 and 3.
+					<emphasis>bar()</emphasis> does not take any parameters. Similar syntax is used for object methods.</listitem>			
+			</orderedlist>
+			<para>The following operators are available in OPT. Some of them have two variants: symbolic and text.</para>
+			
+			<table frame="all">
+				<?dbhtml table-width="100%" ?>
+				<caption>List of operators</caption>
+				<tgroup cols="4" align="center">
+				<thead>
+				<row>
+				  <entry>Symbolic</entry>
+				  <entry>Text</entry>
+				  <entry>Example</entry>
+				  <entry>Description</entry>
+				</row>
+				</thead>
+				<tbody>
+				<row>
+				  <entry>==</entry>
+				  <entry>eq</entry>
+				  <entry>$a == $b</entry>
+				  <entry>true if $a is equal to $b</entry>
+				</row>
+				<row>
+				  <entry>!=</entry>
+				  <entry>neq</entry>
+				  <entry>$a != $b</entry>
+				  <entry>true if $a is not equal to $b</entry>
+				</row>
+				<row>
+				  <entry>===</entry>
+				  <entry></entry>
+				  <entry>$a === $b</entry>
+				  <entry>true if $a is equal to $b and both have the same type</entry>
+				</row>
+				<row>
+				  <entry>!==</entry>
+				  <entry></entry>
+				  <entry>$a !== $b</entry>
+				  <entry>true if $a is not equal to $b or they have different types</entry>
+				</row>
+				<row>
+				  <entry>&gt;</entry>
+				  <entry>gt</entry>
+				  <entry>$a &gt; $b</entry>
+				  <entry>true if $a is greater than $b</entry>
+				</row>
+				<row>
+				  <entry>&lt;</entry>
+				  <entry>lt</entry>
+				  <entry>$a &lt; $b</entry>
+				  <entry>true if $a is lower than $b</entry>
+				</row>
+				<row>
+				  <entry>&gt;=</entry>
+				  <entry>gte, ge</entry>
+				  <entry>$a &gt;= $b</entry>
+				  <entry>true if $a is greater or equal to $b</entry>
+				</row>
+				<row>
+				  <entry>&lt;=</entry>
+				  <entry>lte, le</entry>
+				  <entry>$a &lt;= $b</entry>
+				  <entry>true if $a is lower or equal to $b</entry>
+				</row>
+				<row>
+				  <entry>&amp;&amp;</entry>
+				  <entry>and</entry>
+				  <entry>$a &amp;&amp; $b</entry>
+				  <entry>true if both $a and $b are true</entry>
+				</row>
+				<row>
+				  <entry>||</entry>
+				  <entry>or</entry>
+				  <entry>$a || $b</entry>
+				  <entry>true if $a or $b is true</entry>
+				</row>
+				<row>
+				  <entry></entry>
+				  <entry>xor</entry>
+				  <entry>$a xor $b</entry>
+				  <entry>true if $a or $b is true, but not both.</entry>
+				</row>
+				<row>
+				  <entry>!</entry>
+				  <entry>not</entry>
+				  <entry>! $a</entry>
+				  <entry>true if $a is false</entry>
+				</row>
+				<row>
+				  <entry>+</entry>
+				  <entry>add</entry>
+				  <entry>$a + $b</entry>
+				  <entry>sum of $a and $b</entry>
+				</row>
+				<row>
+				  <entry>-</entry>
+				  <entry>sub</entry>
+				  <entry>$a - $b</entry>
+				  <entry>difference of $a and $b</entry>
+				</row>
+				<row>
+				  <entry>*</entry>
+				  <entry>mul</entry>
+				  <entry>$a * $b</entry>
+				  <entry>product of $a and $b</entry>
+				</row>
+				<row>
+				  <entry>/</entry>
+				  <entry>div</entry>
+				  <entry>$a / $b</entry>
+				  <entry>quotient of $a and $b</entry>
+				</row>
+				<row>
+				  <entry>%</entry>
+				  <entry>mod</entry>
+				  <entry>$a % $b</entry>
+				  <entry>remainder of $a divided by $b</entry>
+				</row>
+				<row>
+				  <entry>++</entry>
+				  <entry></entry>
+				  <entry>$a++</entry>
+				  <entry>increments the value of $a by 1</entry>
+				</row>
+				<row>
+				  <entry>--</entry>
+				  <entry></entry>
+				  <entry>$a--</entry>
+				  <entry>decrements the value of $a by 1</entry>
+				</row>
+				<row>
+				  <entry>::</entry>
+				  <entry></entry>
+				  <entry>$a :: $b</entry>
+				  <entry>concatenation of strings $a and $b</entry>
+				</row>
+				<row>
+				  <entry>=</entry>
+				  <entry>is</entry>
+				  <entry>@a is $b</entry>
+				  <entry>assigns the right value to the variable on the left</entry>
+				</row>
+				</tbody>
+			  </tgroup>
+			</table>
+			<para>Note: OPT supports only post-increment and post-decrement operators. The syntax <emphasis>++$a</emphasis> may cause
+			unexpected behaviour.</para>
+			<para>The table may look a bit confusing, so now we are going to take a tour on an example. There is an instruction called
+			"if" that allows to show a part of the template, if the specified condition is true. The script sends us two blocks:
+			<variable>$name</variable> and <variable>$surname</variable> - we want to show additional text, if they both point to
+			a certain person.</para>
+			<example id="example.syntax.expressions2">
+				<title>Simple expressions</title>
+				<programlisting><![CDATA[{if $name == "John" and $surname == "Brown"}
+	<p>Hey John, how are you!</p>
+{/if}]]></programlisting>
+			</example>
+			<para>Such operators, as <emphasis>&gt;</emphasis> and <emphasis>==</emphasis> can be used to compare some data, whereas
+			<emphasis>and</emphasis>, <emphasis>or</emphasis> define relations between them. Another example will be a result of some
+			internet test divided into three stages. The competitor takes one, and then chooses another from two possibilities. The
+			script sends to our template the following blocks: <variable>$test1</variable> - a number of points in test 1,
+			<variable>$test2</variable> in test 2, and <variable>$test3</variable> in test 3. We want to display additional congratulations,
+			if he passed the first test, and another one of the twos.</para>
+			<example id="example.syntax.expressions3">
+				<title>More complicated expression</title>
+				<programlisting><![CDATA[{if $test1 > 50 and ($test2 > 50 or $test3 > 50)}
+	<p>Congratulations, you have passed our test!</p>
+{/if}]]></programlisting>
+			</example>
+			<para>As you see, we used brackets to group the conditions for test 2 and 3 into one bigger expression. Now the parser
+			knows that the results in test 1 and the one chosen by the competitor must be greater than 50. Without the brackets,
+			it would be calculated in the following way: test 1 and test 2, or just test 3, must be greather than 50. It is completely
+			different task that we wanted.</para>
+			</mark>
+		</sect1>
+		<sect1 id="syntax.functions">
+			<title>Functions</title>
+			<mark type="orange">
+			<para>A function is something that modifies the input data and generates the result. The input data are called
+			parameters and they are simply some values we want to process. In OPT, functions have similar syntax to other
+			programming languages and mathematics:</para>
+			<programlisting><![CDATA[{function(parameters)}]]></programlisting>
+			<para><emphasis>parameters</emphasis> is a list of values or expressions separated by commas. If the function takes
+			no parameters, we still keep the brackets. OPT has a number of different built-in functions and the programmers may
+			create their own, too.</para>
+			<para>The example below shows the idea hidden behind the functions. Let's say the script sets the block called
+			<variable>$introduction</variable> with a text "Welcome to our site", but in this layout, it has to be written with
+			capitalized letters.</para>
+			<example id="example.syntax.functions1">
+				<title>Sample use of functions</title>
+				<programlisting><![CDATA[<p>{capitalize($introduction)}</p>]]></programlisting>
+			</example>
+			<para>Now the value of <variable>$introduction</variable> block is passed to the function, which capitalizes all the
+			small letters and returns the modified text to the template.</para>
+			<para>Some functions appearing in OPT may be easily replaced by CSS stylesheets and in the HTML template design there
+			is no need to use them. However, the template engine is intended to work not only with the HTML data, but can process
+			any of the text content, where such features may be the only way, for example to capitalize the letters.</para>
+			<para>Below, we provided a complete reference of functions available in OPT. In the description, we use the following
+			data types:</para>
+			<orderedlist>
+				<listitem><emphasis>Integer</emphasis> - a number that belongs to ..., -2, -1, 0, 1, 2 ...</listitem>
+				<listitem><emphasis>Float</emphasis> - a real number (with fractions), for example 3.14</listitem>
+				<listitem><emphasis>Number</emphasis> - integer or float</listitem>
+				<listitem><emphasis>String</emphasis> - any text</listitem>
+				<listitem><emphasis>Boolean</emphasis> - a logical value: 1 (true) or 0 (false).</listitem>
+				<listitem><emphasis>Array</emphasis> - a PHP array</listitem>
+				<listitem><emphasis>Object</emphasis> - a PHP object</listitem>
+				<listitem><emphasis>Lang</emphasis> - a language block</listitem>
+				<listitem><emphasis>Mixed</emphasis> - more than one types possible</listitem>
+				<listitem><emphasis>Void</emphasis> - the function returns no value</listitem>
+				<listitem>... - three dots mean a custom number of parameters.</listitem>
+			</orderedlist>
+			<para>Note: the square brackets in the synopsis mark <emphasis>optional parameters</emphasis> that do not have to
+			be set, if not necessary.</para>
+			</mark>
+			<sect2 id="syntax.functions.apply">
+				<title>apply()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>apply</methodname>
+					<methodparam><type>lang</type><parameter>block</parameter></methodparam>
+					<methodparam><parameter>...</parameter></methodparam>
+				</methodsynopsis>
+				<para>The function allows to put the dynamic data into the specified language block. The items to assign are
+				passed as the function parameters. They replace the formatting codes of the C <function>sprinft()</function> function
+				inserted in the specified text. The exact result depends on the used I18n engine. If it is a default, procedural-based i18n
+				built into OPT, you may use this function only once on each language block, because the formatting codes are lost.
+				If you write your own engine, you may avoid this issue.</para>
+				<example id="example.syntax.functions.apply1">
+					<title>apply() function</title>
+					<programlisting><![CDATA[{* content of menu@welcome: Welcome %s, thanks for the visit. *}
+{apply($menu@welcome, 'Adam')}
+{* Wyswietli np.: Welcome Adam, thanks for the visit. *}
+<p>{$menu@welcome}</p>]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.functions.array">
+				<title>array()</title>
+				<methodsynopsis>
+				<type>array</type><methodname>array</methodname>
+					<methodparam><parameter>array definition</parameter></methodparam>
+				</methodsynopsis>
+				<para>Creates an array. The array definition specifies the content of the array and consists of pairs
+				<emphasis>key => value</emphasis> separated with commas.</para>
+				<example id="example.syntax.functions.array1">
+					<title>Creating simple arrays</title>
+					<programlisting><![CDATA[{@array is array('title' => 'A title', 'author' => 'Johnny', 'body' => 'A body.')}
+<h3>{@array.title}</h3>
+<p>By {@array.author}</p>
+<p>{@array.body}</p>]]></programlisting>
+				</example>
+				<para>To give the values autoindexes, specify only the first (numerical) key and next insert only the values
+				separated by commas:</para>
+				<example id="example.syntax.functions.array2">
+					<title>Autoindex</title>
+					<programlisting><![CDATA[{@array is array(0 => 'value1', 'value2', 'value3', 'value4')}]]></programlisting>
+				</example>
+				<para>Like in PHP, there might be both numerical and alphanumerical keys in one array.</para>
+			</sect2>
+			<sect2 id="syntax.functions.capitalize">
+				<title>capitalize()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>capitalize</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+				</methodsynopsis>
+				<para>Returns a string with the first character of <variable>text</variable> capitalized, if that character
+				is alphabetic. Note that 'alphabetic' is determined by the current locale set by the PHP application.</para>
+				<example id="example.syntax.functions.capitalize1">
+					<title>capitalize() function</title>
+					<programlisting><![CDATA[{* shows "Hello world" *}
+{capitalize("hello world")}]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.functions.count">
+				<title>count()</title>
+				<methodsynopsis>
+				<type>int</type><methodname>count</methodname>
+					<methodparam><type>array</type><parameter>array</parameter></methodparam>
+				</methodsynopsis>
+				<para>Returns a number of elements assigned to the <variable>array</variable> array.</para>
+			</sect2>
+			<sect2 id="syntax.functions.countwords">
+				<title>countWords()</title>
+				<methodsynopsis>
+				<type>int</type><methodname>countWords</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+				</methodsynopsis>
+				<para>Returns the number of words in the <variable>text</variable> text.</para>
+				<example id="example.syntax.functions.countwords1">
+					<title>capitalize() function</title>
+					<programlisting><![CDATA[<h1>{$title}</h1>
+<p>{$body}</p>
+<span class="small">Total words: {countWords($body)}</span>]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.functions.cycle">
+				<title>cycle()</title>
+				<methodsynopsis>
+				<type>mixed</type><methodname>cycle</methodname>
+					<methodparam><parameter>...</parameter></methodparam>
+				</methodsynopsis>
+				<para>Iterates through the specified parameters after each calling. For example, if we specify three values:
+				1, 2, 3, the function returns 1 after first calling, 2 after second, 3 after third, again 1 after fourth etc.
+				Useful in desing issues - in the example below we color in a different way each row of the table:</para>
+				<example id="example.syntax.functions.cycle1">
+					<title>cycle() function</title>
+					<programlisting><![CDATA[<table border="0">
+{section=rows}
+{@class is cycle("bright", "dark")}
+<tr>
+  <td class="{@class}">{$rows.name}</td>
+  <td class="{@class}">{$rows.value}</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+				</example>
+				<para>Note: since OPT 1.1.0 <function>cycle()</function> is not necessary in this place. You can use section
+				attributes:</para>
+				<example id="example.syntax.functions.cycle2">
+					<title>cycle() is not necessay</title>
+					<programlisting><![CDATA[<table border="0">
+{section=rows}
+{cycle=class; bright; dark} {* internal section tag *}
+<tr>
+  <td opt:cycle="rows">{$rows.name}</td>
+  <td opt:cycle="rows">{$rows.value}</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+				</example>
+				<para>See <link linkend="syntax.instructions.section" endterm="">sections</link> for more details.</para>
+			</sect2>
+			<sect2 id="syntax.functions.date">
+				<title>date()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>date</methodname>
+					<methodparam><type>string</type><parameter>format</parameter></methodparam>
+					<methodparam choice="opt"><type>int</type><parameter>timestamp</parameter></methodparam>
+				</methodsynopsis>
+				<para>Formats the date using PHP <ulink url="http://www.php.net/date">date()</ulink> function syntax. If
+				<variable>timestamp</variable> specified, formats the specified date, otherwise current time is taken.</para>
+				<example id="example.syntax.functions.date1">
+					<title>capitalize() function</title>
+					<programlisting><![CDATA[<p>Today is {date("d.m.Y")}.</p>]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.functions.length">
+				<title>length()</title>
+				<methodsynopsis>
+				<type>int</type><methodname>length</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+				</methodsynopsis>
+				<para>Returns the number of characters in <variable>text</variable>.</para>
+			</sect2>
+			<sect2 id="syntax.functions.lower">
+				<title>lower()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>lower</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+				</methodsynopsis>
+				<para>Makes all the characters lowercase.</para>
+			</sect2>
+			<sect2 id="syntax.functions.parseint">
+				<title>parseInt()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>parseInt</methodname>
+					<methodparam><type>number</type><parameter>num</parameter></methodparam>
+				</methodsynopsis>
+				<para>Formats the number to a human-readable form by adding separating characters between groups
+				of digits. By default, it formats the numbers using English-language settings, but they can be
+				changed in OPT configuration with these directives:</para>
+				<orderedlist>
+					<listitem><emphasis>parseIntDecimals</emphasis> - how many decimals after dot we want to present.</listitem>
+					<listitem><emphasis>parseIntDecPoint</emphasis> - separator between fractions and integer parts.</listitem>
+					<listitem><emphasis>parseIntThousands</emphasis> - separator between each group of thousands.</listitem>
+				</orderedlist>
+				<example id="example.syntax.functions.parseint1">
+					<title>parseInt() function</title>
+					<programlisting><![CDATA[<p>{parse_int(3483745.3490)}</p>
+{* will display: 3,483,745.349 *}]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.functions.trim">
+				<title>trim()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>trim</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>characters</parameter></methodparam>
+				</methodsynopsis>
+				<para>Returns a string with the specified in <variable>characters</variable> stripped from the beginning and the
+				end of <variable>text</variable>. If the character set is not specified, it strips whitechars (spaces, tabs etc.).</para>
+			</sect2>
+			<sect2 id="syntax.functions.upper">
+				<title>upper()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>upper</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+				</methodsynopsis>
+				<para>Makes all characters uppercase.</para>
+			</sect2>
+			<sect2 id="syntax.functions.wordwrap">
+				<title>wordwrap()</title>
+				<methodsynopsis>
+				<type>string</type><methodname>wordwrap</methodname>
+					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam><type>int</type><parameter>width</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>break</parameter></methodparam>
+				</methodsynopsis>
+				<para>Returns a string with <variable>text</variable> wrapped at the column number specified by the
+				optional <variable>width</variable> parameter. The line is broken using the (optional) <variable>break</variable> parameter.</para>
+				<example id="example.syntax.functions.wordwrap1">
+					<title>wordwrap() function</title>
+					<programlisting><![CDATA[{* only about 120 characters in one column *}
+<p>{wordwrap($article, 120, "\n<br/>")}</p>]]></programlisting>
+				</example>
+			</sect2>
+		</sect1>
+		<sect1 id="syntax.tags">
+			<title>Tags</title>
+			<para>Most of the template logic is built of OPT tags. They work and sometimes also look
+			like XML/XHTML, however there are some important differences which will be pointed here. By default,
+			the tags are also enclosed inside curly brackets: { and }. The programmer may define new
+			delimiters, which may be used by the template designer. Here we can see a simple pair of
+			tags:</para>
+			<example id="example.syntax.tags1">
+				<title>Simple tags</title>
+				<programlisting><![CDATA[static text
+{tag}
+static text enclosed in the tags
+{/tag}
+static text]]></programlisting>
+			</example>
+			<para>The ending tag starts with / and next there is a name of closed tag. Like in XML, you have to
+			remember to close the tags in the reversed order they were opened. The example below is invalid and
+			it will cause a syntax error:</para>
+			<example id="example.syntax.tags2">
+				<title>Invalid tags</title>
+				<programlisting><![CDATA[{tag1}
+{tag2}
+{/tag1}
+{/tag2}]]></programlisting>
+			</example>
+			<para>If OPT does not know, how to process some tag, it ignores it and all the content located inside.
+			This is because some other tags may make use of it, so it is better not to display them like a static
+			text. The next consequence of this behavior is that the mistakes in the tag names <emphasis>are not</emphasis>
+			reported by the template compiler! So, if something does not display, but should do this, check the name of
+			the tag.</para>
+			<para>Since 1.1.0, OPT supports namespaces known from XML. If the namespace is not provides, OPT assigns
+			the tag to the default one: <emphasis>opt</emphasis>. Thus, the tags <emphasis>sometag</emphasis> and
+			<emphasis>opt:sometag</emphasis> mean exactly the same. Separate OPT extensions may use different namespaces,
+			for example Open Power Forms uses <emphasis>opf</emphasis> to idenfity its tags.</para>
+			<para>OPT allows to use single tags, as well:</para>
+			<example id="example.syntax.tags3">
+				<title>Single tags</title>
+				<programlisting><![CDATA[{singletag/}]]></programlisting>
+			</example>
+			<para>There is also another type that does not appear in XML: alternative tags.</para>
+			<example id="example.syntax.tags4">
+				<title>Alternative tags</title>
+				<programlisting><![CDATA[static text
+{tag}
+static text enclosed in the tags
+{tagelse}
+alternative content of the tag
+{/tag}
+static text]]></programlisting>
+			</example>
+			<para>The tags may take one or more parameters. OPT provides here two different syntaxes:</para>
+			<orderedlist>
+				<listitem>Position-based syntax: <emphasis>{tag=parameter1; parameter2; parameter3}</emphasis> - it begins
+					with an equality character right after the tag name. The parameters are not named, we only specify the
+					values and separate them with a semicolon. If we want to pass the default value for one of the parameters,
+					we write <emphasis>!x</emphasis>, for example: <emphasis>{tag=parameter1; !x; parameter3}</emphasis></listitem>
+				<listitem>XML-style syntax: <emphasis>{tag parameter1="value" parameter2="value" parameter="3"}</emphasis></listitem>
+			</orderedlist>
+			<para>The syntaxes above unsually can be freely mixed. For example, for the first time you may write
+			<emphasis>{section=foo}</emphasis> and later in the same template - <emphasis>{section name="foo"}</emphasis>.
+			Some of the instructions use also their own parameter format.</para>
+			<para>The parameters may be of different types. For example, if the tag requires a string, you can write
+			<emphasis>{tag=this is a text}</emphasis>. But if there is a need to write an expression, you have to write
+			<emphasis>{tag="this is a text"}</emphasis> or <emphasis>{tag parameter="`this is a text`"}</emphasis>
+			(with two quotes. The first one is for the parameter parser, the second - for the expression parser).</para>
+			<para>Be careful when using OPT delimiter characters inside parameters. The code <emphasis>{tag="foo {bar}"}</emphasis>
+			will cause error. If you think such situations may happen, ask your programmer for enable the <emphasis>entities</emphasis>
+			directive in the configuration. Then you may use entities, known from HTML:</para>
+			<table frame="all">
+				<?dbhtml table-width="100%" ?>
+				<caption>OPT entities</caption>
+				<tgroup cols="2" align="center">
+				<thead>
+				<row>
+				  <entry>Entity</entry>
+				  <entry>Character</entry>
+				</row>
+				</thead>
+				<tbody>
+				<row>
+				  <entry>&amp;amp;</entry>
+				  <entry>&amp;</entry>
+				</row>
+				<row>
+				  <entry>&amp;quot;</entry>
+				  <entry>&quot;</entry>
+				</row>
+				<row>
+				  <entry>&amp;apos;</entry>
+				  <entry>'</entry>
+				</row>
+				<row>
+				  <entry>&amp;lt;</entry>
+				  <entry>&lt;</entry>
+				</row>
+				<row>
+				  <entry>&amp;gt;</entry>
+				  <entry>&gt;</entry>
+				</row>
+				<row>
+				  <entry>&amp;lb;</entry>
+				  <entry>{</entry>
+				</row>
+				<row>
+				  <entry>&amp;rb;</entry>
+				  <entry>}</entry>
+				</row>
+				</tbody>
+				</tgroup>
+			</table>
+			<para>Two last entities may be used also in a static template code outside OPT tags and expressions.</para>
+		</sect1>
+		<sect1 id="syntax.instructions">
+			<title>Instructions</title>
+			<para>Instructions define most of the logic in the template. Using them, you may define, where the lists of
+			data are, what parts of the content are shown conditionally etc. They make use of OPT tags explained above,
+			however they support some optional simplifications you can use (but only with the instructions!):</para>
+			<orderedlist>
+				<listitem>Single tags do not have to be ended with slash. <emphasis>{include="`file.tpl`"}</emphasis>
+					is the same, as <emphasis>{include="`file.tpl`"/}</emphasis></listitem>
+				<listitem>Alternative tags do not have to be ended with "else" - it depends on the instruction.</listitem>
+			</orderedlist>
+			<para>An instruction may extend the <variable>$opt</variable> special block and add new features to it.</para>
+			<para>In OPT 1.1.0, the attributes were introduced. They are special attributes of normal HTML tags that
+			are parsed by OPT instructions. Consider the following example. A section is an instruction to make lists.
+			We want to mark the first element of the list. To do this, we use the attribute <emphasis>opt:first</emphasis>
+			for the list item element:</para>
+			<example id="example.instructions1">
+				<title>Single tags</title>
+				<programlisting><![CDATA[<ul>
+{section=list}
+<li opt:first="list">{$list.title}</li>
+{/section}
+</ul>]]></programlisting>
+			</example>
+			<para>Now, for the first element of the list, the attribute will change into <emphasis>class="first"</emphasis>, so
+			that we can define the style in the CSS. For the rest, it does nothing.</para>
+			<para>Note: you have to define a namespace for all the attributes!</para>
+			<para>The instruction reference contains also the information about the usage from the <emphasis>script-side</emphasis>
+			indented for PHP programmers. These parts are marked with the blue bar.</para>
+			<sect2 id="syntax.instructions.section">
+				<title>Section</title>
+				<para>Sections are used to create lists. It starts with a <emphasis>{section}</emphasis> tag and ends
+				with <emphasis>{/section}</emphasis>. The content between them is the look of a single element of the list.
+				The section has a unique name, which we use to access the list element data and to identify, where are the list
+				data for it.</para>
+				<example id="example.sections1">
+					<title>Simple section</title>
+					<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+{section=products}
+<tr>
+<td>{$products.name}</td>
+<td>{$products.price}</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+				</example>
+				<para>Inside sections, the syntax <emphasis>{$table.key}</emphasis> changes its meaning and it is used to access
+				the section element blocks. The first part identifies the section and the second - the name of an element block.</para>
+				<para>The optional <emphasis>{sectionelse}</emphasis> element can be added to display some text, if the section contains
+				no elements:</para>
+				<example id="example.sections2">
+					<title>Sectionelse</title>
+					<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+{section=products}
+<tr>
+<td>{$products.name}</td>
+<td>{$products.price}</td>
+</tr>
+{sectionelse}
+<tr>
+<td colspan="2">There are no products in this list!</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+				</example>
+				<para>The section takes some parameters:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Section: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>name</entry>
+					  <entry>ID</entry>
+					  <entry>Yes</entry>
+					  <entry>The section name.</entry>
+					</row>
+					<row>
+					  <entry>order</entry>
+					  <entry>ID</entry>
+					  <entry>No</entry>
+					  <entry>If set to "reversed", the section items are shown in reversed order.</entry>
+					</row>
+					<row>
+					  <entry>state</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>If the expression returns false, the section will be hidden like it contains no elements.</entry>
+					</row>
+					<row>
+					  <entry>datasource</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>The location of section data. If not specified, the section name is used.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<para>In the examples above, we were not able to hide the whole table structure, if the section contains
+				not elements. However, OPT allows to do this by using additional <emphasis>{show}</emphasis> tags.</para>
+				<example id="example.sections3">
+					<title>{show}</title>
+					<programlisting><![CDATA[{show=products}
+<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+{section}
+<tr>
+<td>{$products.name}</td>
+<td>{$products.price}</td>
+</tr>
+{/section}
+</table>
+{showelse}
+<p>There are no products in this list</p>
+{/show}]]></programlisting>
+				</example>
+				<para>In this variant, we define all the parameters in the <emphasis>{show}</emphasis> tags and keep
+				<emphasis>{section}</emphasis> empty. Moreover, instead of <emphasis>{sectionelse}</emphasis>, we use
+				<emphasis>{showelse}</emphasis>.</para>
+				<para>Now, if the section has some data, the table will be displayed and the code inside a section will
+				be used as the list element. In the other case, the paragraph with a message is shown.</para>
+				<para>You may also create subsections. Just put a <emphasis>section... /section</emphasis> block into another section:</para>
+				<example id="example.sections4">
+					<title>Subsections</title>
+					<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product categories</td>
+</tr>
+{section=products}
+<tr>
+<td>{$products.name}</td>
+<td><ul>
+  {section=categories}
+  <li>{$categories.name} (or) {$products.categories.name}</li>
+  {/section}
+</ul></td>
+</tr>
+{/section}
+</table>]]></programlisting>
+				</example>
+				<para>Note that you may access to the subsection data in two ways: <emphasis>$categories.block</emphasis>
+				or <emphasis>$products.categories.block</emphasis>. Just make sure the first element of the block is a name
+				of one of the sections - otherwise OPT translates it as a standard array call.</para>
+				<sect3 id="syntax.instructions.section.attributes">
+					<title>Attributes</title>
+					<para>Since OPT 1.1.0, sections provide some attributes to use with HTML tags.</para>
+					<sect4 id="syntax.instructions.section.attributes.first">
+						<title>opt:sectionfirst</title>
+						<para>Defines the <emphasis>class="first"</emphasis> HTML attribute for the tag, if
+						the current section element is the first on the list. It takes the section name as
+						the value.</para>
+						<example id="example.sections5">
+							<title>opt:sectionfirst</title>
+							<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+{section=products}
+<tr>
+<td opt:sectionfirst="products">{$products.name}</td>
+<td opt:sectionfirst="products">{$products.price}</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+						</example>
+					</sect4>
+					<sect4 id="syntax.instructions.section.attributes.last">
+						<title>opt:sectionlast</title>
+						<para>Defines the <emphasis>class="last"</emphasis> HTML attribute for the tag, if
+						the current section element is the last on the list. It takes the section name as
+						the value.</para>
+						<example id="example.sections6">
+							<title>opt:sectionlast</title>
+							<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+{section=products}
+<tr>
+<td opt:sectionlast="products">{$products.name}</td>
+<td opt:sectionlast="products">{$products.price}</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+						</example>
+					</sect4>
+					<sect4 id="syntax.instructions.section.attributes.cycle">
+						<title>opt:sectioncycle</title>
+						<para>Alternates a set of HTML attributes. This makes it easy to alternate
+						between two or more colors in the table. The values are defined in additional
+						tag located inside a section: <emphasis>{cycle=attributename; ...}</emphasis> - 
+						the first parameter is the name of HTML attribute; next we define the values
+						to cycle.</para>
+						<example id="example.sections7">
+							<title>opt:sectioncycle</title>
+							<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+{section=products}
+{cycle='class'; 'brighter'; 'darker'}
+<tr>
+<td opt:sectioncycle="products">{$products.name}</td>
+<td opt:sectioncycle="products">{$products.price}</td>
+</tr>
+{/section}
+</table>]]></programlisting>
+						</example>
+						<para>The result:</para>
+<programlisting><![CDATA[<table>
+<tr>
+<td>Product name</td>
+<td>Product Price</td>
+</tr>
+<tr>
+<td class="brighter">Product 1</td>
+<td class="brighter">15.50</td>
+</tr>
+<tr>
+<td class="darker">Product 2</td>
+<td class="darker">12.00</td>
+</tr>
+<tr>
+<td class="brighter">Product 3</td>
+<td class="brighter">17.30</td>
+</tr>
+<tr>
+<td class="darker">Product 4</td>
+<td class="darker">13.99</td>
+</tr>
+</table>]]></programlisting>
+					</sect4>
+				</sect3>
+				<sect3 id="syntax.instructions.section.opt">
+					<title>{$opt} features</title>
+					<para>Sections could tell you much more with <variable>$opt</variable> special block:</para>
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>$opt.section reference</caption>
+						<tgroup cols="2" align="center">
+						<thead>
+						<row>
+						  <entry>Special block</entry>
+						  <entry>Value</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>$opt.section.sect_name.count</entry>
+						  <entry>The number of elements in the section <emphasis>sect_name</emphasis>.</entry>
+						</row>
+						<row>
+						  <entry>$opt.section.sect_name.id</entry>
+						  <entry>The current section element ID.</entry>
+						</row>
+						<row>
+						  <entry>$opt.section.sect_name.size</entry>
+						  <entry>The current section element size (number of section blocks).</entry>
+						</row>
+						<row>
+						  <entry>$opt.section.sect_name.first</entry>
+						  <entry>True, if the first section element is processed.</entry>
+						</row>
+						<row>
+						  <entry>$opt.section.sect_name.last</entry>
+						  <entry>True, if the last section element is processed.</entry>
+						</row>
+						<row>
+						  <entry>$opt.section.sect_name.far</entry>
+						  <entry>True, if the first or last section element is processed.</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+					<para>Sample use:</para>
+					<example id="example.sections8">
+						<title>Sample use</title>
+						<programlisting><![CDATA[{show=products}
+<p>There are {$opt.section.products.count} products here.</p>
+<ul>
+{section}
+  {if $opt.section.products.first}
+  <li><b>Hit!</b> {$products.name}</li>
+  {else}
+  <li>{$products.name}</li>
+  {/if}
+{/section}
+</ul>
+{/show}]]></programlisting>
+					</example>
+				</sect3>
+				<sect3 id="syntax.instructions.section.programmers">
+					<title>Sections for programmers</title>
+					<mark type="blue">
+					<para>Sections require data as an specific-type array. For single sections it is always the same.
+					OPT supports two formats for subsections and it is you who decide, which is default. The second format
+					is also available using the <parameter>datasource</parameter> parameter.</para>
+					<para>The data array for sections is multi-dimensional. It is an array of arrays containing data for the
+					section blocks. Here we see a sample PHP code:</para>
+					<example id="example.sections_php1">
+						<title>Data for single sections</title>
+						<programlisting><![CDATA[$products = array(0 =>
+   array('name' => 'Apples', 'price' => 15),
+   array('name' => 'Pears', 'price' => 17),
+   array('name' => 'Bananas', 'price' => 13)
+);
+$tpl -> assign('products', $products);]]></programlisting>
+					</example>
+					<para>This code creates three list elements. Each of them contains two blocks: <variable>name</variable>
+					and <variable>price</variable>.</para>
+					<para>As we mentioned above, you have to decide, how you want to support subsection data. You may specify
+					the format with the <emphasis>sectionStructure</emphasis> configuration directive, which takes one of two
+					values: <emphasis>OPT_SECTION_MULTI</emphasis> (default) and <emphasis>OPT_SECTION_SINGLE</emphasis>.</para>
+					<para>OPT_SECTION_MULTI: This format is set by default. Each subsection must be assigned separately, as another array. It has
+					to have as many indexes, as deep it is located. If we want to show the categories assigned to the product,
+					using this format, we have to built second array with three indexes. First one tells, which product it is
+					assigned to, second is the category iterator inside this product, and the third is block data index:</para>
+					<example id="example.sections_php2">
+						<title>OPT_SECTION_MULTI</title>
+						<programlisting><![CDATA[$categories = array(0 =>
+   // Categories for product 1
+   array(0 =>
+      array('name' => 'Food'),
+      array('name' => 'Drinks')
+   ),
+   // Categories for product 2
+   array(0 =>
+      array('name' => 'Meat'),
+      array('name' => 'Dinner'),
+   ),
+   // Categories for product 3
+   array(0 =>
+      array('name' => 'Vegetables'),
+      array('name' => 'Dinner'),
+   )
+);
+$tpl -> assign('categories', $categories);]]></programlisting>
+					</example>
+					<para>If the subsection is located inside two other, you must create four indexes, etc.</para>
+					<para>OPT_SECTION_SINGLE: In this format, all the data for section and its subsections are located in one array and assigned
+					only once to the template engine. Within the section blocks we create an index named like the subsection
+					and we put its array there.</para>
+					<example id="example.sections_php3">
+						<title>OPT_SECTION_SINGLE</title>
+						<programlisting><![CDATA[$products = array(0 =>
+   array('name' => 'Apples', 'price' => 17, 'categories' =>
+     // Category subsection data for this product
+     array(0 =>
+       array('name' => 'Fruit'),
+       array('name' => 'Drinks')
+     )
+   ),
+   array('name' => 'Pears', 'price' => 15, 'categories' =>
+     // Category subsection data for this product
+     array(0 =>
+       array('name' => 'Fruit'),
+       array('name' => 'Ice cream')
+     )
+   )
+);
+$tpl -> assign('products', $products);]]></programlisting>
+					</example>
+					<sect4 id="syntax.instructions.section.programmers.datasource">
+						<title>The "datasource" parameter</title>
+						<para>As mentioned above, you can always use both multi-array and single-array format, even if you
+						chose the other as your default one. This is provided by the datasource parameter available in each
+						section. If you work in <emphasis>OPT_SECTION_MULTI</emphasis> mode and you want to read subsection
+						data from the upper section table, you specify here its block that contains the data:</para>
+						<example id="example.sections_datasource1">
+							<title>Datasource and OPT_SECTION_MULTI</title>
+							<programlisting><![CDATA[<td>Product categories</td> {* for OPT_SECTION_MULTI *}
+</tr>
+{section=products}
+<tr>
+<td>{$products.name}</td>
+<td><ul>
+  {* read the data like in OPT_SECTION_SINGLE *}
+  {section=categories; !x; !x; $products.categories}
+  <li>{$categories.name} (or) {$products.categories.name}</li>
+  {/section}
+</ul></td>
+</tr>
+{/section}
+</table>]]></programlisting>
+						</example>
+						<para>The data of categories subsection are located in <variable>$products.categories</variable> block.</para>
+						<example id="example.sections_datasource2">
+							<title>Datasource and OPT_SECTION_SINGLE</title>
+							<programlisting><![CDATA[<td>Product categories</td> {* for OPT_SECTION_SINGLE *}
+</tr>
+{section=products}
+<tr>
+<td>{$products.name}</td>
+<td><ul>
+  {* read the data like in OPT_SECTION_MULTI *}
+  {section=categories; !x; !x; $categories}
+  <li>{$categories.name} (or) {$products.categories.name}</li>
+  {/section}
+</ul></td>
+</tr>
+{/section}
+</table>]]></programlisting>
+						</example>
+					</sect4>
+					<sect4 id="syntax.instructions.section.programmers.dynamic">
+						<title>Dynamic sections</title>
+						<para>OPT 1.1.0 introduces the new way of handling the section data. Instead of passing the already-generated
+						lists to the parser, we pass only the function/method that will generate it, if a section with a specified name
+						is used. This can be useful in modular websites - if a template does not make use of some available sections,
+						the data for them are not generated. This is, what we call dynamic sections.</para>
+						<para>The template designer does not know anything, which section is dynamic and which is not - this is only
+						a PHP script issue. OPT supports two ways of processing dynamic sections: statically compiled (default) and
+						runtime.</para>
+						<para>In order to make dynamic section, we have to write a function or class method that generates the section
+						data in the format described above. We pass a standard PHP callback to the parser with
+						<link linkend="library.optclass.assign-dynamic" endterm="">optClass::assignDynamic()</link> method.</para>
+						<para>If the dynamic sections are statically compiled, the callbacks must be defined BEFORE the template
+						compilation. The calls of the functions are compiled in the template and we must not change it later (in other
+						words - you must not pass callback for one request and the normal data for the second using the same section
+						and template). The advantage is that "normal" sections are not touched by the compiler and work like in previous
+						releases of OPT.</para>
+						<para>The dynamic sections may be also handled during the runtime. Now you can use function callback, wherever
+						and whenever you want, but at the cost of performance - the compiler puts a small condition at the beginning of
+						each section, which checks, whether the static data or dynamic callback was provided.</para>
+						<para>The way of dynamic section handling can be changed with <emphasis>sectionDynamic</emphasis> configuration
+						directive and the possible values: <emphasis>OPT_SECTION_COMPILE</emphasis> (default) and
+						<emphasis>OPT_SECTION_RUNTIME</emphasis>.</para>
+						<example id="example.sections_php4">
+							<title>Making dynamic sections</title>
+							<programlisting><![CDATA[function dynamicSectionGenerator()
+{
+	// Section data generator
+	return array(0 =>
+		array('title' => 'Foo'),
+		array('title' => 'Bar'),
+		array('title' => 'Joe')
+	);	
+} // end dynamicSectionGenerator();
+	
+$tpl -> assignDynamic('dyn', 'dynamicSectionGenerator', array());
+$tpl -> parse('template.tpl');
+]]></programlisting>
+						</example>
+					</sect4>
+					</mark>
+				</sect3>
+			</sect2>
+			<sect2 id="syntax.instructions.tree">
+				<title>Tree</title>
+				<para>Tree instruction is used to generate the hierarchical trees of data.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.pagelist">
+				<title>Pagelist</title>
+				<para>No description yet.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.conditions">
+				<title>Conditions</title>
+				<para>OPT supports conditional instruction <emphasis>if ... elseif ... else ... /if</emphasis> known from
+				programming languages. It allows to show the parts of the template, where specified condition is true. A
+				condidion is a correct OPT expression that should return <emphasis>true</emphasis> or <emphasis>false</emphasis>.</para>
+				<example id="example.conditions1">
+					<title>Conditional instruction</title>
+					<programlisting><![CDATA[{if $access eq 1}
+{* this will be displayed, if $access is equal 1 *}
+<p>Welcome, administrator</p>
+{elseif $access eq 2}
+{* this will be displayed, if the previous condition is false *}
+{* and $access is equal 2 *}
+<p>Welcome, editor</p>
+{else}
+{* This will be displayed, if all the conditions are false *}
+<p>Permission denied</p>
+{/if}]]></programlisting>
+				</example>
+				<para>Notes:</para>
+				<orderedlist>
+					<listitem><emphasis>elseif</emphasis> and <emphasis>else</emphasis> are optional.</listitem>
+					<listitem>You can specify as many <emphasis>elseif</emphasis> nodes as you need.</listitem>
+					<listitem><emphasis>if</emphasis> and <emphasis>elseif</emphasis> use their own parameter format by
+					default. You may force them to use the standard one by setting one of these configuration directives
+					to true: <emphasis>strictSyntax</emphasis>, <emphasis>xmlsyntaxMode</emphasis>. The parameter is then
+					called <emphasis>test</emphasis>. The following code shows the if instruction in strict syntax mode:
+					<example id="example.conditions2">
+						<title>Conditions in XML syntax mode</title>
+						<programlisting><![CDATA[{* Position syntax *}
+{if=$access eq 1}
+<p>Welcome, administrator</p>
+{* XML style syntax *}
+{elseif test="$access eq 2"}
+<p>Welcome, editor</p>
+{/if}]]></programlisting>
+						</example>					
+					</listitem>
+				</orderedlist>
+			</sect2>
+			<sect2 id="syntax.instructions.var">
+				<title>Var</title>
+				<para>Var is used to declare variables. It takes two parameters: <parameter>name</parameter> (ID) and
+				<parameter>value</parameter> (expression):</para>
+				<example id="example.var1">
+					<title>Declaring variables</title>
+					<programlisting><![CDATA[{var=length; "500px"}
+{var name="length" value="`500px`"}]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.instructions.include">
+				<title>Include</title>
+				<para>Include is used to including one template into another.</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Include: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>file</entry>
+					  <entry>Expression</entry>
+					  <entry>Yes</entry>
+					  <entry>The template file we want to include.</entry>
+					</row>
+					<row>
+					  <entry>default</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>The default file to include, if the template pointed by the file parameter doesn't exist.</entry>
+					</row>
+					<row>
+					  <entry>assign</entry>
+					  <entry>ID</entry>
+					  <entry>No</entry>
+					  <entry>If specified, the template output is captured to the specified variable.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<para>When using XML-style parameters, you may specify additional parameters for the template. Their values will
+				be put as template variables. Here we have a sample template to include:</para>
+				
+				<programlisting><![CDATA[<p>Mr {@name} has already paid us ${@amount}.</p>]]></programlisting>
+				
+				<para>Now we include it two times, with different data:</para>
+				
+				<example id="example.include1">
+					<title>Including and template parameters</title>
+					<programlisting><![CDATA[{* This will display "Mr John Smith has already paid us $150.30" *}
+{include file="`sample.tpl`" name="`John Smith`" amount="150.3"}
+{* This will display "Mr Adam Brown has already paid us $535.70" *}
+{include file="`sample.tpl`" name="`Adam Brown`" amount="535.7"}]]></programlisting>
+				</example>
+				<para>While specifying the file names to include, remember about OPT syntax. The file name must be enclosed
+				in some sort of brackets:</para>
+				
+				<programlisting><![CDATA[{include=`file.tpl`}]]></programlisting>
+				
+				<para>or</para>
+				
+				<programlisting><![CDATA[{include file="`file.tpl`"}]]></programlisting>
+				
+				<para>In the second example, the double quotes are a part of the parameter syntax. The reversed quotes are a part
+				of the expression and enclose the file name in both examples.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.place">
+				<title>Place</title>
+				<para>Place works like include, but here one template is physically inserted into the other, and you should not
+				change its source. OPT is not able to check it and recompile, if needed.</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Place: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>file</entry>
+					  <entry>String</entry>
+					  <entry>Yes</entry>
+					  <entry>The template file we want to include.</entry>
+					</row>
+					<row>
+					  <entry>assign</entry>
+					  <entry>ID</entry>
+					  <entry>No</entry>
+					  <entry>If specified, the template output is captured to the specified variable.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<para>Note: here, the template file name must be provided <emphasis>without</emphasis> quotes!</para>
+			</sect2>
+			<sect2 id="syntax.instructions.default">
+				<title>Default</title>
+				<para>Default shows the block value or the default value, if this block is not set.</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Default: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>test</entry>
+					  <entry>Expression</entry>
+					  <entry>Yes</entry>
+					  <entry>The block we want to show.</entry>
+					</row>
+					<row>
+					  <entry>alt</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>The alternative value, if the first block doesn't exist.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<example id="example.default1">
+					<title>Default values</title>
+					<programlisting><![CDATA[<p>{default=$price; "No such price"}</p>]]></programlisting>
+				</example>
+				<para>The example will show the text "No such price", if the block <variable>$price</variable> is not created
+				by the script, or its value, if it is.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.capture">
+				<title>Capture</title>
+				<para>Capture instruction collects the output of the template into a special block instead of displaying it.
+				The captured content can be used in template from the special block <variable>$opt.capture.foo</variable>
+				where "foo" is the name of captured content. The instruction takes one parameter:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Capture: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>name</entry>
+					  <entry>ID</entry>
+					  <entry>Yes</entry>
+					  <entry>The name of captured content.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<example id="example.capture1">
+					<title>Capturing the content</title>
+					<programlisting><![CDATA[{* we don't want to print a table row unless content is displayed *}
+{capture=banner}
+  {include file="`get_banner.tpl`"}
+{/capture}
+{if $opt.capture.banner ne ""}
+
+<table>
+<tr>
+  <td>
+   {$opt.capture.banner}
+  </td>
+</tr>
+</table>
+{/if}]]></programlisting>
+				</example>
+				<mark type="blue">
+				<para>If you are also a programmer, you can capture whole templates in your application using
+				<link linkend="library.optclass.parse-capture" endterm="">optClass::parseCapture()</link> method.</para>
+				</mark>
+				<para>Capture instructions can be nested. In this way the output is directed to the last opened capture block:</para>
+				<example id="example.capture2">
+					<title>Nested captures</title>
+					<programlisting><![CDATA[{capture=foo1}
+<p>Aaa</p>
+	{capture=foo2}
+	<p>Bbb</p>
+	{/capture}
+<p>Ccc</p>
+{/capture}
+{$opt.capture.foo1}
+{$opt.capture.foo2}]]></programlisting>
+				</example>
+				
+				<para>The script output will be:</para>
+				
+				<programlisting><![CDATA[Aaa
+Ccc
+Bbb]]></programlisting>
+			</sect2>
+			<sect2 id="syntax.instructions.for">
+				<title>For</title>
+				<mark type="red">
+				<para>This is a simple loop known from programming languages. It iterates, until the end expression is
+				true. The instruction takes three parameters:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>For: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>begin</entry>
+					  <entry>Expression</entry>
+					  <entry>Yes</entry>
+					  <entry>Starting condition (i.e. iterating variable initialization).</entry>
+					</row>
+					<row>
+					  <entry>end</entry>
+					  <entry>Expression</entry>
+					  <entry>Yes</entry>
+					  <entry>Ending condition. The loop iterates, until it is true.</entry>
+					</row>
+					<row>
+					  <entry>iterate</entry>
+					  <entry>Expression</entry>
+					  <entry>Yes</entry>
+					  <entry>Iterating expression executed every call.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<example id="example.for1">
+					<title>Displaying numbers from 1 to 10</title>
+					<programlisting><![CDATA[{for begin="@a is 1" end="@a <= 10" iterate="@a++"}
+<p>{@a}</p>
+{/for}]]></programlisting>
+				</example>
+				</mark>
+			</sect2>
+			<sect2 id="syntax.instructions.foreach">
+				<title>Foreach</title>
+				<mark type="red">
+				<para>Another loop that iterates through an array or object and passes the element index and value to the
+				template variables. Like in PHP, it takes three parameters:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Foreach: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>table</entry>
+					  <entry>Expression</entry>
+					  <entry>Yes</entry>
+					  <entry>The array or object we want to iterate through.</entry>
+					</row>
+					<row>
+					  <entry>index</entry>
+					  <entry>ID</entry>
+					  <entry>Yes</entry>
+					  <entry>Index variable name.</entry>
+					</row>
+					<row>
+					  <entry>value</entry>
+					  <entry>ID</entry>
+					  <entry>Yes</entry>
+					  <entry>Value variable name.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<example id="example.foreach1">
+					<title>Foreach and arrays</title>
+					<programlisting><![CDATA[{@array is array(
+ 'Name' => 'John',
+ 'Surname' => 'Smith',
+ 'Age' => 31
+)}
+
+<table>
+{foreach=@array; title; value}
+<tr>
+<td>{@title}</td>
+<td><input type="text" name="{@title}" value="{@value}"/></td>
+</tr>
+{/foreach}
+</table>]]></programlisting>
+				</example>
+				<para>OPT variant of foreach supports also <emphasis>{foreachelse}</emphasis> block. Its content is presented, if
+				the parsed array/object contains no elements:</para>
+				<example id="example.foreach2">
+					<title>Foreachelse</title>
+					<programlisting><![CDATA[<table>
+{foreach=$array; title; value}
+<tr>
+<td>{@title}</td>
+<td><input type="text" name="{@title}" value="{@value}"/></td>
+</tr>
+{foreachelse}
+<tr>
+<td colspan="2">Please specify the form data!</td>
+</tr>
+{/foreach}
+</table>]]></programlisting>
+				</example>
+				</mark>
+			</sect2>
+			<sect2 id="syntax.instructions.php">
+				<title>Php</title>
+				<mark type="red">
+				<para>The content between <emphasis>{php}</emphasis> and <emphasis>{/php}</emphasis> is treated as a PHP code and
+				inserted directly in the compiler output.</para>
+				</mark>
+			</sect2>
+			<sect2 id="syntax.instructions.literal">
+				<title>Literal</title>
+				<para>All the OPT tags between <emphasis>{literal}</emphasis> and <emphasis>{/literal}</emphasis> are ignored by the
+				template compiler. You should use them to escape your JavaScript code.</para>
+				<example id="example.literal1">
+					<title>Preventing JavaScript code from being parsed by OPT</title>
+					<programlisting><![CDATA[<script type="text/javascript">
+{literal}
+  function foo()
+  {
+    document.write('Sample JS function');
+  }
+{/literal}
+</script>]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="syntax.instructions.dynamic">
+				<title>Dynamic</title>
+				<mark type="orange">
+				<para>The output generated by the code between <emphasis>{dynamic}</emphasis> and <emphasis>{/dynamic}</emphasis>
+				remains a dynamic content that is not cached by the output caching system. After enabling it for the template
+				below:</para>
+				<example id="example.literal1">
+					<title>Dynamic content in cached templates</title>
+					<programlisting><![CDATA[<p>This is a static date: {date('d.m.Y, H:i')}</p>
+{dynamic}
+<p>This is a dynamic date: {date('d.m.Y, H:i')}</p>
+{/dynamic}]]></programlisting>
+				</example>
+				<para>you will see that the first date was cached and it is not changing while the page is refreshed. The second
+				date is always correct, because it is not cached.</para>
+				</mark>
+			</sect2>
+			<sect2 id="syntax.instructions.bind">
+				<title>Bind</title>
+				<para>This is a compilation stage instruction. It captures the part of the template (not its output!) between
+				<emphasis>{bind}</emphasis> and <emphasis>{/bind}</emphasis> tags and allows to
+				<link linkend="syntax.instructions.insert" endterm="">insert</link> it later somewhere else. The snippet is
+				still dynamic, so if you change the data to display between two insertions of the same snippet, they
+				generate different output. The instruction takes one parameter:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Bind: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>name</entry>
+					  <entry>Id</entry>
+					  <entry>Yes</entry>
+					  <entry>The unique name of a captured snippet.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<example id="example.bind1">
+					<title>Binding the template source</title>
+					<programlisting><![CDATA[{bind=snippet}
+<p>This is a text: {@variable1}</p>
+{/bind}
+
+{var=variable1; "Value 1"}
+
+{* we will see "This is a text: Value 1" *}
+{insert=snippet}
+
+{@variable1 = "Another value"}
+{* we will see "This is a text: Another value" *}
+{insert=snippet}]]></programlisting>
+				</example>
+				<para>Note that you may put often used snippets in the master template.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.insert">
+				<title>Insert</title>
+				<para>This is a compilation stage instruction. It inserts the snippet captured by the
+				<link linkend="syntax.instructions.bind" endterm="">bind</link> instruction. It takes one parameter:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>Insert: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>name</entry>
+					  <entry>Id</entry>
+					  <entry>Yes</entry>
+					  <entry>The name of a snippet we want to insert.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<para>The example is provided in the <link linkend="syntax.instructions.bind" endterm="">bind</link> instruction description.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.bindevent">
+				<title>BindEvent</title>
+				<para>This is a compilation stage instruction. It allows to create shared events for the OPT components
+				(see <link linkend="syntax.components" endterm="">Components</link>). It takes three or four parameters:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>bindEvent: parameters</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Required?</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>id</entry>
+					  <entry>Id</entry>
+					  <entry>Yes</entry>
+					  <entry>The unique ID of an event.</entry>
+					</row>
+					<row>
+					  <entry>name</entry>
+					  <entry>Id</entry>
+					  <entry>Yes</entry>
+					  <entry>The name of an event (for example: "onmessage").</entry>
+					</row>
+					<row>
+					  <entry>message</entry>
+					  <entry>Id</entry>
+					  <entry>Yes</entry>
+					  <entry>The variable name the event passes the message to.</entry>
+					</row>
+					<row>
+					  <entry>position</entry>
+					  <entry>Id</entry>
+					  <entry>No</entry>
+					  <entry>Display position of the event. Possible values: "up", "mid", "down".</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<para>Note that you may put the shared events in the master template.</para>
+			</sect2>
+			<sect2 id="syntax.instructions.bindgroup">
+				<title>BindGroup</title>
+				<para>No description yet.</para>
+			</sect2>
+		</sect1>
+		<sect1 id="syntax.components">
+			<title>Components</title>
+			<para>A component is a high-level port, where we can bind a special object that generates the HTML code. It is
+			allowed to communicate with your application and it may be created either by the template or by you in your
+			application. These features are really useful when working with dynamic forms. You write several components
+			that represent the form fields. Because they are allowed to communicate with the application, they can automatically
+			display previously typed data, if the form needs to be refreshed because of validation errors. The components also
+			have events which may be used for displaying error messages.</para>
+			<para>The components were especially developed for the Open Power Forms library (currently under development) that
+			provides full support for the dynamic forms. However, you may write your own components and invent many new uses.</para>
+			<para>The components are placed in the template using OPT tags. The parser supports two types of components:</para>
+			<orderedlist>
+				<listitem>Defined components - they are created directly by the template engine.</listitem>
+				<listitem>Undefined components - created by the application and assigned to the undefined component tag
+				in the template manually. Thus, the application may decide, which component will be displayed in specified
+				place.</listitem>			
+			</orderedlist>
+			<para>When it comes to the programming issues, components are objects of classes that implement
+			<classname>ioptComponent</classname> interface. The last thing: <emphasis>remember that component support is only
+			a platform. The way the feature elements are used, in fact depends on the component authors and does not have to
+			be the same, as we planned.</emphasis></para>
+			<sect2 id="syntax.components.defined">
+				<title>Defined components</title>
+				<para>A sample of a defined component we can see in the following example:</para>
+				<example id="example.components.defined1">
+					<title>A defined component</title>
+					<programlisting><![CDATA[{selectComponent name="interests"}
+  {param name="selected" value="$selected"/}
+  {listItem name="1" value="Cars"/}
+  {listItem name="2" value="Sports"/}
+  {listItem name="3" value="Computers"/}
+
+  {onMessage message="msg" position="up"}
+    <p>Error: {@msg}</p>
+  {/onMessage}
+{/selectComponent}]]></programlisting>
+				</example>
+				<para>A component in the template is built of the main opening and ending tag named like the component type we
+				want to use. In the example above we wanted to display a selection component, so we used tags
+				<emphasis>{selectComponent}.... {/selectComponent}</emphasis>. To display an input component, we would write
+				<emphasis>{inputComponent}...{/inputComponent}</emphasis> etc. Between them, there are more special tags that
+				set the parameters of the component. The exact way they are implemented depends on the component we use, as we
+				mentioned above.</para>
+				<para>In fact, the programmer can (and even should!) write a component that configures itself automatically,
+				reading the data directly from the web application, so that the component tags would be much shorter, than above.
+				The shortest component definition you can create is to put a tag and load an external event created by
+				<link linkend="syntax.instructions.bindevent" endterm="">bindEvent</link> instruction.</para>
+				<example id="example.components.defined2">
+					<title>Self-configuring component</title>
+					<programlisting><![CDATA[
+{bindEvent id="universalMessage" name="onmessage" message="msg" position="down"}
+<span class="error">{@msg}</span>
+{/bindEvent}
+
+<table>
+ <tr>
+  <td>Your name:</td>
+  <td>{selfConfiguringComponent name="name"}{load event="universalMessage"/}{/selfConfiguringComponent}</td>
+ </tr>
+ <tr>
+  <td>Your surname:</td>
+  <td>{selfConfiguringComponent name="surname"}{load event="universalMessage"/}{/selfConfiguringComponent}</td>
+ </tr>
+ <tr>
+  <td>Your e-mail:</td>
+  <td>{selfConfiguringComponent name="email"}{load event="universalMessage"/}{/selfConfiguringComponent}</td>
+ </tr>
+</table>]]></programlisting>
+				</example>
+				<para>However, such components must be created by a programmer, because OPT simply does not know, what is
+				the architecture of the web application.</para>
+			</sect2>
+			<sect2 id="syntax.components.undefined">
+				<title>An undefined component</title>
+				<para>An undefined component formally does not exist. It is only a place, where we can (but do not have to) assign
+				a component created in the application. The main tags are named <emphasis>{component}...{/component}</emphasis> and
+				have to contain an id parameter that tells, what block the engine must take the component from.</para>
+				<example id="example.components.undefined1">
+					<title>An undefined component</title>
+					<programlisting><![CDATA[{component id="$list" name="interests"}
+  {param name="selected" value="$selected"/}
+  {listItem name="1" value="Cars"/}
+  {listItem name="2" value="Sports"/}
+  {listItem name="3" value="Computers"/}
+
+  {onMessage message="msg" position="up"}
+    <p>Error: {@msg}</p>
+  {/onMessage}
+{/component}]]></programlisting>
+				</example>
+				<para>Now, if we assing a <classname>selectComponent</classname> object to the <variable>$list</variable> block,
+				there will be displayed select-style list. If we assign a component called (for example)
+				<classname>radioListComponent</classname>, there will be a group of radio inputs that simulate the list.
+				Both of them will take the same settings given by the undefined component. If the $list block is null, nothing is
+				displayed.</para>
+			</sect2>
+			<sect2 id="syntax.components.tagref">
+				<title>Component tag reference</title>
+				<para>A component consists of several types of tags. Here we would like to describe them.</para>
+				
+				<sect3 id="syntax.components.tagref.defined">
+					<title>Defined component tag</title>
+					<para>A defined component tag (for example <emphasis>{selectComponent}</emphasis>) takes 0 or more parameters:</para>
+
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>Defined component tag: parameters</caption>
+						<tgroup cols="4" align="center">
+						<thead>
+						<row>
+						  <entry>Name</entry>
+						  <entry>Type</entry>
+						  <entry>Required?</entry>
+						  <entry>Description</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>datasource</entry>
+						  <entry>Expression</entry>
+						  <entry>No</entry>
+						  <entry>A source for the component data.</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+					<para>Additional parameters represent unsually HTML tag parameters and depend on the component we use.</para>
+					<para>A component making use from the <variable>datasource</variable> parameter can read the data for example
+					from an external array instead of using <emphasis>{listItem}</emphasis> tags.</para>
+					<example id="example.components.tagref.dcom1">
+						<title>Datasource parameter</title>
+						<programlisting><![CDATA[{selectComponent name="interests" datasource="$listItems"}
+  {param name="selected" value="$selected"/}
+
+  {onMessage message="msg" position="up"}
+    <p>Error: {@msg}</p>
+  {/onMessage}
+{/selectComponent}]]></programlisting>
+					</example>
+				</sect3>
+				
+				<sect3 id="syntax.components.tagref.undefined">
+					<title>Undefined component tag</title>
+					<para>An undefined component tag takes at least one parameter:</para>
+
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>Unefined component tag: parameters</caption>
+						<tgroup cols="4" align="center">
+						<thead>
+						<row>
+						  <entry>Name</entry>
+						  <entry>Type</entry>
+						  <entry>Required?</entry>
+						  <entry>Description</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>id</entry>
+						  <entry>Expression</entry>
+						  <entry>Yes</entry>
+						  <entry>A block that contains the exact component.</entry>
+						</row>
+						<row>
+						  <entry>datasource</entry>
+						  <entry>Expression</entry>
+						  <entry>No</entry>
+						  <entry>A source for the component data.</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+					<para>Additional parameters represent unsually HTML tag parameters and depend on the component we use.</para>
+				</sect3>
+				
+				<sect3 id="syntax.components.tagref.param">
+					<title>{param} tag</title>
+					<para>The tag allows to set additional parameters for the component.</para>
+
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>Unefined component tag: parameters</caption>
+						<tgroup cols="4" align="center">
+						<thead>
+						<row>
+						  <entry>Name</entry>
+						  <entry>Type</entry>
+						  <entry>Required?</entry>
+						  <entry>Description</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>name</entry>
+						  <entry>Expression</entry>
+						  <entry>Yes</entry>
+						  <entry>The name of the parameter we set.</entry>
+						</row>
+						<row>
+						  <entry>value</entry>
+						  <entry>Expression</entry>
+						  <entry>Yes</entry>
+						  <entry>The value we want to assign.</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+					<para>For example, <classname>selectComponent</classname> uses it to get to know, which list element is selected.</para>
+				</sect3>
+				
+				<sect3 id="syntax.components.tagref.listitem">
+					<title>{listItem} tag</title>
+					<para>If the component operates on lists, you may define static list items using this tag.</para>
+
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>Unefined component tag: parameters</caption>
+						<tgroup cols="4" align="center">
+						<thead>
+						<row>
+						  <entry>Name</entry>
+						  <entry>Type</entry>
+						  <entry>Required?</entry>
+						  <entry>Description</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>name</entry>
+						  <entry>Expression</entry>
+						  <entry>Yes</entry>
+						  <entry>The name of the list item we set.</entry>
+						</row>
+						<row>
+						  <entry>value</entry>
+						  <entry>Expression</entry>
+						  <entry>Yes</entry>
+						  <entry>The value we want to assign.</entry>
+						</row>
+						<row>
+						  <entry>selected</entry>
+						  <entry>Expression</entry>
+						  <entry>No</entry>
+						  <entry>Is this element selected by default? This setting may be overwritten by the
+						  <emphasis>selected</emphasis> parameter, if supported.</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+				</sect3>
+				
+				<sect3 id="syntax.components.tagref.load">
+					<title>{load} tag</title>
+					<para>Sometimes you use the same event in many different places. You may write it only once and store it in the
+					compiler memory under a specified ID using <link linkend="syntax.instructions.bindevent" endterm="">bindEvent</link>
+					instruction. This tag allows to load such shared events into the component.</para>
+
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>Unefined component tag: parameters</caption>
+						<tgroup cols="4" align="center">
+						<thead>
+						<row>
+						  <entry>Name</entry>
+						  <entry>Type</entry>
+						  <entry>Required?</entry>
+						  <entry>Description</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>name</entry>
+						  <entry>Id</entry>
+						  <entry>Yes</entry>
+						  <entry>The ID of a shared event.</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+					
+					<example id="example.components.tagref.load1">
+						<title>Loading shared events</title>
+						<programlisting><![CDATA[{bindEvent id="messageEv" name="onMessage" message="msg" position="down"}
+<p>Error: {@msg}</p>
+{/bindEvent}
+...
+{selectComponent name="interests"}
+   {load event="messageEv"/}
+{/selectComponent}
+...
+{inputComponent name="age"}
+   {load event="messageEv"/}
+{/inputComponent}]]></programlisting>
+					</example>
+					
+					<para>This code could be also written as:</para>
+					
+					<example id="example.components.tagref.load2">
+						<title>No shared events</title>
+						<programlisting><![CDATA[{selectComponent name="interests"}
+   {onMessage message="msg" position="down"}
+    <p>Error: {@msg}</p>
+   {/onMessage}
+{/selectComponent}
+...
+{inputComponent name="age"}
+   {onMessage message="msg" position="down"}
+    <p>Error: {@msg}</p>
+   {/onMessage}
+{/inputComponent}]]></programlisting>
+					</example>
+					<para>However, as you see, it is less clear and harder to modify (especially if there is a large number of
+					components and we want to make the events display above, not under the component). Note that you may put the
+					shared events in the master template.</para>
+				</sect3>
+				
+				<sect3 id="syntax.components.tagref.events">
+					<title>Event tags</title>
+					<para>All other tags defined inside the component are called event tags. An event is a piece of HTML that may be
+					shown around the component, if some event occured (for example, the data are invalid). They are mostly used to
+					display error messages, when the specified form data do not match to the patterns.</para>
+
+					<table frame="all">
+						<?dbhtml table-width="100%" ?>
+						<caption>Unefined component tag: parameters</caption>
+						<tgroup cols="4" align="center">
+						<thead>
+						<row>
+						  <entry>Name</entry>
+						  <entry>Type</entry>
+						  <entry>Required?</entry>
+						  <entry>Description</entry>
+						</row>
+						</thead>
+						<tbody>
+						<row>
+						  <entry>name</entry>
+						  <entry>Id</entry>
+						  <entry>Yes</entry>
+						  <entry>The name of an event (for example: "onmessage").</entry>
+						</row>
+						<row>
+						  <entry>message</entry>
+						  <entry>Id</entry>
+						  <entry>Yes</entry>
+						  <entry>The variable name the event passes the message to.</entry>
+						</row>
+						<row>
+						  <entry>position</entry>
+						  <entry>Id</entry>
+						  <entry>No</entry>
+						  <entry>Display position of the event. Possible values: "up", "mid", "down".</entry>
+						</row>
+						</tbody>
+						</tgroup>
+					</table>
+				</sect3>
+			</sect2>
+			
+			<sect2 id="syntax.components.reference">
+				<title>Component reference</title>
+				<para>OPT has a small set of predefined components that demonstrate, how to use this feature. In the real application,
+				you should write your own components or install Open Power Forms library. All the components treat main component tag
+				parameters as HTML attributes and <emphasis>{param}</emphasis> tag parameters as additional settings:</para>
+				
+				<orderedlist>
+					<listitem><emphasis>message</emphasis> - if defined, the onMessage event is activated and the specified message
+					is displayed.</listitem>
+					<listitem><emphasis>selected</emphasis> - for lists only: overwrites the currently selected element ID
+					set by the <emphasis>{listItem}</emphasis> tag.</listitem>
+				</orderedlist>
+				
+				<para>If it is a list, it makes use of the datasource parameter and listItem tag. All of them have also a message
+				onMessage.</para>
+				
+				<para>The following components are implemented in OPT by default:</para>
+				
+				<orderedlist>
+					<listitem><classname>selectComponent</classname> - HTML select list.</listitem>
+					<listitem><classname>textInputComponent</classname> - HTML input component.</listitem>
+					<listitem><classname>textLabelComponent</classname> - static text with a hidden form field.</listitem>
+					<listitem><classname>formActionsComponent</classname> - form action buttons.</listitem>
+				</orderedlist>
+			</sect2>
+		</sect1>
+		<sect1 id="syntax.xmlmode">
+			<title>XML-Syntax Mode</title>
+			<para>This is a special compiler mode enabled by the <emphasis>xmlsyntaxMode</emphasis> configuration directive. It
+			adds several XML-style tag delimiters that may be used to make your template fully XML-compilant. Standard { and }
+			delimiters are still available. <emphasis>Remember that this is only an emulation. OPT does not have, if fact, a
+			real XML parser, and it is not able to detect many of invalid XML syntax usages.</emphasis></para>
+			<para>The delimiters defined by this mode are:</para>
+			<programlisting><![CDATA[<namespace:YOURCODEHERE>
+</namespace:YOURCODEHERE>
+<namespace:YOURCODEHERE/>]]></programlisting>
+			<para>By default, OPT registers only the <emphasis>opt</emphasis> namespace, but if you use some unofficial add-ons,
+			they might have their own ones. A sample section in this mode looks like this:</para>
+			<example id="example.xmlsyntax1">
+				<title>Sections and XML Syntax Mode</title>
+				<programlisting><![CDATA[<ul>
+<opt:section name="list">
+<li>{$list.item}</li>
+</opt:section>
+</ul>]]></programlisting>
+			</example>
+			<para>XML syntax mode enables also two additional configuration directives: <emphasis>strictSyntax</emphasis> (all the instructions
+			are forced to use native parameter parser) and <emphasis>entities</emphasis> (parsing HTML entities).</para>
+			<para>In OPT 1.0.0, the CDATA section was also parsed by OPT, like the <emphasis>{literal}</emphasis> instruction, but
+			starting from 1.0.1, it is not parsed anymore because of problems with XHTML code generating.</para>
+		</sect1>
+		<sect1 id="syntax.mastertpl">
+			<title>Master templates</title>
+			<mark type="orange">
+			<para>Starting from 1.1.0, OPT supports master templates. They are automatically loaded, when any of the website templates
+			has changed and needs to be compiled. Some instructions, like <link linkend="syntax.instructions.bind" endterm="">binds</link>
+			and <link linkend="syntax.instructions.bindevent" endterm="">bindEvents </link> exist only during the compilation time and
+			there is no way to autoinclude them with <link linkend="syntax.instructions.include" endterm="">include</link>. The master
+			template is the only solution to create an universal repository of them for all the templates.</para>
+			<mark type="blue">
+			<para>Which template is the master, the script programmer defines with
+			<link linkend="library.optclass.set-master-template" endterm="">optClass::setMasterTemplate()</link> method. The programmer
+			may set more than one master templates for the application.</para>
+			</mark>
+			<para>Take a look at the example. You do not have to declare all the content for the 
+			<link linkend="syntax.instructions.tree" endterm="">tree</link> instruction - the parts can be loaded from the bind snippets.
+			Using a master template, we create a universal tree layout for all the website:</para>
+			<example id="example.mastertpl1">
+				<title>A master template</title>
+				<programlisting><![CDATA[{bindGroup=universalTree}
+{bind=opening}
+<li>{$item.title}<ul>
+{/bind}
+{bind=leaf}
+<li>{$item.title}</li>
+{/bind}
+{bind=levelclose}
+</ul></li>
+{/bind}				
+{/bindGroup}]]></programlisting>
+			</example>
+			<para>Now, everytime we want to put somewhere a tree, we write:</para>
+			<example id="example.mastertpl2">
+				<title>Universal tree use</title>
+				<programlisting><![CDATA[
+<ul>
+{tree=sometree}
+	{use group="universalTree"/}			
+{/tree}
+</ul>]]></programlisting>
+			</example>
+			<para>If this template needs to be compiled, the compiler will load a master template with the universal tree structure
+			so that the template could use it.</para>
+			</mark>
+		</sect1>
+	</chapter>
+	<chapter id="library">
+		<title>Library reference</title>
+		<sect1 id="library.optclass">
+			<title>optClass class</title>
+			<para>The OPT library is splitted into several files:</para>
+			<orderedlist>
+				<listitem><filename>opt.class.php</filename> - main template parser class: <classname>optClass</classname>. This
+				is the file you have to include in order to use OPT.</listitem>
+				<listitem><filename>opt.compiler.php</filename> - template compiler. Loaded only, if there is a template to compile.</listitem>
+				<listitem><filename>opt.core.php</filename> - some additional and less used features (debug console etc.). Loaded,
+				if needed.</listitem>
+				<listitem><filename>opt.error.php</filename> - OPT error handling. Loaded, if an error occurs.</listitem>
+				<listitem><filename>opt.instructions.php</filename> - instruction and component implementations. Loaded only, if there
+				is a template to compile.</listitem>
+				<listitem><filename>opt.components.php</filename> - sample component implementations.</listitem>
+				<listitem><filename>opt.api.php</filename> - the base of the template parser required to run the compiler. Include it
+				only, if you want to write your own template parser based on OPT compiler.</listitem>
+			</orderedlist>
+			<para>The alphabetical list of classes declared by the library:</para>
+			<orderedlist>
+				<listitem><classname>optApi</classname> (simplified OPT parser)</listitem>
+				<listitem><classname>optBind</classname> (instruction class)</listitem>
+				<listitem><classname>optBindEvent</classname> (instruction class)</listitem>
+				<listitem><classname>optBlock</classname></listitem>
+				<listitem><classname>optCapture</classname> (instruction class)</listitem>
+				<listitem><classname>optClass</classname></listitem>
+				<listitem><classname>optCompiler</classname></listitem>
+				<listitem><classname>optComponent</classname> (component compilation class)</listitem>
+				<listitem><classname>optDefault</classname> (instruction class)</listitem>
+				<listitem><classname>optDynamic</classname> (instruction class)</listitem>
+				<listitem><classname>optDynamicData</classname></listitem>
+				<listitem><classname>optFor</classname> (instruction class)</listitem>
+				<listitem><classname>optForeach</classname> (instruction class)</listitem>
+				<listitem><classname>optIf</classname> (instruction class)</listitem>
+				<listitem><classname>optInclude</classname> (instruction class)</listitem>
+				<listitem><classname>optInsert</classname> (instruction class)</listitem>
+				<listitem><classname>optInstruction</classname></listitem>
+				<listitem><classname>optNode</classname></listitem>
+				<listitem><classname>optPagelist</classname> (instruction class)</listitem>
+				<listitem><classname>optPlace</classname> (instruction class)</listitem>
+				<listitem><classname>optSection</classname> (instruction class)</listitem>
+				<listitem><classname>optTextNode</classname></listitem>
+				<listitem><classname>optTree</classname> (instruction class)</listitem>
+				<listitem><classname>optVar</classname> (instruction class)</listitem>
+			</orderedlist>
+			<para>The list of interfaces declared by the library:</para>
+			<orderedlist>
+				<listitem><classname>ioptComponent</classname> - component interface</listitem>
+				<listitem><classname>ioptI18n</classname> - i18n interface</listitem>
+				<listitem><classname>ioptNode</classname> - compiler node interface</listitem>
+				<listitem><classname>ioptPagesystem</classname> - a page system for the
+					<link linkend="syntax.instructions.pagelist" endterm="">pagelist</link> instruction.</listitem>
+			</orderedlist>
+			<sect2 id="library.optclass.fields">
+				<title>Class fields</title>
+				<para>All the configuration directives are the fields of this class. Addtitional fields which should be
+				accessed only by the compiler, instructions and components:</para>
+				<table frame="all">
+					<?dbhtml table-width="100%" ?>
+					<caption>optClass: fields</caption>
+					<tgroup cols="3" align="center">
+					<thead>
+					<row>
+					  <entry>Name</entry>
+					  <entry>Type</entry>
+					  <entry>Description</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>$capture</entry>
+					  <entry>Array</entry>
+					  <entry>The captured content memory.</entry>
+					</row>
+					<row>
+					  <entry>$compiler</entry>
+					  <entry>optCompiler</entry>
+					  <entry>The compiler object (loaded only, if there is a need to compile something).</entry>
+					</row>
+					<row>
+					  <entry>$data</entry>
+					  <entry>Array</entry>
+					  <entry>The block memory.</entry>
+					</row>
+					<row>
+					  <entry>$vars</entry>
+					  <entry>Array</entry>
+					  <entry>The variable memory.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+			</sect2>
+			<sect2 id="library.optclass.assign">
+				<title>assign()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>assign</methodname>
+					<methodparam><type>string</type><parameter>$name</parameter></methodparam>
+					<methodparam><type>mixed</type><parameter>$value</parameter></methodparam>
+				</methodsynopsis>
+				<para>Assigns the value to the <variable>$name</variable> block in the template. Use it also for assigning the section data. The
+				method must be called before parsing the template. Already defined blocks are not lost after the template
+				execution and you can still use them.</para>
+				<example id="example.library.assign">
+					<title>assign()</title>
+					<programlisting><![CDATA[<?php
+  // Initialize OPT here
+  $tpl -> assign('date', date('d.m.Y, H:i'));
+  $tpl -> parse('template.tpl');
+?>]]></programlisting>
+				</example>
+				<para>template.tpl:</para>
+				<programlisting><![CDATA[<p>Today is {$date}</p>]]></programlisting>
+			</sect2>
+			<sect2 id="library.optclass.assign-dynamic">
+				<title>assignDynamic()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>assignDynamic</methodname>
+					<methodparam><type>string</type><parameter>$name</parameter></methodparam>
+					<methodparam><type>mixed</type><parameter>$callback</parameter></methodparam>
+					<methodparam choice="opt"><type>array</type><parameter>$args</parameter></methodparam>
+				</methodsynopsis>
+				<para>Assigns the valid PHP callback <variable>$callback</variable> to the dynamic section or tree <variable>$name</variable>.
+				The optional array <variable>$args</variable> are the arguments for the function/method. The assigned function or method
+				must return a valid section/tree data.</para>
+				<para>If the dynamic sections are precompiled (default OPT setting), the callbacks must be set BEFORE the template
+				execution/compilation starts.</para>
+				<para>Note: this method is not available, if the <emphasis>Dynamic sections</emphasis> were removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.assign-group">
+				<title>assignGroup()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>assignGroup</methodname>
+					<methodparam><type>array</type><parameter>$blocks</parameter></methodparam>
+				</methodsynopsis>
+				<para>Assigns a group of blocks from an assotiative array <variable>$blocks</variable>. The indexes become block
+				names, and the values their values.</para>
+				<example id="example.library.assign-group">
+					<title>assignGroup()</title>
+					<programlisting><![CDATA[<?php
+  // Initialize OPT here
+  $tpl -> assignGroup(array(
+    'name' => 'Adam',
+    'surname' => 'Smith',
+    'age' => 28
+  ));
+  $tpl -> parse('template.tpl');
+?>]]></programlisting>
+				</example>
+				<para>template.tpl:</para>
+				<programlisting><![CDATA[<p>{$name} {$surname} (Age: {$age})</p>]]></programlisting>
+			</sect2>
+			<sect2 id="library.optclass.assign-ref">
+				<title>assignRef()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>assignRef</methodname>
+					<methodparam><type>string</type><parameter>$name</parameter></methodparam>
+					<methodparam><type>mixed</type><parameter>&amp;$value</parameter></methodparam>
+				</methodsynopsis>
+				<para>Assings the value to the block by reference. It is unsually faster, if we assign big data, such as
+				article texts. However, we must pay attention to the PHP reference-connected issues. For more details see
+				<ulink url="http://www.php.net/manual/en/language.references.php">PHP Manual</ulink>.</para>
+			</sect2>
+			<sect2 id="library.optclass.cache-reset">
+				<title>cacheReset()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>assignRef</methodname>
+					<methodparam choice="opt"><type>string</type><parameter>$filename</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$id</parameter></methodparam>
+					<methodparam choice="opt"><type>int</type><parameter>$expire</parameter></methodparam>
+				</methodsynopsis>
+				<para>Removes the output cache directory content. Depending on the number of specified parameters, it works
+				in several ways (null is the default value of each parameter):</para>
+				<itemizedlist>
+					<listitem><variable>$filename</variable> is null, <variable>$id</variable> is null - removes whole cache.</listitem>
+					<listitem><variable>$filename</variable> is null - removes all cached outputs with specified ID pattern.</listitem>
+					<listitem><variable>$id</variable> is null - removes all cached versions of specified template.</listitem>
+					<listitem>Both <variable>$filename</variable> and <variable>$id</variable> specified - removes the <variable>$id</variable>
+						version of template <variable>$filename</variable>.</listitem>
+				</itemizedlist>
+				<para><variable>$id</variable> is any valid path pattern used by PHP <ulink url="http://www.php.net/glob">glob()</ulink>
+				function. Curly braces are allowed: {a,b,c} means "a", "b", or "c". "*" is an alias of any string.</para>
+				<para>Let's say that you use the template article.tpl to display articles. You save the article 1 under cache ID "1",
+				the article "2" under "2", and the article 3 under cache ID "3" (see
+				<link linkend="tutorials.outputcaching" endterm="">Output caching in OPT</link> for more details). To delete the cached
+				version of article 1, call</para>
+				
+				<programlisting><![CDATA[$tpl -> cacheReset('article.tpl', '1');]]></programlisting>
+				
+				<para>To remove all cached articles, call</para>
+				
+				<programlisting><![CDATA[$tpl -> cacheReset('article.tpl');]]></programlisting>
+				
+				<para>To remove articles 2 and 3, call</para>
+				
+				<programlisting><![CDATA[$tpl -> cacheReset('article.tpl', '{2,3}');]]></programlisting>
+				
+				<para>Third parameter, <variable>$expire</variable> allows you to delete only templates with specified age and
+				older. Thus, the newest files, with creation date bigger than <ulink url="http://www.php.net/time">time()</ulink>
+				- <variable>$expire</variable> will not be removed even, if they match the pattern. If this parameter is not
+				specified, all the templates matching the pattern are removed.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Output Caching</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.cache-status">
+				<title>cacheStatus()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>cacheStatus</methodname>
+					<methodparam><type>bool</type><parameter>$status</parameter></methodparam>
+					<methodparam choice="opt"><type>int</type><parameter>$expire</parameter></methodparam>
+				</methodsynopsis>
+				<para>Allows to enable/disable output caching for the next executed template and set its expire
+				time (the default is 2 seconds).</para>
+				<example id="example.library.cache-status">
+					<title>cacheStatus()</title>
+					<programlisting><![CDATA[  $tpl -> cacheStatus(true, 15);
+  $tpl -> parse('template.tpl');]]></programlisting>
+				</example>
+				<para>In this example we cache the template <filename>template.tpl</filename> for 15 seconds. After this
+				time, the cached version is expired and the template engine must generate newer version.</para>
+				<para>Note that after template execution output caching does not become disabled automatically. In order
+				to disable it, call</para>
+				
+				<programlisting><![CDATA[$tpl -> cacheStatus(false);]]></programlisting>
+				
+				<para>before parsing the next template.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Output Caching</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.cache-unique">
+				<title>cacheUnique()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>cacheUnique</methodname>
+					<methodparam choice="opt"><type>string</type><parameter>$id</parameter></methodparam>
+				</methodsynopsis>
+				<para>Sometimes we store different contents in a specified template. To cache all the variants of the data assigned
+				to a template, we specify an unique content ID using this method. If no parameter specified, the ID utility is
+				disabled.</para>
+				<para>Let's say we have three articles displayed with <filename>article.tpl</filename> template. All of them must
+				be cached. This example shows, how to do it:</para>
+				<example id="example.library.cache-unique">
+					<title>cacheUnique()</title>
+					<programlisting><![CDATA[  $tpl -> cacheStatus(true, 30);
+  // Store the article 1
+  $tpl -> cacheUnique(1);
+  $tpl -> assign('content', $article1);
+  $tpl -> parse('article.tpl');
+  // Store the article 2
+  $tpl -> cacheUnique(2);
+  $tpl -> assign('content', $article2);
+  $tpl -> parse('article.tpl');
+  // Store the article 3
+  $tpl -> cacheUnique(3);
+  $tpl -> assign('content', $article3);
+  $tpl -> parse('article.tpl');]]></programlisting>
+				</example>
+				<para>More details about output caching in <link linkend="tutorials.outputcaching" endterm="">Output caching in OPT</link>
+				chapter.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Output Caching</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.compile-cache-reset">
+				<title>compileCacheReset()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>compileCacheReset</methodname>
+					<methodparam choice="opt"><type>string</type><parameter>$filename</parameter></methodparam>
+				</methodsynopsis>
+				<para>Removes the content of compiled template cache directory. If the <variable>$filename</variable> is specified,
+				removes only the compiled version of a specified template.</para>
+			</sect2>
+			<sect2 id="library.optclass.fetch">
+				<title>fetch()</title>
+				<methodsynopsis>
+				<type>mixed</type><methodname>fetch</methodname>
+					<methodparam><type>string</type><parameter>$filename</parameter></methodparam>
+					<methodparam choice="opt"><type>bool</type><parameter>$display = false</parameter></methodparam>
+				</methodsynopsis>
+				<para>Executes the template in the <variable>$filename</variable> file and returns it as a function result
+				(<emphasis>$display = false</emphasis>) or sends it to the browser (<emphasis>$display = true</emphasis>).
+				The second parameter is used mostly by OPT and you do not have to worry about it. Contrary to the first OPT
+				versions, you may use both returning as function result and to the browser at the same time and at the
+				same template.</para>
+				<para>The executed template sees the blocks assigned before calling this method, but it does not remove them
+				after parsing, so you may use them again.</para>
+				<example id="example.library.fetch">
+					<title>fetch()</title>
+					<programlisting><![CDATA[<?php
+    // Use OPT for mail parsing
+    $tpl -> assign('title', 'Message title');
+    $tpl -> assign('email', 'foo@bar.com');
+    mail('Automessage', 'foo2@bar.com', $tpl -> fetch('mail.tpl'));
+?>]]></programlisting>
+				</example>
+				<para>See also: <link linkend="library.optclass.parse" endterm="">optClass::parse()</link>,
+				<link linkend="library.optclass.parse-capture" endterm="">optClass::parseCapture()</link></para>
+			</sect2>
+			<sect2 id="library.optclass.get-status">
+				<title>getStatus()</title>
+				<methodsynopsis>
+				<type>bool</type><methodname>getStatus</methodname>
+				</methodsynopsis>
+				<para>Returns true, if the output caching is already enabled.</para>
+				<para>Note: this method is not available, if the <emphasis>Output Caching</emphasis> were removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.header">
+				<title>header()</title>
+				<methodsynopsis>
+				protected <type>void</type><methodname>header</methodname>
+					<methodparam><type>string</type><parameter>$header</parameter></methodparam>
+				</methodsynopsis>
+				<para>The default header handler for <link linkend="library.optclass.http-headers" endterm="">optClass::httpHeaders()</link>.
+				If you have your own header support, you can overwrite this method and put there your code sending them. Note
+				this is a protected method and may not be called outside the class!</para>
+				<para>Note: this method is not available, if the <emphasis>Header support</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.http-headers">
+				<title>httpHeaders()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>httpHeaders</methodname>
+					<methodparam><type>mixed</type><parameter>$contentType</parameter></methodparam>
+					<methodparam choice="opt"><type>int</type><parameter>$cache</parameter></methodparam>
+				</methodsynopsis>
+				<para>Sends the HTTP headers to the browser that declare the content-type and document encoding taken
+				from the charset configuration directive. The <variable>$contentType</variable> parameter may be one
+				of these constants:</para>
+				<orderedlist>
+					<listitem><emphasis>OPT_HTML</emphasis> - HTML document.</listitem>
+					<listitem><emphasis>OPT_XHTML</emphasis> - XHTML document, if it is supported by the browser and
+						has the higher priority than <emphasis>text/html</emphasis></listitem>
+					<listitem><emphasis>OPT_FORCE_XHTML</emphasis> - XHTML document always, if the browser supports it.</listitem>
+					<listitem><emphasis>OPT_XML</emphasis> - XML document.</listitem>
+					<listitem><emphasis>OPT_WML</emphasis> - WML document (WAP protocol).</listitem>
+					<listitem><emphasis>OPT_TXT</emphasis> - plain text document.</listitem>
+				</orderedlist>
+				<para>If no type matches to your preferences, specify it manually. If the debug console is enabled, OPT
+				changes the content-type to text/html in order to be able to add the console code into the output. In this
+				case, the debug console specifies the following type used:</para>
+				
+				<programlisting><![CDATA[application/xhtml+xml (text/html used for debug purposes)]]></programlisting>
+				
+				<para>The optional second parameter decides, whether the proxy servers should cache the content we send
+				(<emphasis>OPT_HTTP_CACHE</emphasis>, default setting) or not (<emphasis>OPT_NO_HTTP_CACHE</emphasis>).
+				We recommend to call the method just after the parser initialization.</para>
+				
+				<example id="example.library.http-headers">
+					<title>fetch()</title>
+					<programlisting><![CDATA[<?php
+  try
+  {
+    $tpl = new optClass;
+    $tpl -> loadConfig('config.php');
+    $tpl -> httpHeaders(OPT_HTML);
+
+    // your code here
+  }
+  catch(optException $exception)
+  {
+    optErrorHandler($exception);
+  }
+?>]]></programlisting>
+				</example>
+				<para>Custom content type:</para>
+				
+				<programlisting><![CDATA[$tpl -> httpHeaders('application/xml+vrml');]]></programlisting>
+				
+				<para>Note: this method is not available, if the <emphasis>Header support</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.is-cached">
+				<title>isCached()</title>
+				<methodsynopsis>
+				<type>bool</type><methodname>isCached</methodname>
+					<methodparam><type>string</type><parameter>$filename</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$id</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Returns true, if the specified template with specified ID (optionally) is already cached. Use this method
+				to check, whether you need to get the data from the database:</para>
+				<example id="example.library.is-cached">
+					<title>isCached()</title>
+					<programlisting><![CDATA[  if(!$tpl -> isCached('news.tpl'))
+  {
+    // The news are assigned only if we need to regenerate cache file.
+    $tpl -> assign('news', getNews());
+  }
+  $tpl -> cacheStatus(true, 30);
+  $tpl -> parse('news.tpl');]]></programlisting>
+				</example>
+
+				<para>Note: this method is not available, if the <emphasis>Output caching</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.load-config">
+				<title>loadConfig()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>loadConfig</methodname>
+					<methodparam><type>mixed</type><parameter>$config</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Loads the OPT configuration. $config may be both a configuration filename (PHP ini files syntax) or an array
+				containing the directives. Instead of using it, you may also specify the configuration manually by specifying the
+				configuration field values in <classname>optClass</classname> object.</para>
+				
+				<example id="example.library.load-config">
+					<title>Three ways of setting the configuration</title>
+					<programlisting><![CDATA[<?php
+  // Load a configuration from an external file
+  $tpl -> loadConfig('config.php');
+  // Load from an array
+  $tpl -> loadConfig(array(
+    'root' => './templates/',
+    'compile' => './templates_c/',
+    'debugConsole' => false
+  ));
+  // Specify the config manually
+  $tpl -> root = './templates/';
+  $tpl -> compile = './templates_c/';
+?>]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="library.optclass.load-plugins">
+				<title>loadPlugins()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>loadPlugins</methodname>
+				</methodsynopsis>
+				
+				<para>If the <emphasis>plugins</emphasis> configuration directive is set to the plugin directory, the method
+				loads the plugins from it. It is also called automatically during the first
+				<link linkend="library.optclass.fetch" endterm="">optClass::fetch()</link> call. It is good to do this manually,
+				if some plugin objects are required by the script (for example: the components).</para>				
+				<para>Note: this method is not available, if the <emphasis>Plugin support</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.parse">
+				<title>parse()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>parse</methodname>
+					<methodparam><type>string</type><parameter>$filename</parameter></methodparam>
+				</methodsynopsis>
+				<para>Alias for <emphasis>fetch($filename, true);</emphasis> - sends the parsed content to the browser.</para>
+				<example id="example.library.parse">
+					<title>parse()</title>
+					<programlisting><![CDATA[<?php
+    // Initialize OPT here
+    $tpl -> assign('title', 'Page title');
+    $tpl -> assign('style', 'yellow.css');
+    $tpl -> assign('current_date', date('d.m.Y, H:i'));
+    $tpl -> parse('overall_header.tpl');
+?>]]></programlisting>
+				</example>
+			</sect2>
+			<sect2 id="library.optclass.parse-capture">
+				<title>parseCapture()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>parseCapture</methodname>
+					<methodparam><type>string</type><parameter>$filename</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$destination</parameter></methodparam>
+				</methodsynopsis>
+				<para>Executes the template <variable>$filename</variable> and makes the result a <link linkend="syntax.instructions.capture" endterm="">capture</link>
+				block with the <variable>$destination</variable> name. So, if you save the result under the name "banner", you
+				can put it in the next template with <variable>{$opt.capture.banner}</variable> block.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-component">
+				<title>registerComponent()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerComponent</methodname>
+					<methodparam><type>mixed</type><parameter>$name</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Registers a component. <variable>$name</variable> is the name of the class implementing
+				<classname>ioptComponent</classname> interface or an array of such names.</para>
+				
+				<example id="example.library.register-component">
+					<title>registerComponent()</title>
+					<programlisting><![CDATA[<?php
+  $tpl -> registerComponent(array(0 =>
+    'mySelectComponent', 'myInputComponent'
+  ));
+?>]]></programlisting>
+				</example>
+				
+				<para>The components are visible in the template under their class names. In order to disable predefined
+				components, use OPT Configurator and uncheck <emphasis>Predefined components</emphasis> directive.</para>				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> or
+				<emphasis>Component support</emphasis> was removed from the source with
+				<link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-delimiter">
+				<title>registerDelimiter()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerDelimiter</methodname>
+					<methodparam><type>string</type><parameter>$regExp</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$lEntName</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$lEntLook</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$rEntName</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$rEntLook</parameter></methodparam>
+				</methodsynopsis>				
+				<para>Registers a new tag delimiter. The <variable>$regExp</variable> is a PCRE regular expression
+				(without the modifiers) that defines the look of a delimiter. It has to provide four groups:</para>
+				<orderedlist>
+					<listitem><emphasis>(\/?)</emphasis> - for enclosing tags.</listitem>
+					<listitem><emphasis>(([a-zA-Z]+)\:)?</emphasis> - optional namespace</listitem>
+					<listitem><emphasis>(.*?)</emphasis> - tag content</listitem>
+					<listitem><emphasis>(\/?)</emphasis> - a slash for single tags.</listitem>				
+				</orderedlist>
+				<para>The four optional parameters allow to define the entities that display the left and right part of
+				a delimiter, so that the template designer could also display it.</para>
+				<para>An example of defining square brackets as a delimiter:</para>
+				<example id="example.library.register-delimiter">
+					<title>registerDelimiter()</title>
+					<programlisting><![CDATA[<?php
+  $tpl -> registerDelimiter('\[(\/?)(([a-zA-Z]+)\:)?(.*?)(\/?)\]', 'lsb', '[', 'rsb', ']');
+?>]]></programlisting>
+				</example>
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-filter">
+				<title>registerFilter()</title>
+				<methodsynopsis>
+				<type>bool</type><methodname>registerFilter</methodname>
+					<methodparam><type>int</type><parameter>$type</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$callback</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Registers a new content filter. The <variable>$type</variable> parameter defines its type
+				(OPT_PREFILTER, OPT_POSTFILTER, OPT_OUTPUTFILTER) and the second parameter is a filter function
+				callback without the prefixes <emphasis>optPrefilter</emphasis>, <emphasis>optPostfilter</emphasis>
+				or <emphasis>optOutputfilter</emphasis>. So, if you have a function <function>optPrefilterMyFilter</function>,
+				you register it in this way:</para>
+				
+				<programlisting><![CDATA[$tpl -> registerFilter(OPT_PREFILTER, 'MyFilter');]]></programlisting>
+				
+				<para>More about content filters - see <link linkend="extending.filters" endterm="">New filters</link>.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> or
+				<emphasis>Code filters</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-function">
+				<title>registerFunction()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerFunction</methodname>
+					<methodparam><type>mixed</type><parameter>$name</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$callback</parameter></methodparam>
+				</methodsynopsis>
+				<para>Registers new function in the parser. Depending on the number of parameters:</para>
+				<orderedlist>
+					<listitem>The method takes an assotiative array as the first parameter, which contains pairs
+					<emphasis>name => callback</emphasis>. "name" means the name, under which we want to see the
+					function in the template. "callback" is a PHP function callback (without the "opt" prefix!).
+					This allows to register many functions at once.</listitem>
+					<listitem>The method takes the name as the first parameter and the callback as the second one.</listitem>				
+				</orderedlist>
+				
+				<para>The registered function must have an "opt" prefix in the name and take an <classname>optClass</classname>
+				object as the first parameter.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-instruction">
+				<title>registerInstruction()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerInstruction</methodname>
+					<methodparam><type>mixed</type><parameter>$object</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Registers new OPT instruction or a group of instructions. The <variable>$obj</variable> may be either a
+				name of the class that extends <classname>optInstruction</classname> class, or an array of such names. Note
+				the instructions you are going to register, have to be already loaded to the application, because this metod
+				must execute some of their methods to get their syntax info, if the compiler is used. In order to avoid this,
+				call <link linkend="library.optclass.register-instruction-file" endterm="">optClass::registerInstructionFile()</link>
+				first.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-instruction-file">
+				<title>registerInstructionFile()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerInstructionFile</methodname>
+					<methodparam><type>string</type><parameter>$filename</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Registers a PHP file containing OPT instruction sources. They will be loaded only, if the compiler needs it.
+				Use this method in connection with <link linkend="library.optclass.register-instruction" endterm="">optClass::registerInstruction()</listitem>:</para>
+
+				<example id="example.library.register-instruction-file">
+					<title>registerInstructionFile()</title>
+					<programlisting><![CDATA[<?php
+  $tpl -> registerInstructionFile('myInstructions.php');
+  // Register instructions located in the file above
+  $tpl -> registerInstruction('optInstruction1');
+  $tpl -> registerInstruction('optInstruction2');
+?>]]></programlisting>
+				</example>
+			
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-namespace">
+				<title>registerNamespace()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerNamespace</methodname>
+					<methodparam><type>string</type><parameter>$namespace</parameter></methodparam>
+				</methodsynopsis>
+
+				<para>Registers the new namespace <variable>$namespace</variable> for the OPT compiler. Only the registered
+				namespaces are parsed by OPT. The rest of the tags is simply displayed in the output. Note that OPT registers
+				one namespace by default: "opt".</para>
+
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-php-function">
+				<title>registerPhpFunction()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerPhpFunction</methodname>
+					<methodparam><type>mixed</type><parameter>$name</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>$callback</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Registers new PHP function in the parser. Depending on the number of parameters:</para>
+				<orderedlist>
+					<listitem>The method takes an assotiative array as the first parameter, which contains pairs
+					<emphasis>name => callback</emphasis>. "name" means the name, under which we want to see the
+					function in the template. "callback" is a PHP function callback. This allows to register many functions at once.</listitem>
+					<listitem>The method takes the name as the first parameter and the callback as the second one.</listitem>				
+				</orderedlist>
+
+				<para>You can register every PHP function in the parser, using this method. No additional prefixes and
+				parameters are required.</para>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.register-resource">
+				<title>registerResource()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>registerResource</methodname>
+					<methodparam><type>string</type><parameter>$name</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$callback</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> or
+				<emphasis>Custom resources</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.set-default-i18n">
+				<title>setDefaultI18n()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>setDefaultI18n</methodname>
+					<methodparam><type>array</type><parameter>&amp;$array</parameter></methodparam>
+				</methodsynopsis>
+			</sect2>
+			<sect2 id="library.optclass.set-master-template">
+				<title>setMasterTemplate()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>setMasterTemplate</methodname>
+					<methodparam><type>string</type><parameter>$template</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Note: this method is not available, if the <emphasis>Master template support</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.set-object-i18n">
+				<title>setObjectI18n()</title>
+				<methodsynopsis>
+				<type>void</type><methodname>setObjectI18n</methodname>
+					<methodparam><type>ioptI18n</type><parameter>$i18n</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Note: this method is not available, if the <emphasis>Objective i18n</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.unregister-filter">
+				<title>unregisterFilter()</title>
+				<methodsynopsis>
+				<type>bool</type><methodname>unregisterFilter</methodname>
+					<methodparam><type>int</type><parameter>$type</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$callback</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> or
+				<emphasis>Code filters</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+			<sect2 id="library.optclass.unregister-namespace">
+				<title>unregisterNamespace()</title>
+				<methodsynopsis>
+				<type>bool</type><methodname>unregisterNamespace</methodname>
+					<methodparam><type>string</type><parameter>$namespace</parameter></methodparam>
+				</methodsynopsis>
+				
+				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
+				source with <link linkend="tutorials.tools.configurator" endterm="">OPT Configurator</link>.</para>
+			</sect2>
+		</sect1>
+		<sect1 id="library.optcompiler">
+			<title>optCompiler class</title>
+			<sect2 id="library.optcompiler.fields">
+				<title>Class fields</title>
+			</sect2>
+			<sect2 id="library.optcompiler.__construct">
+				<title>__construct()</title>
+			</sect2>
+			<sect2 id="library.optcompiler.compile-expression">
+				<title>compileExpression()</title>
+			</sect2>
+			<sect2 id="library.optcompiler.dynamic">
+				<title>dynamic()</title>
+			</sect2>
+			<sect2 id="library.optcompiler.out">
+				<title>out()</title>
+			</sect2>
+			<sect2 id="library.optcompiler.parametrize">
+				<title>parametrize()</title>
+			</sect2>
+			<sect2 id="library.optcompiler.parse">
+				<title>parse()</title>
+			</sect2>
+		</sect1>
+		<sect1 id="library.optnode">
+			<title>optNode class</title>
+			<sect2 id="library.optnode.get-block-count">
+				<title>getBlockCount()</title>
+			</sect2>
+			<sect2 id="library.optnode.get-first-block">
+				<title>getFirstBlock()</title>
+			</sect2>
+			<sect2 id="library.optnode.get-name">
+				<title>getName()</title>
+			</sect2>
+			<sect2 id="library.optnode.get-parent">
+				<title>getParent()</title>
+			</sect2>
+			<sect2 id="library.optnode.get-type">
+				<title>getType()</title>
+			</sect2>
+		</sect1>
+		<sect1 id="library.optblock">
+			<title>optBlock class</title>
+			<sect2 id="library.optblock.get-element-by-tag-name">
+				<title>getElementByTagName()</title>
+			</sect2>
+			<sect2 id="library.optblock.get-name">
+				<title>getName()</title>
+			</sect2>
+			<sect2 id="library.optblock.get-parameters">
+				<title>getParameters()</title>
+			</sect2>
+			<sect2 id="library.optblock.get-type">
+				<title>getType()</title>
+			</sect2>
+			<sect2 id="library.optblock.has-child-nodes">
+				<title>hasChildNodes()</title>
+			</sect2>
+			<sect2 id="library.optblock.has-parameters">
+				<title>hasParameters()</title>
+			</sect2>
+		</sect1>
+		<sect1 id="library.optinstruction">
+			<title>optInstruction class</title>
+			<sect2 id="library.optinstruction.fields">
+				<title>Class fields</title>
+			</sect2>
+			<sect2 id="library.optinstruction.configure">
+				<title>configure()</title>
+			</sect2>
+			<sect2 id="library.optinstruction.default-tree-process">
+				<title>defaultTreeProcess()</title>
+			</sect2>
+			<sect2 id="library.optinstruction.instruction-node-process">
+				<title>instructionNodeProcess()</title>
+			</sect2>
+			<sect2 id="library.optinstruction.node-process">
+				<title>nodeProcess()</title>
+			</sect2>
+			<sect2 id="library.optinstruction.process-attribute">
+				<title>processAttribute()</title>
+			</sect2>
+			<sect2 id="library.optinstruction.process-opt">
+				<title>processOpt()</title>
+			</sect2>
+		</sect1>
+		<sect1 id="library.optexception">
+			<title>optException class</title>
+			<sect2 id="library.optexception.__construct">
+				<title>__construct()</title>
+			</sect2>
+			<sect2 id="library.optexception.get-function">
+				<title>getFunction()</title>
+			</sect2>
+			<sect2 id="library.optexception.get-type">
+				<title>getType()</title>
+			</sect2>
+		</sect1>
+		<sect1 id="library.iopti18n">
+			<title>ioptI18n interface</title>
+			<sect2 id="library.iopti18n.set-opt-instance">
+				<title>setOptInstance()</title>
+			</sect2>
+			<sect2 id="library.iopti18n.apply">
+				<title>apply()</title>
+			</sect2>
+			<sect2 id="library.iopti18n.put">
+				<title>put()</title>
+			</sect2>
+			<sect2 id="library.iopti18n.put-apply">
+				<title>putApply()</title>
+			</sect2>
+		</sect1>
+		<sect1 id="library.ioptcomponent">
+			<title>ioptcomponent class</title>
+			<sect2 id="library.ioptcomponent.__construct">
+				<title>__construct()</title>
+			</sect2>
+			<sect2 id="library.ioptcomponent.begin">
+				<title>begin()</title>
+			</sect2>
+			<sect2 id="library.ioptcomponent.end">
+				<title>end()</title>
+			</sect2>
+			<sect2 id="library.ioptcomponent.push">
+				<title>push()</title>
+			</sect2>
+			<sect2 id="library.ioptcomponent.set">
+				<title>set()</title>
+			</sect2>
+			<sect2 id="library.ioptcomponent.set-datasource">
+				<title>setDatasource()</title>
+			</sect2>
+			<sect2 id="library.ioptcomponent.set-opt-instance">
+				<title>setOptInstance()</title>
+			</sect2>
+		</sect1>
+	</chapter>
+	<chapter id="tutorials">
+		<title>Tutorials</title>
+		<sect1 id="tutorials.sections">
+			<title>Sections explained</title>
+		</sect1>
+		<sect1 id="tutorials.i18n">
+			<title>I18n and OPT</title>
+		</sect1>
+		<sect1 id="tutorials.outputcaching">
+			<title>Output caching</title>
+		</sect1>
+		<sect1 id="tutorials.tools">
+			<title>External tools: OPT Configurator and OPT Compiler</title>
+		</sect1>
+	</chapter>
+	<chapter id="extending">
+		<title>Extending OPT</title>
+		<sect1 id="extending.functions">
+			<title>New functions</title>
+		</sect1>
+		<sect1 id="extending.resources">
+			<title>New resources</title>
+		</sect1>
+		<sect1 id="extending.filters">
+			<title>New filters</title>
+		</sect1>
+		<sect1 id="extending.components">
+			<title>New components</title>
+		</sect1>
+		<sect1 id="extending.instructions">
+			<title>New instructions</title>
+			<sect2 id="extending.instructions.overview">
+				<title>Compiler overview</title>
+			</sect2>
+			<sect2 id="extending.instructions.first">
+				<title>Your first instruction</title>
+			</sect2>
+			<sect2 id="extending.instructions.parameters">
+				<title>Parameter parsing</title>
+			</sect2>
+			<sect2 id="extending.instructions.unknown">
+				<title>Handling OPT_UNKNOWN nodes</title>
+			</sect2>
+			<sect2 id="extending.instructions.other">
+				<title>Other features and tricks</title>
+			</sect2>
+		</sect1>
+		<sect1 id="extending.plugins">
+			<title>OPT plugins</title>
+		</sect1>
+		<sect1 id="extending.api">
+			<title>OPT API</title>
+		</sect1>
+	</chapter>
+	<appendix label="A">
+		<title>Moving from Smarty™</title>
+	</appendix>
+	<appendix label="B">
+		<title>Configuration directives</title>
+	</appendix>
+	<appendix label="C">
+		<title>Code debugging</title>
+	</appendix>
+	<appendix label="D">
+		<title>Error codes</title>
+	</appendix>
+	<appendix label="E">
+		<title>Problems</title>
+	</appendix>
+	<appendix label="F">
+		<title>Support</title>
+	</appendix>
+	<appendix label="G">
+		<title>Bug reporting</title>
+		<para>Every release of Open Power Template library has to pass several tests:</para>
+		<orderedlist>
+			<listitem>Parser unit test - testing the behaviour of the optClass.</listitem>
+			<listitem>Compiler unit test - testing the compiler results in various situations.</listitem>
+			<listitem>Example passing - each example has to work.</listitem>
+			<listitem>Two complete, real world projects - if everything is working, the test is passed.</listitem>
+		</orderedlist>
+		<para>However, there still may occur some situations that we could not predict. If you notice any bug, please visit
+		<ulink url="http://openpb.net/bugs">openpb.net/bugs</ulink> and report it us! The report has to be written in English
+		and must contain a test case that causes bug, which can be reproduced by everyone who is interested.</para>
+	</appendix>
+	<appendix label="H">
+		<title>In the next release</title>
+		<para>There are no plans for 1.2.0 yet, we are going to develop the 1.1.x branch now.</para>
+	</appendix>
+	<appendix label="I">
+		<title>Authors and license</title>
+		<para>Open Power Template is distributed under GNU Lesser General Public License 2.1. The full text is
+		included in every OPT package. This manual is distributed under GNU Free Documentation License 2.1. The
+		full text is distributed with the documentation in an external file.</para>
+		<para>Library authors:</para>
+		<orderedlist>
+			<listitem><ulink url="http://www.zyxist.com">Tomasz "Zyx" Jędrzejewski</ulink> - OPT founder and programmer.</listitem>
+			<listitem>Tomasz "Slump" Szczupliński - the coordinator of Open Power projects and manual translator (pl version).</listitem>
+		</orderedlist>
+		<para>The contact data are published on the <ulink url="http://opt.openpb.net">opt.openpb.net</ulink> website.</para>
+		<para>We would like to thank:</para>
+		<orderedlist>
+			<listitem>Jacek "eXtreme" Jędrzejewski - for many useful ideas and bug detections.</listitem>
+			<listitem>Mirosław "normanos" Okoński - for useful ideas about output caching.</listitem>
+			<listitem>Krzysztof J. Szklarski - for project donations.</listitem>
+			<listitem><ulink url="http://www.acs.pl">acs.pl</ulink> team for very good project home page hosting.</listitem>
+			<listitem>Everyone else who is using OPT in his projects.</listitem>		
+		</orderedlist>
+		<para>You have successfully reached the end of OPT manual.</para>
+	</appendix>
+</book>

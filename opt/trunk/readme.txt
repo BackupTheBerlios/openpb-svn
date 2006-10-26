@@ -8,7 +8,7 @@
               |  |
      Open     |__| ower
 
-     Open Power Template v. 1.0.0 readme
+     Open Power Template v. 1.1.0 readme
      Professional templating engine for PHP 5
 
 SHORT INSTALLATION
