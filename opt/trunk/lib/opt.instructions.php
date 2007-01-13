@@ -17,14 +17,14 @@
 		protected $tpl;
 		protected $compiler;
 		protected $output;
-		protected $requestedMasterLevel = 2;
-		
+		public $inMaster = false;
+
 		public function __construct(optCompiler $compiler)
 		{
 			$this -> compiler = $compiler;
 			$this -> tpl = $compiler -> tpl;
 		} // end __construct();
-		
+
 		public function setOutput(&$output)
 		{
 			$this -> output = &$output;
@@ -35,8 +35,12 @@
 			return array();
 		} // end configure();
 		
-		public function defaultTreeProcess(optBlock $block)
+		public function defaultTreeProcess($block)
 		{
+			if(!$block instanceof optBlock)
+			{
+				return false;
+			}
 			if($block -> hasChildNodes())
 			{
 				foreach($block as $node)
@@ -79,6 +83,40 @@
 					break;
 			}
 		} // end nodeProcess();
+
+		final public function findSnippets($block, &$snippetName, $group = false)
+		{
+			$tag = $block -> getElementByTagName('use');
+
+			if(is_null($tag))
+			{
+				return NULL;
+			}
+
+			$fb = $tag -> getFirstBlock();
+
+			$params = array(
+				'snippet' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+			);
+			$this -> compiler -> parametrize('use', $fb->getAttributes(), $params);
+			$snippetName = $params['snippet'];
+
+			if(!$group)
+			{
+				if(isset($this->compiler->genericBuffer['bind'][$params['snippet']]))
+				{
+					return $this->compiler->genericBuffer['bind'][$params['snippet']];
+				}
+			}
+			else
+			{
+				if(isset($this->compiler->genericBuffer['bindGroup'][$params['snippet']]))
+				{
+					return $this->compiler->genericBuffer['bindGroup'][$params['snippet']];
+				}
+			}
+			return NULL;
+		} // end findSnippets();
 		
 		public function instructionProcess(ioptNode $node)
 		{
@@ -91,7 +129,8 @@
 				}
 				
 				// pass the execution to the instruction processor
-				if($this -> compiler -> mapper[$node -> getName()] -> requestedMasterLevel <= $this -> compiler -> masterLevel)
+
+				if(!$this->compiler->master || $this->compiler->processors[$node->getName()]->inMaster)
 				{
 					$this -> compiler -> mapper[$node -> getName()] -> instructionNodeProcess($node);
 				}
@@ -131,12 +170,16 @@
 				'section' => OPT_MASTER,
 				'sectionelse' => OPT_ALT,
 				'/section' => OPT_ENDER,
+				'tree' => OPT_MASTER,
+				'treeelse' => OPT_ALT,
+				'/tree' => OPT_ENDER,
 				'show' => OPT_MASTER,
 				'showelse' => OPT_ALT,
 				'/show' => OPT_ENDER,
-				'opt:sectionfirst' => OPT_ATTRIBUTE,
-				'opt:sectionlast' => OPT_ATTRIBUTE,
-				'opt:sectioncycle' => OPT_ATTRIBUTE
+				'cycle' => OPT_COMMAND,
+				'sectionfirst' => OPT_ATTRIBUTE,
+				'sectionlast' => OPT_ATTRIBUTE,
+				'sectioncycle' => OPT_ATTRIBUTE
 			);
 		} // end configure();
 		
@@ -158,7 +201,7 @@
 							$this -> showEnd();
 							break;
 					case 'section':
-							$this -> sectionBegin($block -> getAttributes());
+							$this -> sectionBegin($block -> getAttributes(), $block);
 							$this -> defaultTreeProcess($block);
 							break;
 					case 'sectionelse':
@@ -168,6 +211,20 @@
 					case '/section':
 							$this -> sectionEnd();
 							break;
+					case 'tree':
+							$this -> treeBegin($block -> getAttributes(), $block);
+							$this -> defaultTreeProcess($block);
+							break;
+					case 'treeelse':
+							$this -> treeElse();
+							$this -> defaultTreeProcess($block);
+							break;
+					case '/tree':
+							$this -> treeEnd();
+							break;
+					case 'cycle':
+							$this -> cycle($block->getAttributes());
+
 				}
 			}
 		} // end process();
@@ -260,7 +317,7 @@
 			unset($this -> sections[$this -> nesting]);
 		} // end showEnd();
 		
-		public function sectionBegin($paramStr)
+		public function sectionBegin($paramStr, $block)
 		{
 			if(@$this->sections[$this->nesting]['show'] != true)
 			{
@@ -273,6 +330,8 @@
 				$this -> compiler -> parametrize('section', $paramStr, $params);
 				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], false);			
 			}
+			
+			// Process the section
 			$this -> sectionList[$this -> nesting] = $name = $this->sections[$this->nesting]['name'];
 
 			if($this->sections[$this->nesting]['order'] == 'reversed')
@@ -316,6 +375,133 @@
 				unset($this -> sections[$this -> nesting]);
 			}
 		} // end sectionEnd();
+
+		public function treeBegin($paramStr, $block)
+		{
+			if(@$this->sections[$this->nesting]['show'] != true)
+			{
+				$params = array(
+					'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+					'order' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_STRING, NULL),
+					'state' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
+					'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
+				);
+				$this -> compiler -> parametrize('section', $paramStr, $params);
+				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], false);			
+			}
+			// Find the code snippets
+			$snippetName = '';
+			$snippet = $this -> findSnippets($block, $snippetName, true);
+			if(is_null($snippet))
+			{
+				$snippet = array();
+				foreach($block as $testnode)
+				{
+					if($testnode -> getType() == OPT_UNKNOWN)
+					{
+						switch($testnode -> getName())
+						{
+							case 'opening':
+								$snippet['opening'] = $testnode->getFirstBlock();
+								break;
+							case 'closing':
+								$snippet['closing'] = $testnode->getFirstBlock();
+								break;
+							case 'leaf':
+								$snippet['leaf'] = $testnode->getFirstBlock();
+								break;
+						}
+					}
+				}
+			}
+			else
+			{
+				$this -> compiler -> addConverterItem($snippetName, $this->sections[$this->nesting]['name']);
+			}
+			if(!isset($snippet['opening']) || !isset($snippet['closing']) || !isset($snippet['leaf']))
+			{
+				$this -> tpl -> error(E_USER_WARNING, 'One of the snippets for the "tree" instruction
+					has not been defined.', OPT_W_SNIPPETS_NOT_DEF);
+			}
+
+
+
+			$this -> sectionList[$this -> nesting] = $name = $this->sections[$this->nesting]['name'];
+			$code = '';
+			if($this->sections[$this->nesting]['order'] == 'reversed')
+			{
+				$code = ' for($__'.$name.'_id = $__'.$name.'_cnt - 1; $__'.$name.'_id >= 0; $__'.$name.'_id--){ $__'.$name.'_val = &'.$this->sections[$this->nesting]['link'].'[$__'.$name.'_id]; ';		
+			}			
+			else
+			{
+				$code = ' for($__'.$name.'_id = 0; $__'.$name.'_id < $__'.$name.'_cnt; $__'.$name.'_id++){ $__'.$name.'_val = &'.$this->sections[$this->nesting]['link'].'[$__'.$name.'_id]; ';
+			}
+
+			$code .= '$a = $__'.$name.'_val[\'depth\'];
+$b = @'.$this->sections[$this->nesting]['link'].'[$__'.$name.'_id+1][\'depth\'];
+if($a == $b){ $state = 0; }
+if($a < $b){ $state = 1; }
+if($a > $b){ $state = 2; $toclose = $a - $b; }
+switch($state){
+case 0:
+';
+			$this -> compiler -> out($code);
+			$this -> defaultTreeProcess($snippet['leaf']);
+			$this -> compiler -> out(' break; case 1: ');
+			$this -> defaultTreeProcess($snippet['opening']);
+			$this -> compiler -> out(' break; case 2: ');
+			$this -> defaultTreeProcess($snippet['leaf']);
+			$this -> compiler -> out(' for($__'.$name.'_i = 0; $__'.$name.'_i < $toclose; $__'.$name.'_i++){ ');
+			$this -> defaultTreeProcess($snippet['closing']);
+			$this -> compiler -> out(' } break; } }');
+		
+			$this -> nesting++;
+			$this -> compiler -> removeConverterItem($snippetName);
+		} // end treeBegin();
+
+		public function treeElse()
+		{
+			if($this->sections[$this->nesting-1]['show'] == false)
+			{
+				$this->sections[$this->nesting-1]['else'] = true;
+				$this -> compiler -> out(' } else { ');		
+			}
+		} // end sectionElse();
+
+		public function treeEnd()
+		{
+			$this -> nesting--;
+			if($this->sections[$this->nesting]['show'] == false)
+			{
+				$this -> compiler -> out(' } ');
+				unset($this -> sectionList[$this -> nesting]);
+				unset($this -> sections[$this -> nesting]);
+			}
+		} // end treeEnd();
+
+		private function cycle($paramStr)
+		{
+			$params = array(
+				'type' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+				'__UNKNOWN__' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
+			);
+			$vars = $this -> compiler -> parametrize('section cycle', $paramStr, $params);
+			if(sizeof($vars) > 1)
+			{
+				$code = '$__'.$this->sections[$this->nesting-1]['name'].'_cycle = array(0 => ';
+				foreach($vars as $var)
+				{
+					$code .= $var.', ';
+				}
+				$code .= '); $__'.$this->sections[$this->nesting-1]['name'].'_cc = '.sizeof($vars).'; ';
+				$this -> compiler -> out($code);
+				$this -> sections[$this -> nesting-1]['cycle'] = $params['type'];
+			}
+			else
+			{
+				$this -> tpl -> error(E_USER_WARNING, 'The cycle should have at least two values.', OPT_W_SHORT_CYCLE);
+			}
+		} // end cycle();
 
 		private function getLink($name, $datasource, &$link)
 		{
@@ -372,7 +558,7 @@
 			}
 			return $syntax;
 		} // end getLink();
-		
+
 		public function processOpt($namespace)
 		{
 			switch($namespace[3])
@@ -416,6 +602,173 @@
 					$this -> tpl -> error(E_USER_ERROR, 'Unknown OPT section command: '.$namespace[3], 105);
 			}
 		} // end processOpt();
+
+		public function processAttribute(optBlock $block)
+		{
+			switch($block -> getName())
+			{
+				case 'sectionfirst':
+					foreach($this -> sections as $id => &$void)
+					{
+						if($void['name'] == $block->getAttributes());
+						$sid = $id;
+					}
+					if($this -> sections[$sid]['order']=='reversed')
+					{
+						$this->compiler->out(' if($__'.$block->getAttributes().'_id == $__'.$block->getAttributes().'_cnt - 1){ echo \'class="first"\'; } ');
+						break;
+					}
+					$this->compiler->out('if($__'.$block->getAttributes().'_id == 0){ echo \'class="first"\'; } ');
+					break;
+				case 'sectionlast':
+					foreach($this -> sections as $id => &$void)
+					{
+						if($void['name'] == $block->getAttributes());
+						$sid = $id;
+					}
+					if($this -> sections[$sid]['order']=='reversed')
+					{
+						$this->compiler->out('if($__'.$block->getAttributes().'_id == 0){ echo \'class="last"\'; } ');
+
+						break;
+					}
+					$this->compiler->out(' if($__'.$block->getAttributes().'_id == $__'.$block->getAttributes().'_cnt - 1){ echo \'class="last"\'; } ');
+					break;
+				case 'sectioncycle':
+					foreach($this -> sections as $id => &$void)
+					{
+						if($void['name'] == $block->getAttributes());
+						$sid = $id;
+					}
+					if(isset($this->sections[$sid]['cycle']))
+					{
+						$this -> compiler -> out(' echo '.$this->sections[$sid]['cycle'].'.\'="\'.($__'.$this->sections[$sid]['name'].'_cycle[$__'.$this->sections[$sid]['name'].'_id % $__'.$this->sections[$sid]['name'].'_cc]).\'"\'; ');
+					}
+					break;			
+			}
+		} // end processAttribute();
+	}
+
+	class optPagesystem extends optInstruction
+	{
+		public function configure()
+		{
+			return array(
+				0 => 'pagesystem',
+				'pagesystem' => OPT_MASTER,
+				'/pagesystem' => OPT_ENDER
+				);
+		} // end configure();
+
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			foreach($node as $block)
+			{
+				switch($block -> getName())
+				{
+					case 'pagesystem':
+							$this -> psBegin($block);
+							$this -> defaultTreeProcess($block);
+							break;
+					case '/pagesystem':
+							$this -> psEnd();
+							break;
+				}
+			}	
+		} // end process();
+
+		private function psBegin($block)
+		{
+			$params = array(
+				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+				'npDisplay' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, '1'),
+				'flDisplay' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, '1')
+			);
+			$snippetName = '';
+			$snippet = $this -> findSnippets($block, $snippetName, true);
+			if(is_null($snippet))
+			{
+				$snippet = array();
+				foreach($block as $testnode)
+				{
+					if($testnode -> getType() == OPT_UNKNOWN)
+					{
+						switch($testnode -> getName())
+						{
+							case 'page':
+							case 'active':
+							case 'separator':
+							case 'first':
+							case 'last':
+							case 'prev':
+							case 'next':
+								$snippet[$testnode->getName()] = $testnode->getFirstBlock();
+								break;
+						}
+					}
+				}
+			}
+
+			$this -> compiler -> parametrize('pagesystem', $block -> getAttributes(), $params);
+			$link = '$this->data[\''.$params['name'].'\']';
+			$code = 'if('.$link.' instanceof ioptPagesystem){';
+
+			$stdLink = '$this->vars[\'url\'] = $_p'.$params['name'].'[\'l\']; $this->vars[\'title\'] = $_p'.$params['name'].'[\'p\']; ';
+
+			if(isset($snippet['first']))
+			{
+				$code .= ' if('.$params['flDisplay'].'){ if($_p'.$params['name'].' = '.$link.'->firstPage()){ '.$stdLink.' ';
+				$this -> compiler -> out($code);
+				$this -> defaultTreeProcess($snippet['first']);
+				$code = ' } } ';
+			}
+			if(isset($snippet['prev']))
+			{
+				$code .= ' if('.$params['npDisplay'].'){ if($_p'.$params['name'].' = '.$link.'->prevPage()){ '.$stdLink.' ';
+				$this -> compiler -> out($code);
+				$this -> defaultTreeProcess($snippet['prev']);
+				$code = ' } } ';
+			}
+
+			$code .= 'while($_p'.$params['name'].' = '.$link.'->getPage()){ '.$stdLink.' switch($_p'.$params['name'].'[\'t\']){ case 0: ';
+
+			$this -> compiler -> out($code);
+			$this -> defaultTreeProcess($snippet['page']);
+
+			$this -> compiler -> out(' break; case 1: ');
+			$this -> defaultTreeProcess($snippet['active']);
+
+			
+			$this -> compiler -> out(' break; case 2: ');
+			$this -> defaultTreeProcess($snippet['separator']);
+
+			$code = ' } } ';
+
+			if(isset($snippet['next']))
+			{
+				$code .= ' if('.$params['npDisplay'].'){ if($_p'.$params['name'].' = '.$link.'->nextPage()){ '.$stdLink.' ';
+				$this -> compiler -> out($code);
+				$this -> defaultTreeProcess($snippet['next']);
+				$code = ' } } ';
+			}
+			if(isset($snippet['last']))
+			{
+				$code .= ' if('.$params['flDisplay'].'){ if($_p'.$params['name'].' = '.$link.'->lastPage()){ '.$stdLink.' ';
+				$this -> compiler -> out($code);
+				$this -> defaultTreeProcess($snippet['last']);
+				$code = ' } } ';
+			}
+
+			$code .= ' } ';
+			$this -> compiler -> out($code);
+		} // end psBegin();
+
+		private function psEnd()
+		{
+
+		} // end psEnd();
+
+
 	}
 
 	class optInclude extends optInstruction
@@ -440,6 +793,34 @@
 				'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
 			$variables = $this -> compiler -> parametrize('include', $block -> getAttributes(), $params);
+
+			// Find the code snippets
+			$snippetName = '';
+			$snippet = $this -> findSnippets($block, $snippetName, true);
+			if(is_null($snippet))
+			{
+				$snippet = array();
+				foreach($block as $testnode)
+				{
+					if($testnode -> getType() == OPT_UNKNOWN)
+					{
+						switch($testnode -> getName())
+						{
+							case 'page':
+							case 'active':
+							case 'separator':
+							case 'prev':
+							case 'next':
+							case 'first':
+							case 'last':
+								$snippet[$testnode->getName()] = $testnode->getFirstBlock();
+								break;
+						}
+					}
+				}
+			}
+
+
 			$code = '';
 			foreach($variables as $name => $variable)
 			{
@@ -501,8 +882,6 @@
 	
 	class optVar extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
-	
 		public function configure()
 		{
 			return array(
@@ -553,7 +932,6 @@
 
 	class optIf extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
 		private $nesting = 0;
 	
 		public function configure()
@@ -678,7 +1056,6 @@
 	
 	class optCapture extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
 		private $nesting = 0;
 		private $oldMaster = 0;
 		private $names = array();
@@ -748,7 +1125,6 @@
 	
 	class optFor extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
 		private $nesting;
 	
 		public function configure()
@@ -816,7 +1192,6 @@
 	
 	class optForeach extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
 		private $nesting;
 		private $else;
 	
@@ -977,7 +1352,7 @@
 	
 	class optBind extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
+		public $inMaster = true;
 		public $buffer;
 	
 		public function configure()
@@ -999,9 +1374,7 @@
 				switch($block -> getName())
 				{
 					case 'bind':
-							$this -> compiler -> setMasterLevel(2);
 							$this -> buffer[$this->getName($block->getAttributes())] = $block;
-							$this -> compiler -> setMasterLevel(0);
 							break;
 				}
 			}
@@ -1050,11 +1423,11 @@
 
 	class optBindEvent extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
-		public $buffer = array();
+		public $inMaster = true;
 	
 		public function configure()
 		{
+			$this -> compiler -> genericBuffer['bindEvent'] = array();
 			return array(
 				// processor name
 				0 => 'bindEvent',
@@ -1077,8 +1450,8 @@
 							'message' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 							'position' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 0)
 						);
-						$this -> compiler -> parametrize('bind', $block -> getAttributes(), $params);
-						$this -> buffer[$params['id']] = array(
+						$this -> compiler -> parametrize('bindEvent', $block -> getAttributes(), $params);
+						$this -> compiler -> genericBuffer['bindEvent'][$params['id']] = array(
 							'name' => $params['name'],
 							'message' => $params['message'],
 							'position' => $params['position'],
@@ -1092,8 +1465,7 @@
 	
 	class optBindGroup extends optInstruction
 	{
-		protected $requestedMasterLevel = 0;
-		public $buffer;
+		public $inMaster = true;
 	
 		public function configure()
 		{
@@ -1114,9 +1486,7 @@
 				switch($block -> getName())
 				{
 					case 'bindGroup':
-							$this -> compiler -> setMasterLevel(2);
 							$this -> doBind($this->getName($block->getAttributes()), $block);
-							$this -> compiler -> setMasterLevel(0);
 							break;
 				}
 			}
@@ -1129,7 +1499,7 @@
 			{
 				if($node -> getType() == OPT_INSTRUCTION || $node -> getType() == OPT_UNKNOWN)
 				{
-					$this -> compiler -> genericBuffer['bindGroup'][$name][$node->getName()] = $node;		
+					$this -> compiler -> genericBuffer['bindGroup'][$name][$node->getName()] = $node->getFirstBlock();		
 				}
 			}
 		} // end doBind();
@@ -1238,9 +1608,9 @@
 					case 'load':
 						$params = array('event' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID));
 						$this -> compiler -> parametrize('event loader', $node->getFirstBlock()->getAttributes(), $params);
-						if(isset($this -> compiler -> processors['bindEvent'] -> buffer[$params['event']]))
+						if(isset($this -> compiler -> genericBuffer['bindEvent'][$params['event']]))
 						{
-							$info = $this -> compiler -> processors['bindEvent'] -> buffer[$params['event']];
+							$info = $this -> compiler -> genericBuffer['bindEvent'][$params['event']];
 							switch($info['position'])
 							{
 								case 'up':

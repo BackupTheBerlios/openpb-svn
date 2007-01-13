@@ -289,6 +289,36 @@ bar - abc - def
 			$this -> opt -> httpHeaders(OPT_FORCED_XHTML);			
 			$this -> assertEquals('Content-type: text/html', $this -> opt -> hh);	
 		} // end testContentTypeDetection5();
+		
+		public function testApi()
+		{
+			require_once(OPT_DIR.'opt.api.php');
+			
+			$api = new optApi;
+			
+			foreach($this -> opt -> configDirectives as $directive)
+			{
+				if(!empty($api -> {$directive}) && !isset($api -> {$directive}))
+				{
+					$this -> fail('Configuration directive '.$directive.' not set in OPT API!');
+				}				
+			}
+			$methodList = array(0 =>
+				'error', 'assign', 'assignRef', 'assignGroup',
+				'setDefaultI18n', 'setObjectI18n', 'registerInstruction',
+				'registerInstructionFile', 'parse', 'fetch'				
+			);
+			
+			foreach($methodList as $method)
+			{
+				if(!method_exists($api, $method))
+				{
+					$this -> fail('Method '.$method.' does not exist in OPT API!');
+				}				
+			}
+			
+			return 1;			
+		} // end testApi();
 	}
 
 ?>

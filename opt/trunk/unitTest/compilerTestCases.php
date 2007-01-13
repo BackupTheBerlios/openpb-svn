@@ -719,7 +719,7 @@
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 107)
+				if($exception -> getCode() == OPT_E_REQUIRED_NOT_FOUND)
 				{
 					return 1;
 				}
@@ -855,7 +855,7 @@
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 109)
+				if($exception -> getCode() == OPT_E_DEFAULT_MARKER)
 				{
 					return 1;
 				}
@@ -1097,7 +1097,7 @@ $template = '{sect1=test}
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 101)
+				if($exception -> getCode() == OPT_E_ENCLOSING_STATEMENT)
 				{
 					return 1;
 				}
@@ -1120,7 +1120,7 @@ $template = '{compiler}{tag1}
 			}
 			catch(optException $exception)
 			{
-				if($exception -> getCode() == 101)
+				if($exception -> getCode() == OPT_E_ENCLOSING_STATEMENT)
 				{
 					return 1;
 				}

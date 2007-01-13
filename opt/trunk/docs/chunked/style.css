@@ -73,3 +73,7 @@ div.navheader table, div.navheader tbody, div.navheader thead, div.navheader tfo
 div.navfooter table, div.navfooter tbody, div.navfooter thead, div.navfooter tfoot, div.navfooter tr, div.navfooter td{
 	border: 0;
 }
+
+div.qandaset table tr td,div.qandaset table tr,div.qandaset tbody{
+	border: 0;
+}

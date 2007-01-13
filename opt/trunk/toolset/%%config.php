@@ -1,0 +1,18 @@
+; <?php die(); ?>
+sourceDir = "/home/zyxist/www/opt-dev/www/toolset/srcDir/"
+destDir = "/home/zyxist/www/opt-dev/www/toolset/destDir/"
+splDir = "/home/zyxist/www/opt-dev/www/dev/templates/"
+cplDir = "/home/zyxist/www/opt-dev/www/dev/templates_c/"
+[directives]
+PLUGIN_AUTOLOAD = "1"
+CUSTOM_RESOURCES = "1"
+DEBUG_CONSOLE = "1"
+GZIP_SUPPORT = "1"
+OUTPUT_CACHING = "0"
+COMPONENTS = "0"
+PREDEFINED_COMPONENTS = "0"
+REGISTER_FAMILY = "1"
+OBJECT_I18N = "1"
+HTTP_HEADERS = "1"
+DYNAMIC_SECTIONS = "1"
+MASTER_TEMPLATES = "1"

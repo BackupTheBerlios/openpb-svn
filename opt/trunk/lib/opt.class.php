@@ -33,7 +33,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.1.0-dev');
+	define('OPT_VERSION', '1.1.0');
 	
 	define('OPT_E_CONTENT_TYPE', 1);
 	define('OPT_E_ARRAY_REQUIRED', 2);
@@ -42,6 +42,7 @@
 	define('OPT_E_RESOURCE_NOT_FOUND', 5);
 	define('OPT_E_FILE_NOT_FOUND', 6);
 	define('OPT_E_WRITEABLE', 7);
+	define('OPT_E_CONFIG_NOT_LOADED', 8);
 	define('OPT_E_ENCLOSING_STATEMENT', 101);
 	define('OPT_E_UNKNOWN', 102);
 	define('OPT_E_FUNCTION_NOT_FOUND', 103);
@@ -64,6 +65,8 @@
 	define('OPT_E_BIND_NOT_FOUND', 208);
 	define('OPT_W_DYNAMIC_OPENED', 301);
 	define('OPT_W_DYNAMIC_CLOSED', 302);
+	define('OPT_W_SNIPPETS_NOT_DEF', 303);
+	define('OPT_W_SHORT_CYCLE', 304);
 	
 	if(!defined('OPT_DIR'))
 	{
@@ -103,7 +106,19 @@
 		public function apply($group, $id);
 	}
 	# /OBJECT_I18N
-	
+
+	# PAGESYSTEM
+	interface ioptPagesystem
+	{
+		public function getPage();
+		public function nextPage();
+		public function prevPage();
+		public function firstPage();
+		public function lastPage();
+	}
+	# /PAGESYSTEM
+
+	# DYNAMIC_SECTIONS
 	class optDynamicData
 	{
 		private $callback = NULL;
@@ -129,6 +144,7 @@
 			return call_user_func_array($this -> callback, $this -> args);
 		} // end call();	
 	} // end optDynamicData;
+	# /DYNAMIC_SECTIONS
 	
 	// OPT Parser class
 	class optClass
@@ -158,17 +174,26 @@
 		public $parseintDecimals = 3;
 		public $parseintThousands = ',';
 		
+		public $configDirectives = array(0=>
+				'root', 'compile', 'cache', 'plugins',
+				'gzipCompression', 'charset', 'showWarnings', 'debugConsole', 'alwaysRebuild',
+				'performance', 'xmlsyntaxMode', 'strictSyntax', 'entities', 'sectionStructure',
+				'statePriority', 'parseintDecPoint', 'parseintDecimals', 'parseintThousands'
+			);
+		
 		// Parser and compiler data
 		protected $init = false;
 		protected $outputBufferEnabled = false;
-		protected $contentType = '';
+		public $contentType = '';
 		private $filenames = array();
 		public $compiler;
 		public $data = array();
 		public $vars = array();
 		public $capture = array();
-		
+
+		# MASTER_TEMPLATES
 		protected $compileMasterPages = array();
+		# /MASTER_TEMPLATES
 		
 		public $functions = array(
 								'parse_int' => 'PredefParseInt',
@@ -188,20 +213,24 @@
 								'array' => 'array'		
 							);
 		public $control = array(0 =>
-								'optSection',
-								'optInclude',
-								'optPlace',
-								'optVar',
-								'optIf',
-								'optFor',
-								'optForeach',
-								'optCapture',
-								'optDynamic',
-								'optDefault',
-								'optBind',
-								'optInsert',
-								'optBindEvent'
-							);
+			'optSection',
+			# PAGESYSTEM	
+			'optPagesystem',
+			# /PAGESYSTEM
+			'optInclude',
+			'optPlace',
+			'optVar',
+			'optIf',
+			'optFor',
+			'optForeach',
+			'optCapture',
+			'optDynamic',
+			'optDefault',
+			'optBind',
+			'optInsert',
+			'optBindEvent',
+			'optBindGroup'
+		);
 		public $namespaces = array(0 => 'opt');
 		# COMPONENTS
 		public $components = array(
@@ -250,11 +279,13 @@
 		{
 			$this -> data[$name] = $value;		
 		} // end assign();
-		
+
+		# DYNAMIC_SECTIONS
 		public function assignDynamic($name, $arg1, $arg2 = array(), $arg3 = NULL)
 		{
 			$this -> data[$name] = new optDynamicData($arg1, $arg2, $arg3);
 		} // end assignDynamic();
+		# /DYNAMIC_SECTIONS
 
 		public function assignGroup($values)
 		{
@@ -286,57 +317,57 @@
 			switch($content)
 			{		
 				case OPT_HTML:
-						$this -> contentType = 'text/html';
-						break;
+					$this -> contentType = 'text/html';
+					break;
 				case OPT_XHTML:
-						if(preg_match('/application\/xhtml\+xml(?![+a-z])(;q=(0\.\d{1,3}|[01]))?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+					if(preg_match('/application\/xhtml\+xml(?![+a-z])(;q=(0\.\d{1,3}|[01]))?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+					{
+						$xhtmlQ = isset($matches[2]) ? ($matches[2]+0.2) : 1;
+						if(preg_match('/text\/html(;q=(0\.\d{1,3}|[01]))s?/i', $_SERVER['HTTP_ACCEPT'], $matches))
 						{
-							$xhtmlQ = isset($matches[2]) ? ($matches[2]+0.2) : 1;
-							if(preg_match('/text\/html(;q=(0\.\d{1,3}|[01]))s?/i', $_SERVER['HTTP_ACCEPT'], $matches))
-							{
-								$htmlQ = isset($matches[2]) ? $matches[2] : 1;
-								if($xhtmlQ >= $htmlQ)
-								{
-									$this -> contentType = 'application/xhtml+xml';
-									break;
-								}
-							}
-							else
+							$htmlQ = isset($matches[2]) ? $matches[2] : 1;
+							if($xhtmlQ >= $htmlQ)
 							{
 								$this -> contentType = 'application/xhtml+xml';
 								break;
 							}
 						}
-						$this -> contentType = 'text/html';
-						break;
-				case OPT_FORCED_XHTML:
-						if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
+						else
 						{
 							$this -> contentType = 'application/xhtml+xml';
+							break;
 						}
-						else
-						{
-							$this -> contentType = 'text/html';
-						}
-						break;
+					}
+					$this -> contentType = 'text/html';
+					break;
+				case OPT_FORCED_XHTML:
+					if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
+					{
+						$this -> contentType = 'application/xhtml+xml';
+					}
+					else
+					{
+						$this -> contentType = 'text/html';
+					}
+					break;
 				case OPT_XML:
-						$this -> contentType = 'application/xml';
-						break;
+					$this -> contentType = 'application/xml';
+					break;
 				case OPT_WML:
-						$this -> contentType = 'text/vnd.wap.wml';
-						break;
+					$this -> contentType = 'text/vnd.wap.wml';
+					break;
 				case OPT_TXT:
-						$this -> contentType = 'text/plain';
-						break;
+					$this -> contentType = 'text/plain';
+					break;
 				default:
-						if(is_string($content))
-						{
-							$this -> contentType = $content;
-						}
-						else
-						{
-							$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, OPT_E_CONTENT_TYPE);
-						}
+					if(is_string($content))
+					{
+						$this -> contentType = $content;
+					}
+					else
+					{
+						$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, OPT_E_CONTENT_TYPE);
+					}
 			}
 			if($this -> contentType == 'application/xhtml+xml' && $this -> debugConsole)
 			{
@@ -361,20 +392,19 @@
 		# /HTTP_HEADERS
 
 		public function loadConfig($data)
-		{
-			$configDirectives = array(0=>
-				'root', 'compile', 'cache', 'plugins',
-				'gzipCompression', 'charset', 'showWarnings', 'debugConsole', 'alwaysRebuild',
-				'performance', 'xmlsyntaxMode', 'strictSyntax', 'entities', 'sectionStructure',
-				'statePriority', 'parseintDecPoint', 'parseintDecimals', 'parseintThousands'
-			);
-			
+		{		
 			if(!is_array($data))
 			{
-				$data = parse_ini_file($data);
+				$fname = $data;
+				$data = @parse_ini_file($data);
+				if(!is_array($data))
+				{
+					throw new optException(E_USER_ERROR, 'Could not load the configuration from the file "'.$fname.'".', OPT_E_CONFIG_NOT_LOADED);
+					
+				}
 			}
 
-			foreach($configDirectives as $name)
+			foreach($this -> configDirectives as $name)
 			{
 				if(isset($data[$name]))
 				{
@@ -382,6 +412,73 @@
 				}
 			}
 		} // end loadConfig();
+
+		public function loadPlugins()
+		{	
+			$this -> instructionFiles[] = $this -> plugins.'compile.php';
+			if(file_exists($this -> plugins.'plugins.php'))
+			{
+				// Load precompiled plugin database
+				include($this -> plugins.'plugins.php');
+			}
+			else
+			{
+				// Compile plugin database
+				if(!is_writeable($this -> plugins))
+				{
+					$this -> error(E_USER_ERROR, $this->plugins.' is not a writeable directory.', OPT_E_WRITEABLE);
+				}
+
+				$code = '';
+				$compileCode = '';
+				$file = '';
+				$dir = opendir($this -> plugins);
+				while($file = readdir($dir))
+				{
+					if(preg_match('/(component|instruction|function|prefilter|postfilter|outputfilter|resource)\.([a-zA-Z0-9\_]+)\.php/', $file, $matches))
+					{
+						switch($matches[1])
+						{
+							# COMPONENTS
+							case 'component':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
+								break;
+							# /COMPONENTS
+							case 'instruction':
+								$compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
+								$compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
+								break;
+							case 'function':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->functions['".$matches[2]."'] = '".$matches[2]."';\n";
+								break;
+							case 'prefilter':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->filters['pre'][] = 'optPrefilter".$matches[2]."';\n";
+								break;
+							case 'postfilter':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->filters['post'][] = 'optPostfilter".$matches[2]."';\n";
+								break;
+							case 'outputfilter':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->filters['output'][] = 'optOutputfilter".$matches[2]."';\n";
+								break;
+							case 'resource':
+								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
+								$code .= "\t\$this->resources[".$matches[2]."] = \$".$matches[4].";\n";
+								break;
+						}	
+					}
+				}
+				closedir($dir);
+				file_put_contents($this -> plugins.'plugins.php', '<'."?php\n".$code.'?'.'>');
+				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$compileCode.'?'.'>');
+				eval($code);
+			}
+			return 1;
+		} // end loadPlugins();
 
 		public function setDefaultI18n(&$lang)
 		{
@@ -403,11 +500,13 @@
 			$this -> i18n = $i18n;
 		} // end setObjectI18n();
 		# /OBJECT_I18N
-		
+
+		# MASTER_TEMPLATES
 		public function setMasterPage($filename)
 		{
 			$this -> compileMasterPages[] = $filename;		
 		} // end setMasterPage();
+		# /MASTER_TEMPLATES
 		
 		# REGISTER_FAMILY
 		public function registerInstruction($class)
@@ -913,6 +1012,7 @@
 				require_once(OPT_DIR.'opt.compiler.php');
 				$this -> compiler = new optCompiler($this);
 
+				# MASTER_TEMPLATES
 				if(sizeof($this -> compileMasterPages) > 0)
 				{
 					// Load master pages now
@@ -921,6 +1021,7 @@
 						$this -> getTemplate($page, $this -> compiler, true);
 					}
 				}
+				# /MASTER_TEMPLATES
 			}
 			$this -> compiler -> parse($this -> compile.$compiled, $result);
 			return $compiled;
@@ -1024,73 +1125,6 @@
 			header($header);
 		} // end header();		
 		# /HTTP_HEADERS
-		
-		private function loadPlugins()
-		{	
-			$this -> instructionFiles[] = $this -> plugins.'compile.php';
-			if(file_exists($this -> plugins.'plugins.php'))
-			{
-				// Load precompiled plugin database
-				include($this -> plugins.'plugins.php');
-			}
-			else
-			{
-				// Compile plugin database
-				if(!is_writeable($this -> plugins))
-				{
-					$this -> error(E_USER_ERROR, $this->plugins.' is not a writeable directory.', OPT_E_WRITEABLE);
-				}
-
-				$code = '';
-				$compileCode = '';
-				$file = '';
-				$dir = opendir($this -> plugins);
-				while($file = readdir($dir))
-				{
-					if(preg_match('/(component|instruction|function|prefilter|postfilter|outputfilter|resource)\.([a-zA-Z0-9\_]+)\.php/', $file, $matches))
-					{
-						switch($matches[1])
-						{
-							# COMPONENTS
-							case 'component':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
-								break;
-							# /COMPONENTS
-							case 'instruction':
-								$compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
-								$compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
-								break;
-							case 'function':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->functions['".$matches[2]."'] = '".$matches[2]."';\n";
-								break;
-							case 'prefilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->filters['pre'][] = 'optPrefilter".$matches[2]."';\n";
-								break;
-							case 'postfilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->filters['post'][] = 'optPostfilter".$matches[2]."';\n";
-								break;
-							case 'outputfilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->filters['output'][] = 'optOutputfilter".$matches[2]."';\n";
-								break;
-							case 'resource':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->resources[".$matches[2]."] = \$".$matches[4].";\n";
-								break;
-						}	
-					}
-				}
-				closedir($dir);
-				file_put_contents($this -> plugins.'plugins.php', '<'."?php\n".$code.'?'.'>');
-				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$compileCode.'?'.'>');
-				eval($code);
-			}
-			return 1;
-		} // end loadPlugins();
 	}
 	
 	// Functions

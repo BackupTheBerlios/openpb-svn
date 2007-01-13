@@ -1,0 +1,27 @@
+#!/bin/bash
+
+use_info() {
+    echo "OPT Documentation generator"
+    echo "Use: "
+    echo "	./docgen chunked language"
+    echo "	./docgen default language"
+    echo ""
+}
+
+proc_chunked() {
+    xsltproc --output chunked/ xsl/manual-chunk.xsl ${1}.xml
+}
+
+proc_default() {
+    xsltproc --output output/doc-${1}.html xsl/manual.xsl ${1}.xml
+}
+
+if [ $# = "0" ]; then
+    use_info
+else
+    if [ $1 = "chunked" ]; then
+		proc_chunked $2
+    else
+		proc_default $2
+    fi
+fi

@@ -295,8 +295,8 @@
 		private $di = 0;
 		private $dynamicSeg = array(0 => '');
 		private $output;
-		private $master = false;
-		public $masterLevel = 2;
+		public $master = false;
+		private $converter;
 		
 		// EXPRESSION REGEX		
 		private $rDoubleQuoteString = '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"';
@@ -322,15 +322,12 @@
 				// let's say it's an instance of optClass or optApi
 				$this -> tpl = $tpl;
 			}
-			
-			// Register plugin instructions
 
 			// Load compiler files
 			foreach($this -> tpl -> instructionFiles as $file)
 			{
 				require_once($file);
 			}
-			# /PLUGIN_AUTOLOAD
 			$this -> processors['generic'] = new optInstruction($this);
 			# COMPONENTS
 			$this -> processors['component'] = new optComponent($this);
@@ -365,7 +362,6 @@
 			static $blockRegex;
 
 			$this -> master = false;
-			$this -> masterLevel = 2;
 			$this -> dynamic = false;
 			$this -> dynamicEnabled = false;
 			$this -> dynamicSeg = array(0 => '');
@@ -375,7 +371,6 @@
 			if($master)
 			{
 				$this -> master = true;
-				$this -> setMasterLevel(0);
 				$pre = 'preMaster';
 			}
 
@@ -489,7 +484,7 @@
 
 								if($result[7][$i] == 'opt')
 								{
-									$attribute = $result[9][$i];									
+									$attribute = $result[9][$i];					
 								}
 								elseif(in_array($result[7][$i], $this->tpl->namespaces))
 								{
@@ -506,7 +501,7 @@
 										if($this -> translator[$attribute] == OPT_ATTRIBUTE)
 										{
 											$node = new optNode($attribute, OPT_ATTRIBUTE, $current);
-											$node -> addItem(new optBlock(NULL, $result[10][$i]));
+											$node -> addItem(new optBlock($attribute, $result[10][$i]));
 											$currentBlock -> addNode($node);
 											$textAssign = 0;
 										}
@@ -1294,9 +1289,11 @@
 				// section match
 				if(isset($this -> processors['section']))
 				{
-					if(in_array($ns[0], $this -> processors['section'] -> sectionList))
+					$cnt = sizeof($ns);
+					if($cnt >= 2)
 					{
-						if(($cnt = sizeof($ns)) >= 2)
+						$ns[$cnt-2] = $this -> getConverterItem($ns[$cnt-2]);
+						if(in_array($ns[0], $this -> processors['section'] -> sectionList))
 						{
 							return '$__'.$ns[$cnt-2].'_val[\''.$ns[$cnt-1].'\']';
 						}
@@ -1456,7 +1453,7 @@
 
 		public function out($code, $static = false)
 		{
-			if($this -> masterLevel == 2)
+			if($this -> master == false)
 			{
 				// The normal compilation mode - both static and dynamic output enabled
 				if($static)
@@ -1487,7 +1484,7 @@
 				}
 			}
 		} // end out();
-
+/*
 		public function setMasterLevel($level, $from =  NULL)
 		{
 			// Administration works that are required, when the master level changes
@@ -1516,7 +1513,7 @@
 				$this -> masterLevel = $level;
 			}
 		} // end setMasterLevel();
-
+*/
 		public function dynamic($state)
 		{
 			if($state == true)
@@ -1535,6 +1532,25 @@
 				$this -> out(' ob_start(); ');
 			}
 		} // end dynamic();
+
+		public function getConverterItem($item)
+		{
+			if(!isset($this -> converter[$item]))
+			{
+				return $item;
+			}
+			return $this -> converter[$item];
+		} // end getConverterItem();
+
+		public function addConverterItem($item, $dest)
+		{
+			$this -> converter[$item] = $dest;
+		} // end addConverterItem();
+
+		public function removeConverterItem($item)
+		{
+			unset($this -> converter[$item]);
+		} // end removeConverterItem();
 
 		public function parametrize($instruction, $matches, &$config, $style = OPT_STYLE_BOTH)
 		{

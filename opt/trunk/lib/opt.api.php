@@ -12,11 +12,34 @@
   //
   // $Id: opt.api.php 59 2006-08-02 11:29:55Z zyxist $
 
-	define('OPT_SECTION_MULTI', 0);
-	define('OPT_SECTION_SINGLE', 1);
-	define('OPT_PRIORITY_NORMAL', 0);
-	define('OPT_PRIORITY_HIGH', 1);
-	define('OPT_VERSION', '1.0.0');
+	if(!defined('OPT_SECTION_MULTI'))
+	{
+		// In order to load both true OPT and API...
+
+		define('OPT_SECTION_MULTI', 0);
+		define('OPT_SECTION_SINGLE', 1);
+		define('OPT_PRIORITY_NORMAL', 0);
+		define('OPT_PRIORITY_HIGH', 1);
+		define('OPT_VERSION', '1.1.0');
+
+		define('OPT_E_ARRAY_REQUIRED', 2);
+		define('OPT_E_FILE_NOT_FOUND', 6);
+		
+		# OBJECT_I18N
+		interface ioptI18n
+		{
+			public function setOptInstance(optClass $tpl);
+			public function put($group, $id);
+			public function putApply($group, $id);
+			public function apply($group, $id);
+		}
+		# /OBJECT_I18N
+		
+		function optCompileFilename($filename)
+		{
+			return '%%'.str_replace('/', '_', $filename);
+		} // end optCompileFilename();
+	}
 
 	if(!defined('OPT_DIR'))
 	{
@@ -67,14 +90,17 @@
 		public $components = array();
 		# /COMPONENTS
 		public $delimiters = array(0 => 
-								'\{(\/?)(.*?)(\/?)\}'
+								'\{(\/?)(([a-zA-Z]+)\:)?(.*?)(\/?)\}',
+								'([a-zA-Z]*)(\:)([a-zA-Z0-9\_]*)\=\"(.*?[^\\\\])\"'
 							);
 		public $filters = array(
 								'pre' => array(),
+								'preMaster' => array(),
 								'post' => array(),
 								'output' => array()
 							);
 		public $instructionFiles = array();
+		public $namespaces = array(0 => 'opt');
 		
 		// I18n
 		public $i18n = NULL;
@@ -128,7 +154,15 @@
 				$this -> error(E_USER_ERROR, 'First parameter must be an array.', OPT_E_ARRAY_REQUIRED);
 			}
 		} // end setDefaultI18n();
-		
+
+		# OBJECT_I18N
+		public function setObjectI18n(ioptI18n $i18n)
+		{
+			$this -> i18nType = 1;
+			$this -> i18n = $i18n;
+		} // end setObjectI18n();
+		# /OBJECT_I18N
+
 		public function registerInstruction($class)
 		{
 			if(is_object($this -> compiler))
@@ -154,6 +188,11 @@
 				}
 			}
 		} // end registerInstruction();
+		
+		public function registerInstructionFile($file)
+		{
+			$this -> instructionFiles[] = $file;
+		} // end registerInstructionFile();
 		
 		public function parse($filename)
 		{
@@ -228,7 +267,7 @@
 				{
 					return NULL;
 				}
-				$this -> error(E_USER_ERROR, '"'.$filename.'" not found in '.$this->root.' directory.', 6);
+				$this -> error(E_USER_ERROR, '"'.$filename.'" not found in '.$this->root.' directory.', OPT_E_FILE_NOT_FOUND);
 			}
 			if($compiledTime === false || $compiledTime < $rootTime || $this -> alwaysRebuild)
 			{
@@ -260,8 +299,4 @@
 		} // end getFilename();
 	}
 
-	function optCompileFilename($filename)
-	{
-		return '%%'.str_replace('/', '_', $filename);
-	} // end optCompileFilename();
 ?>

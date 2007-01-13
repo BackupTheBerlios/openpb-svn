@@ -12,6 +12,14 @@ thead {
   color: white;
 }
 
+a:visited{
+	color: blue;
+}
+
+a:hover{
+	color: red;
+}
+
 table,
 tbody,thead,tfoot,
 tr,td {
@@ -56,4 +64,16 @@ div.prototype{
 
 div.prototype span.funcname{
 	font-weight: bold;
+}
+
+div.navheader table, div.navheader tbody, div.navheader thead, div.navheader tfoot, div.navheader tr, div.navheader td{
+	border: 0;
+}
+
+div.navfooter table, div.navfooter tbody, div.navfooter thead, div.navfooter tfoot, div.navfooter tr, div.navfooter td{
+	border: 0;
+}
+
+div.qandaset table tr td,div.qandaset table tr,div.qandaset tbody{
+	border: 0;
 }
