@@ -388,19 +388,20 @@
 				'<?php echo \'<?\'; ?'.'>'
 			), $code);
 
-			if($regex == NULL)
+			if($regex == NULL || $this -> tpl -> nschange)
 			{
+				$nslist = implode('|', $this -> tpl -> namespaces);
 				$blockRegex = '\{literal\}|\{\/literal\}|\{php\}|\{\/php\}';
 				if($this -> tpl -> xmlsyntaxMode == 1)
 				{
 					$regex = '';
-					$this -> tpl -> delimiters[] = '\<(\/?)([a-zA-Z]*)\:(.*?)(\/?)\>';
-					$this -> tpl -> delimiters[] = '\<()([a-zA-Z]*)\:(.*?)(\/)\>';
-					$this -> tpl -> delimiters[] = '([a-zA-Z]*)\:put\=\"(.*?[^\\\\])\"';
+					$this -> tpl -> delimiters[] = '\<(\/?)('.$nslist.')\:(.*?)(\/?)\>';
+					$this -> tpl -> delimiters[] = '\<()('.$nslist.')\:(.*?)(\/)\>';
+					$this -> tpl -> delimiters[] = '('.$nslist.')\:put\=\"(.*?[^\\\\])\"';
 					
 					$blockRegex = '\<opt\:literal\>|\<\/opt\:literal\>|\<opt\:php\>|\<\/opt\:php\>|'.$blockRegex;
 				}
-				$regex = implode('|', $this -> tpl -> delimiters);
+				$regex = str_replace('$$NS$$', $nslist, implode('|', $this -> tpl -> delimiters));
 			}
 
 			$this -> output = '';			

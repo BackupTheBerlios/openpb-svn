@@ -33,7 +33,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.1.0');
+	define('OPT_VERSION', '1.1.1');
 	
 	define('OPT_E_CONTENT_TYPE', 1);
 	define('OPT_E_ARRAY_REQUIRED', 2);
@@ -162,6 +162,7 @@
 		public $showWarnings = true;
 		public $debugConsole = false;
 		public $performance = false;
+		public $cacheExpire = NULL;
 
 		public $xmlsyntaxMode = false;
 		public $strictSyntax = false;
@@ -231,6 +232,7 @@
 			'optBindEvent',
 			'optBindGroup'
 		);
+		public $nschange = true;
 		public $namespaces = array(0 => 'opt');
 		# COMPONENTS
 		public $components = array(
@@ -243,8 +245,8 @@
 							);
 		# /COMPONENTS
 		public $delimiters = array(0 => 
-								'\{(\/?)(([a-zA-Z]+)\:)?(.*?)(\/?)\}',
-								'([a-zA-Z]*)(\:)([a-zA-Z0-9\_]*)\=\"(.*?[^\\\\])\"'
+								'\{(\/?)(($$NS$$)\:)?(.*?)(\/?)\}',
+								'($$NS$$)(\:)([a-zA-Z0-9\_]*)\=\"(.*?[^\\\\])\"'
 							);
 		public $filters = array(
 								'pre' => array(),
@@ -268,7 +270,7 @@
 		private $cacheStatus = false;
 		# OUTPUT_CACHING
 		private $cacheId = NULL;
-		private $cacheExpire = 0;
+		private $_cacheExpire = 0;
 		private $cacheDynamic = false;
 		private $cacheData = array();
 		# /OUTPUT_CACHING
@@ -397,10 +399,21 @@
 			{
 				$fname = $data;
 				$data = @parse_ini_file($data);
-				if(!is_array($data))
+				if(sizeof($data) == 0)
 				{
-					throw new optException(E_USER_ERROR, 'Could not load the configuration from the file "'.$fname.'".', OPT_E_CONFIG_NOT_LOADED);
-					
+					if(!file_exists($fname))
+					{
+						$reason = 'File does not exist';
+					}
+					else if(!is_readable($fname))
+					{
+						$reason = 'Permission denied';
+					}
+					else
+					{
+						$reason = 'Unknown reason';
+					}
+					$this -> error(E_USER_ERROR, 'Could not load the configuration from the file "'.$fname.'": '.$reason, OPT_E_CONFIG_NOT_LOADED);
 				}
 			}
 
@@ -634,12 +647,14 @@
 		public function registerNamespace($namespace)
 		{
 			$this -> namespaces[] = $namespace;
+			$this -> nschange = true;
 		} // end registerNamespace();
 
 		public function unregisterNamespace($namespace)
 		{
 			if(($id = array_search($namespace, $this -> namespaces)) !== false)
 			{
+				$this -> nschange = true;
 				unset($this -> namespaces[$id]);
 				return true;
 			}
@@ -740,6 +755,7 @@
 				else
 				{
 				# /OUTPUT_CACHING
+					echo 'rrr';
 					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
 					include($this -> compile.optCompileFilenameFull($filename));
 					error_reporting($oldErrorReporting);
@@ -869,7 +885,7 @@
 		public function cacheStatus($status, $expire = 2)
 		{
 			$this -> cacheStatus = $status;
-			$this -> cacheExpire = $expire;
+			$this -> _cacheExpire = $expire;
 		} // end cacheReset();
 
 		public function getStatus()
@@ -884,30 +900,45 @@
 
 		public function isCached($filename, $id = NULL)
 		{
-			$hash = base64_encode($filename.$id);
+			$this -> cacheHash = base64_encode($filename.$id);
 			$this -> cacheFilename = optCacheFilename($filename, $id);
-			if(!isset($this -> cacheData[$hash]))
+
+			if(is_integer($this -> cacheExpire))
 			{
-				// Need to check, hasn't been done yet
-				$header = @unserialize(file_get_contents($this -> cache.$this -> cacheFilename.'.def'));
-				
-				if(!is_array($header))
+				$this -> cacheBuffer[$this -> cacheHash]['ok'] = true;
+				if(@filemtime($this->cache.$this->cacheFilename) < time() - $this->cacheExpire)
 				{
-					$this -> cacheBuffer[$hash]['ok'] = false;
+					$this->cacheBuffer[$this -> cacheHash]['ok'] = false;
+					$this->cacheBuffer[$this -> cacheHash]['handle'] = fopen($this->cache.$this->cacheFilename, 'wb');
 					return false;
 				}
-				
-				$this -> cacheDynamic = $header['dynamic'];
-				if($header['timestamp'] < (time() - (int)$header['expire']))
-				{
-					$this -> cacheBuffer[$hash]['ok'] = false;
-					return false;
-				}
-				$this -> cacheBuffer[$hash]['ok'] = true;
 				return true;
 			}
-			$this -> cacheDynamic = $this -> cacheData[$hash]['dynamic'];
-			return $this -> cacheBuffer[$hash]['ok'];
+			else
+			{
+				if(!isset($this -> cacheBuffer[$this -> cacheHash]))
+				{
+					// Need to check, hasn't been done yet
+					$header = @unserialize(file_get_contents($this -> cache.$this -> cacheFilename.'.def'));
+					
+					if(!is_array($header))
+					{
+						$this -> cacheBuffer[$this -> cacheHash]['ok'] = false;
+						return false;
+					}
+					
+					$this -> cacheDynamic = $header['dynamic'];
+					if($header['timestamp'] < (time() - (int)$header['expire']))
+					{
+						$this -> cacheBuffer[$this -> cacheHash]['ok'] = false;
+						return false;
+					}
+					$this -> cacheBuffer[$this -> cacheHash]['ok'] = true;
+					return true;
+				}
+				$this -> cacheDynamic = $this -> cacheData[$this -> cacheHash]['dynamic'];
+				return $this -> cacheBuffer[$this -> cacheHash]['ok'];
+			}
 		} // end cacheReset();
 		# /OUTPUT_CACHING
 		
@@ -1068,16 +1099,9 @@
 		{
 			if($this -> isCached($filename, $this -> cacheId))
 			{
-				if($this -> cacheDynamic)
-				{
-					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
-					include($this -> cache.$this->cacheFilename);
-					error_reporting($oldErrorReporting);			
-				}
-				else
-				{
-					echo file_get_contents($this -> cache.$this->cacheFilename);
-				}
+				$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+				include($this -> cache.$this->cacheFilename);
+				error_reporting($oldErrorReporting);
 				return true;
 			}
 			else
@@ -1086,19 +1110,22 @@
 				return false;
 			}
 		} // end cacheProcess();
-		
+
 		private function cacheWrite($compiled, $dynamic)
 		{
-			// generate the file
-			$header = array(
-				'timestamp' => time(),
-				'dynamic' => $dynamic,
-				'expire' => $this -> cacheExpire
-			);
-			file_put_contents($this->cache.$this -> cacheFilename.'.def', serialize($header));
-			
+			if(!is_integer($this->cacheExpire))
+			{
+				// generate the file
+				$header = array(
+					'timestamp' => time(),
+					'dynamic' => $dynamic,
+					'expire' => $this -> _cacheExpire
+				);
+				file_put_contents($this->cache.$this -> cacheFilename.'.def', serialize($header));
+			}
 			if(!$dynamic)
 			{
+			//	fwrite($this->cacheBuffer[$this -> cacheHash]['handle'], ob_get_contents());
 				file_put_contents($this->cache.$this -> cacheFilename, ob_get_contents());
 			}
 			else
@@ -1114,8 +1141,10 @@
 						$content .= $dynamicCodes[$id];
 					}
 				}
+	//			fwrite($this->cacheBuffer[$this -> cacheHash]['handle'], $content.ob_get_contents());
 				file_put_contents($this->cache.$this -> cacheFilename, $content.ob_get_contents());			
 			}
+	//		fclose($this->cacheBuffer[$this -> cacheHash]['handle']);
 		} // end cacheWrite();
 		# /OUTPUT_CACHING
 		
@@ -1138,12 +1167,12 @@
 			$filename = $resource[1];
 		}
 		# /CUSTOM_RESOURCES
-		return '%%'.str_replace(array('/', '\\'), '_', $filename);
+		return '%%'.str_replace(array('/', '\\'), '_', $filename).'.php';
 	} // end optCompileFilenameFull();
 	
 	function optCompileFilename($filename)
 	{
-		return '%%'.str_replace(array('/', ':', '\\'), '_', $filename);
+		return '%%'.str_replace(array('/', ':', '\\'), '_', $filename).'.php';
 	} // end optCompileFilename();
 	
 	function optCacheFilename($filename, $id = '')

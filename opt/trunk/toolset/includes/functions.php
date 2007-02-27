@@ -57,6 +57,7 @@
 					'file' => $file,
 					'result' => 0
 					);
+				continue;
 			}
 			$cutting = 0;
 			$nesting = 0;

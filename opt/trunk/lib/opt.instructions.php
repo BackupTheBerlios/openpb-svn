@@ -1099,15 +1099,12 @@ case 0:
 			$this -> nesting++;
 			
 			$this -> oldMaster = $this -> compiler -> masterLevel;
-			$this -> compiler -> setMasterLevel(2);
 		} // end captureBegin();
 		
 		private function captureEnd()
 		{
 			if($this -> nesting > 0)
-			{
-				$this -> compiler -> setMasterLevel($this -> oldMaster, 2);
-			
+			{			
 				$this -> nesting--;
 				$this -> compiler -> out(' $this -> capture[\''.$this->names[$this->nesting].'\'] = ob_get_clean(); ');
 			}
@@ -1244,7 +1241,7 @@ case 0:
 	
 			if($params['value'] == NULL)
 			{
-				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['id'].'\'] = &$__f_'.$this -> nesting.'_val; ');
+				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
 			else
 			{
