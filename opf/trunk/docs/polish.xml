@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE book PUBLIC "-//Norman Walsh//DTD DocBk XML V4.4//EN"
+                         "dtds/docbookx.dtd">
+<book id="opf" lang="pl">
+	<bookinfo id="bookinfo">
+		<title>Open Power Forms</title>
+		<subtitle>Dokumentacja - wersja 1.0.0</subtitle>
+		<authorgroup id="authors">
+			<author>
+				<firstname>Tomasz</firstname>
+				<surname>Jędrzejewski</surname>
+			</author>
+			<author>
+				<firstname>Tomasz</firstname>
+				<surname>Szczupliński</surname>
+			</author>
+		</authorgroup>
+		<copyright>
+			<year>2006</year>
+			<holder>Tomasz Jędrzejewski, Tomasz Szczupliński</holder>
+		</copyright>
+	</bookinfo>
+	<title>Open Power Forms</title>
+	<preface id="preface">
+		<title>Przedmowa</title>
+		<para>Idea stojąca za Open Power Forms narodziła się pod koniec roku 2005, kiedy stwierdziliśmy, że dobry system szablonów
+		to nie wszystko, co jest niezbędne do zapanowania nad generowaniem dynamicznych treści przez PHP. Potrzebne
+		było narzędzie zapewniające pełną obsługę formularzy o dowolnym stopniu złożoności popartą wsparciem dla AJAX
+		oraz systemem gromadzenia informacji o internaucie. Początkowo biblioteka miała także wspierać protokół HTTP
+		i zapewniać zestaw routerów, lecz plany te zostały porzucone.</para>
+		<para>Open Power Forms jest częścią większego projektu Open Power Board, którego celem jest stworzenie platformy do zakładania
+		forów dyskusyjnych. W jego skład wchodzą też inne biblioteki, m.in. wspomniany wyżej system szablonów Open Power Template oraz
+		bazująca na <emphasis>PDO</emphasis> warstwa baz danych <emphasis>Open Power Driver</emphasis>.</para>
+	</preface>
+	<chapter id="installation">
+		<title>Instalacja</title>
+		<para>Open Power Forms wymaga serwera z obsługą przynajmniej PHP 5.1 oraz biblioteki Open Power Template w wersji 1.1.0 lub
+		nowszej. Zalecane jest także posiadanie rozszerzenia Zlib, jeżeli zamierzamy korzystać z kompresji HTTP. Działanie biblioteki
+		jest regularnie sprawdzane na dostępnych snapshotach PHP6.</para>
+		<para>Aby zainstalować OPF, należy skopiować do drzewa katalogowego swego projektu pliki bibliotek OPF i OPT ściągnięte z
+		Internetu. Następnie ustawiamy dwie stałe: <emphasis>OPT_DIR</emphasis> oraz <emphasis>OPF_DIR</emphasis> wskazujące na
+		katalogi, w których wspomniane pliki się znajdują. Kolejnym krokiem jest dołączenie pliku <filename>opf.class.php</filename>
+		oraz napisanie kodu PHP.</para>
+		<example id="example.installation.simple">
+				<title>Sample OPF script</title>
+				<programlisting><![CDATA[<?php
+
+	define('OPF_DIR', '../lib/'); // 1
+	define('OPT_DIR', '../../opt/lib/');
+	require(OPF_DIR.'opf.class.php');
+	
+	try
+	{
+		$opf = opfClass::create('./config.php'); // 2
+		$resp = $opf -> getResponse();
+		$resp -> setContentType(OPT_HTML); // 3
+		$resp -> setContentEncoding('utf-8');
+		$resp -> sendHeaders();
+		
+		if($resp -> contentAvailable()) // 4
+		{
+			$resp -> assign('ip', $opf -> getVisit() -> ip);
+			$resp -> assign('address', $opf -> getVisit() -> currentAddress);
+			$resp -> assign('ssl', $opf -> getVisit() -> secure ? 'Yes' : 'No');
+			$resp -> assign('browser', $opf -> getVisit() -> friendly('browser'));
+			$resp -> assign('os', $opf -> getVisit() -> friendly('os'));
+			$resp -> parse('sample_template.tpl');
+		}	
+	}
+	catch(optException $exception) // 5
+	{
+		optErrorHandler($exception);
+	}
+	catch(opfException $exception) // 6
+	{
+		opfErrorHandler($exception);
+	}
+?>]]></programlisting>
+		</example>
+		<para>Oto opis działania:</para>
+		<orderedlist>
+			<listitem>Ustawianie stałych i załączanie kodu źródłowego biblioteki.</listitem>
+			<listitem>Wczytywanie konfiguracji OPF/OPT oraz inicjacja obiektów.</listitem>
+			<listitem>Ustawienia nagłówków HTTP.</listitem>
+			<listitem>Jeżeli wykorzystane nagłówki zezwalają na wygenerowanie treści, do akcji wkracza system szablonów
+				Open Power Template zajmujący się jej przygotowaniem.</listitem>
+			<listitem>Domyślna obsługa błędów OPT.</listitem>
+			<listitem>Domyślna obsługa błędów OPF.</listitem>			
+		</orderedlist>
+		<para>Powyższy przykład ukazuje nam także ogólny widok na strukturę biblioteki. Posiada ona główny obiekt zajmujący
+		się obsługą konfiguracji oraz udostępnianiem wszystkich usług wtedy, gdy są potrzebne. Istnieje także obiekt
+		<classname>opfResponse</classname>, którego zadaniem jest przygotowanie odpowiedzi dla klienta. Jej część stanowi
+		system szablonów. Do gromadzenia i obróbki danych o kliencie wyznaczona jest klasa <classname>opfVisit</classname>,
+		a kontrolą nadesłanych danych zajmuje się nieuwzględniony w przykładzie <classname>opfRequest</classname>.</para>
+		<para>Korzystanie z tych podstawowych możliwości nie wymaga samodzielnego rozszerzania istniejących klas. Jednak
+		jeżeli chcemy zająć się obsługą formularzy z prawdziwego zdarzenia, będziemy musieli umieć tworzyć tzw. klasy
+		wirtualnych formularzy zawierające zbiory reguł opisujących, jak należy przetwarzać tego typu elementy. Zostanie
+		to opisane dokładniej w dalszej części dokumentacji.</para>
+	</chapter>
+	<chapter id="topics">
+		<title>Zagadnienia</title>
+		
+		<sect1 id="topics.http">
+			<title>Protokół HTTP</title>
+		</sect1>
+		
+		<sect1 id="topics.visit">
+			<title>Informacje o kliencie</title>
+		</sect1>
+		
+		<sect1 id="topics.validation">
+			<title>Kontrola danych</title>
+		</sect1>
+		
+		<sect1 id="topics.forms">
+			<title>Obsługa formularzy</title>
+		</sect1>
+		
+		<sect1 id="topics.routers">
+			<title>Routery</title>
+		</sect1>
+		
+		<sect1 id="topics.ajax">
+			<title>Obsługa AJAX</title>
+		</sect1>
+	</chapter>
+	
+	<chapter id="library">
+		<title>Opis funkcji</title>
+		<sect1 id="library.opfclass">
+			<title>Klasa opfClass</title>
+		</sect1>
+
+		<sect1 id="library.opfresponse">
+			<title>Klasa opfResponse</title>
+		</sect1>
+
+		<sect1 id="library.opfrequest">
+			<title>Klasa opfRequest</title>
+		</sect1>
+
+		<sect1 id="library.opfvisit">
+			<title>Klasa opfVisit</title>
+		</sect1>
+
+		<sect1 id="library.opfconstraint">
+			<title>Klasa opfConstraint</title>
+		</sect1>
+
+		<sect1 id="library.opfvirtualform">
+			<title>Klasa opfVirtualForm</title>
+		</sect1>
+
+		<sect1 id="library.opfdesign">
+			<title>Klasa opfDesign</title>
+		</sect1>
+
+		<sect1 id="library.opfexception">
+			<title>Klasa opfException</title>
+		</sect1>
+
+		<sect1 id="library.iopfcontainer">
+			<title>Interfejs iopfContainer</title>
+		</sect1>
+
+		<sect1 id="library.iopfrouter">
+			<title>Interfejs iopfRouter</title>
+		</sect1>
+
+		<sect1 id="library.components">
+			<title>Komponenty</title>
+		</sect1>
+	</chapter>
+	<chapter id="templates">
+		<title>Dla twórców szablonów</title>
+		<sect1 id="templates.iopfrouter">
+			<title>Interfejs iopfRouter</title>
+		</sect1>
+	</chapter>
+</book>
