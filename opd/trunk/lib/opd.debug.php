@@ -94,7 +94,7 @@ opd_console.document.write(\'</thead>\');
 opd_console.document.write(\'<tbody>\');
 ';
 
-	foreach($this -> queryMonitor as $data)
+	foreach($this -> queries as $data)
 	{
 		if($data['cached'] == true)
 		{
@@ -104,10 +104,10 @@ opd_console.document.write(\'<tbody>\');
 		{
 			$debugCode .= 'opd_console.document.write(\'<tr>\');';
 		}
-		$debugCode .= 'opd_console.document.write(\' <td>'.addslashes($data['query']).'</td>\');
-opd_console.document.write(\' <td>'.$data['cache'].'</td>\');
+		$debugCode .= 'opd_console.document.write(" <td>'.addslashes(str_replace(array("\n", "\r"), ' ', $data['query'])).'</td>");
+opd_console.document.write(\' <td>'.($data['cache'] ? 'Yes' : 'No').'</td>\');
 opd_console.document.write(\' <td>'.$data['result'].'</td>\');
-opd_console.document.write(\' <td>'.$data['execution'].' s</td>\');
+opd_console.document.write(\' <td>'.$data['time'].' s</td>\');
 opd_console.document.write(\'</tr>\');';	
 	}
 $debugCode .= '
