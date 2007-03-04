@@ -14,7 +14,7 @@
 		}
 		if($row = mysql_fetch_row($r))
 		{
-			return $row[0];		
+			return $row[0];
 		}
 		return false;	
 	} // end optResourceDatabase();

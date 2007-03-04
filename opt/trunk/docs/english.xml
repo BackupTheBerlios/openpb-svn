@@ -4,7 +4,7 @@
 <book id="opt" lang="en">
 	<bookinfo id="bookinfo">
 		<title>Open Power Template</title>
-		<subtitle>Reference manual - version 1.1.0</subtitle>
+		<subtitle>Reference manual - version 1.1.1</subtitle>
 		<authorgroup id="authors">
 			<author>
 				<firstname>Tomasz</firstname>
@@ -2111,6 +2111,8 @@ Bbb]]></programlisting>
 				</example>
 				<para>you will see that the first date was cached and it is not changing while the page is refreshed. The second
 				date is always correct, because it is not cached.</para>
+				<para>Dynamic parts of template can be used with templates that are not cached, however
+				they do nothing there.</para>
 				</mark>
 			</sect2>
 			<sect2 id="syntax.instructions.bind">
@@ -3239,10 +3241,12 @@ Bbb]]></programlisting>
 				(without the modifiers) that defines the look of a delimiter. It has to provide four groups:</para>
 				<orderedlist>
 					<listitem><emphasis>(\/?)</emphasis> - for enclosing tags.</listitem>
-					<listitem><emphasis>(([a-zA-Z]+)\:)?</emphasis> - optional namespace</listitem>
+					<listitem><emphasis>(($$NS$$)\:)?</emphasis> - optional namespace</listitem>
 					<listitem><emphasis>(.*?)</emphasis> - tag content</listitem>
 					<listitem><emphasis>(\/?)</emphasis> - a slash for single tags.</listitem>				
 				</orderedlist>
+				<para>If you want to customize the namespace look, remember you have to preserve the
+				<emphasis>$$NS$$</emphasis> string in the expression.</para>
 				<para>The four optional parameters allow to define the entities that display the left and right part of
 				a delimiter, so that the template designer could also display it.</para>
 				<para>An example of defining square brackets as a delimiter:</para>

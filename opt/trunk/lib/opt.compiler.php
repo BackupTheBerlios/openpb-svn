@@ -1485,41 +1485,12 @@
 				}
 			}
 		} // end out();
-/*
-		public function setMasterLevel($level, $from =  NULL)
-		{
-			// Administration works that are required, when the master level changes
-			if($from == NULL)
-			{
-				$from = $this -> masterLevel;
-			}			
-			if($this -> master && $this -> masterLevel == $from)
-			{
-				if($level == 2 && $from < 2)
-				{
-					$this -> output .= ' ?'.'>';
-					if($this -> dynamic)
-					{
-						$this -> dynamicSeg[$this->di] .= ' ?'.'>';
-					}
-				}
-				if($level < 2 && $from == 2)
-				{
-					$this -> output .= '<'.'?php ';
-					if($this -> dynamic)
-					{
-						$this -> dynamicSeg[$this->di] .= '<'.'?php ';
-					}
-				}
-				$this -> masterLevel = $level;
-			}
-		} // end setMasterLevel();
-*/
+
 		public function dynamic($state)
 		{
 			if($state == true)
 			{
-				$this -> out(' $dynamic = true; $this -> outputBuffer[] = ob_get_contents(); ');
+				$this -> out(' if($this->startCache){ $dynamic = true; $this -> outputBuffer[] = ob_get_contents(); } ');
 			}		
 		
 			$this -> dynamic = $state;
@@ -1530,7 +1501,7 @@
 				$this -> di++; // dynamic segment iterator
 				$this -> dynamicSeg[$this->di] = '';
 				
-				$this -> out(' ob_start(); ');
+				$this -> out(' if($this->startCache){ ob_start(); } ');
 			}
 		} // end dynamic();
 

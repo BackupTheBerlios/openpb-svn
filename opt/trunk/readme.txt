@@ -8,7 +8,7 @@
               |  |
      Open     |__| ower
 
-     Open Power Template v. 1.1.0 readme
+     Open Power Template v. 1.1.1 readme
      Professional templating engine for PHP 5
      
 1. PROJECT INFORMATION
@@ -20,7 +20,7 @@ out also Open Power Forms and Open Power Driver!
 
 2. REQUIREMENTS
 
-OPT 1.1.0 requires at least PHP 5.0 or better. The library was also tested at the lastest PHP6 snapshot.
+OPT 1.1.1 requires at least PHP 5.0 or better. The library was also tested at the lastest PHP6 snapshot.
 In this version, no problems were reported.
 
 3. PACKAGE CONTENTS

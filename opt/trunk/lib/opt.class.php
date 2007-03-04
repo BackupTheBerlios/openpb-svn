@@ -25,7 +25,7 @@
 	define('OPT_PREFILTER', 0);
 	define('OPT_POSTFILTER', 1);
 	define('OPT_OUTPUTFILTER', 2);
-	
+
 	define('OPT_SECTION_MULTI', 0);
 	define('OPT_SECTION_SINGLE', 1);
 	define('OPT_SECTION_COMPILE', 0);
@@ -91,10 +91,6 @@
 		public function begin();
 		public function end();
 	}
-
-	# PREDEFINED_COMPONENTS
-	include_once(OPT_DIR.'opt.components.php');
-	# /PREDEFINED_COMPONENTS
 	# /COMPONENTS
 	
 	# OBJECT_I18N
@@ -273,6 +269,7 @@
 		private $_cacheExpire = 0;
 		private $cacheDynamic = false;
 		private $cacheData = array();
+		private $startCache = false;
 		# /OUTPUT_CACHING
 		private $outputBuffer = array();
 		
@@ -515,8 +512,14 @@
 		# /OBJECT_I18N
 
 		# MASTER_TEMPLATES
+		public function setMasterTemplate($filename)
+		{
+			$this -> compileMasterPages[] = $filename;		
+		} // end setMasterTemplate();
+		
 		public function setMasterPage($filename)
 		{
+			// bug in the code for 1.1.0 version, so we keep also the buggy method name
 			$this -> compileMasterPages[] = $filename;		
 		} // end setMasterPage();
 		# /MASTER_TEMPLATES
@@ -741,7 +744,7 @@
 			{
 				# OUTPUT_CACHING
 				if($this -> cacheStatus == true)
-				{
+				{				
 					if(!$this -> cacheProcess($filename))
 					{
 						$filename = optCompileFilenameFull($filename);
@@ -755,7 +758,6 @@
 				else
 				{
 				# /OUTPUT_CACHING
-					echo 'rrr';
 					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
 					include($this -> compile.optCompileFilenameFull($filename));
 					error_reporting($oldErrorReporting);
@@ -903,43 +905,43 @@
 			$this -> cacheHash = base64_encode($filename.$id);
 			$this -> cacheFilename = optCacheFilename($filename, $id);
 
-			if(is_integer($this -> cacheExpire))
+			if(!isset($this -> cacheBuffer[$this -> cacheHash]))
 			{
-				$this -> cacheBuffer[$this -> cacheHash]['ok'] = true;
-				if(@filemtime($this->cache.$this->cacheFilename) < time() - $this->cacheExpire)
+				$f = @fopen($this -> cache.$this -> cacheFilename, 'r');
+				if(!is_resource($f))
 				{
-					$this->cacheBuffer[$this -> cacheHash]['ok'] = false;
-					$this->cacheBuffer[$this -> cacheHash]['handle'] = fopen($this->cache.$this->cacheFilename, 'wb');
 					return false;
 				}
-				return true;
-			}
-			else
-			{
-				if(!isset($this -> cacheBuffer[$this -> cacheHash]))
+				$head = fgets($f);
+				if($head[0] == '<')
 				{
-					// Need to check, hasn't been done yet
-					$header = @unserialize(file_get_contents($this -> cache.$this -> cacheFilename.'.def'));
-					
+					fclose($f);
+					$head = str_replace(array('<'.'?php /*','*/?>'), '', $head);
+					$header = @unserialize($head);
 					if(!is_array($header))
 					{
-						$this -> cacheBuffer[$this -> cacheHash]['ok'] = false;
 						return false;
-					}
-					
-					$this -> cacheDynamic = $header['dynamic'];
-					if($header['timestamp'] < (time() - (int)$header['expire']))
-					{
-						$this -> cacheBuffer[$this -> cacheHash]['ok'] = false;
-						return false;
-					}
-					$this -> cacheBuffer[$this -> cacheHash]['ok'] = true;
-					return true;
+					}					
 				}
-				$this -> cacheDynamic = $this -> cacheData[$this -> cacheHash]['dynamic'];
-				return $this -> cacheBuffer[$this -> cacheHash]['ok'];
+				else
+				{
+					$header = @unserialize($head);
+					if(!is_array($header))
+					{
+						return false;
+					}
+					$this -> cacheBuffer[$this -> cacheHash]['h'] = $f;
+				}
+				if($header['timestamp'] < (time() - (int)$header['expire']))
+				{
+					$this -> cacheBuffer[$this -> cacheHash]['ok'] = false;
+					return false;
+				}
+				$this -> cacheBuffer[$this -> cacheHash]['ok'] = true;
+				return true;
 			}
-		} // end cacheReset();
+			return $this -> cacheBuffer[$this -> cacheHash]['ok'];
+		} // end isCached();
 		# /OUTPUT_CACHING
 		
 		public function __destruct()
@@ -1099,13 +1101,25 @@
 		{
 			if($this -> isCached($filename, $this -> cacheId))
 			{
-				$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
-				include($this -> cache.$this->cacheFilename);
-				error_reporting($oldErrorReporting);
+				if(isset($this -> cacheBuffer[$this -> cacheHash]['h']))
+				{
+					while($buf = fgets($this -> cacheBuffer[$this -> cacheHash]['h'], 2048))
+					{
+						echo $buf;
+					}
+					fclose($this -> cacheBuffer[$this -> cacheHash]['h']);
+				}
+				else
+				{
+					$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
+					include($this -> cache.$this->cacheFilename);
+					error_reporting($oldErrorReporting);
+				}
 				return true;
 			}
 			else
 			{
+				$this -> startCache = true;
 				ob_start();
 				return false;
 			}
@@ -1113,20 +1127,15 @@
 
 		private function cacheWrite($compiled, $dynamic)
 		{
-			if(!is_integer($this->cacheExpire))
-			{
-				// generate the file
-				$header = array(
-					'timestamp' => time(),
-					'dynamic' => $dynamic,
-					'expire' => $this -> _cacheExpire
-				);
-				file_put_contents($this->cache.$this -> cacheFilename.'.def', serialize($header));
-			}
+			$this -> startCache = false;
+			// generate the file
+			$header = serialize(array(
+				'timestamp' => time(),
+				'expire' => $this -> _cacheExpire
+			));
 			if(!$dynamic)
 			{
-			//	fwrite($this->cacheBuffer[$this -> cacheHash]['handle'], ob_get_contents());
-				file_put_contents($this->cache.$this -> cacheFilename, ob_get_contents());
+				file_put_contents($this->cache.$this -> cacheFilename, $header."\n".ob_get_contents());
 			}
 			else
 			{
@@ -1141,10 +1150,8 @@
 						$content .= $dynamicCodes[$id];
 					}
 				}
-	//			fwrite($this->cacheBuffer[$this -> cacheHash]['handle'], $content.ob_get_contents());
-				file_put_contents($this->cache.$this -> cacheFilename, $content.ob_get_contents());			
+				file_put_contents($this->cache.$this -> cacheFilename, '<'.'?php /*'.$header."*/?>\n".$content.ob_get_contents());			
 			}
-	//		fclose($this->cacheBuffer[$this -> cacheHash]['handle']);
 		} // end cacheWrite();
 		# /OUTPUT_CACHING
 		

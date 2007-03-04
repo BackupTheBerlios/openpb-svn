@@ -174,11 +174,11 @@ opt_console.document.close();
 			{
 				if($expireTime != NULL)
 				{
-					$expire = optCheckExpire($file, $expireTime);
+					$expire = optCheckExpire($f, $expireTime);
 				}
 				else
 				{
-					$expire = true;
+					$expire = true; 
 				}
 				if(is_file($cache.$f) && $expire)
 				{
@@ -258,7 +258,30 @@ opt_console.document.close();
 		{
 			return true;
 		}
-		$header = unserialize(file_get_contents($file.'.def'));
+		$f = @fopen($this -> cache.$this -> cacheFilename, 'r');
+		if(!is_resource($f))
+		{
+			return false;
+		}
+		$head = fgets($f);
+		fclose($f);
+		if($head[0] == '<')
+		{
+			$head = str_replace(array('<'.'?php /*','*/?>'), '', $head);
+			$header = @unserialize($head);
+			if(!is_array($header))
+			{
+				return true;
+			}			
+		}
+		else
+		{
+			$header = @unserialize($head);
+			if(!is_array($header))
+			{
+				return true;
+			}
+		}
 		if($header['timestamp'] < (time() - $time))
 		{
 			return true;
