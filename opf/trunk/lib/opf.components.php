@@ -20,6 +20,7 @@
 		
 		protected $componentName = 'base';
 		protected $tags;
+		protected $refresh = true;
 		
 		public function __construct($name = '')
 		{
@@ -42,7 +43,7 @@
 				{
 					$this -> opf -> error(OPF_E_NO_FORM_TAG, 'No form block defined for templates: '.$formName.'!');
 				}
-				$this -> design = $this -> opf->design;
+				$this -> design = $this -> opf -> design;
 			}
 			else
 			{
@@ -52,9 +53,14 @@
 
 		public function set($name, $value)
 		{
-			if($name == 'name')
+			switch($name)
 			{
-				$this -> name = $value;
+				case 'name':
+					$this -> name = $value;
+					break;
+				case 'refresh':
+					$this -> refresh = (bool)$value;
+					return;
 			}
 			$this -> tags[$name] = $value;
 		} // end set();
@@ -113,6 +119,35 @@
 				return '';
 			}
 		} // end getClass();
+		
+		protected function getValue($return = false)
+		{
+			if(!$return)
+			{
+				if($this -> refresh)
+				{
+					$this -> tags['value'] = $this->form->getValue($this->name);
+				}
+			}
+			else
+			{
+				if($this -> refresh)
+				{
+					return $this->form->getValue($this->name);
+				}
+				return '';
+			}
+		} // end getValue();
+		
+		protected function generateTags($list)
+		{
+			$code = '';
+			foreach($list as $name => $value)
+			{
+				$code .= ' '.$name.'="'.htmlspecialchars($value).'"';			
+			}
+			return $code;
+		} // end generateTags();
 	}
 	
 	class opfInput extends opfComponent
@@ -122,9 +157,9 @@
 		public function begin()
 		{
 			$this -> getClass();
-			$this -> tags['value'] = $this->form->getValue($this->name);
+			$this -> getValue();
 		
-			echo '<input type="text"'.generateTagElementList($this -> tags).' />';
+			echo '<input type="text"'.$this->generateTags($this -> tags).' />';
 		} // end begin();
 	
 	}
@@ -136,9 +171,9 @@
 		public function begin()
 		{
 			$this -> getClass();
-			$this -> tags['value'] = $this->form->getValue($this->name);
+			$this -> getValue();
 		
-			echo $this -> tags['value'].' <input type="hidden"'.generateTagElementList($this -> tags).' />';
+			echo $this -> tags['value'].' <input type="hidden"'.$this->generateTags($this -> tags).' />';
 		} // end begin();	
 	}
 	
@@ -149,7 +184,7 @@
 		public function begin()
 		{
 			$this -> getClass();
-			echo '<input type="password"'.generateTagElementList($this -> tags).' />';
+			echo '<input type="password"'.$this->generateTags($this -> tags).' />';
 		} // end begin();	
 	}
 	
@@ -160,7 +195,7 @@
 		public function begin()
 		{
 			$this -> getClass();
-			echo '<input type="password"'.generateTagElementList($this -> tags).' />';
+			echo '<input type="password"'.$this->generateTags($this -> tags).' />';
 		} // end begin();	
 	}
 	
@@ -171,7 +206,7 @@
 		public function begin()
 		{
 			$this -> getClass();
-			echo '<textarea'.generateTagElementList($this -> tags).'>'.$this->form->getValue($this->name).'</textarea>';
+			echo '<textarea'.$this->generateTags($this -> tags).'>'.$this->getValue(true).'</textarea>';
 		} // end begin();
 	
 	}
@@ -189,11 +224,11 @@
 			echo '<label>'.$this->form->i18n->put($this->opf->i18nGroup, 'text_yes');
 			if($value == 1)
 			{
-				echo '<input type="radio" '.generateTagElementList($this -> tags).' checked="checked"/>';
+				echo '<input type="radio" '.$this->generateTags($this -> tags).' checked="checked"/>';
 			}
 			else
 			{
-				echo '<input type="radio" '.generateTagElementList($this -> tags).'/>';
+				echo '<input type="radio" '.$this->generateTags($this -> tags).'/>';
 			}
 			echo '</label>';
 			
@@ -203,11 +238,11 @@
 			echo '<label>';
 			if($value == 0)
 			{		
-				echo '<input type="radio" '.generateTagElementList($this -> tags).' checked="checked"/>';
+				echo '<input type="radio" '.$this->generateTags($this -> tags).' checked="checked"/>';
 			}
 			else
 			{
-				echo '<input type="radio" '.generateTagElementList($this -> tags).'/>';
+				echo '<input type="radio" '.$this->generateTags($this -> tags).'/>';
 			}
 			echo $this->form->i18n->put($this->context->i18nGroup, 'text_no').'</label>';
 		} // end begin();
@@ -221,13 +256,13 @@
 		public function begin()
 		{
 			$this -> getClass();
-			if($this->form->getValue($this->name) == 1)
+			if($this->getValue(true) == 1)
 			{
-				echo '<input type="checkbox"'.generateTagElementList($this -> tags).' checked="checked" />';
+				echo '<input type="checkbox"'.$this->generateTags($this -> tags).' checked="checked" />';
 			}
 			else
 			{
-				echo '<input type="checkbox"'.generateTagElementList($this -> tags).' />';
+				echo '<input type="checkbox"'.$this->generateTags($this -> tags).' />';
 			}
 		} // end begin();	
 	}
@@ -240,8 +275,8 @@
 		{
 			$this -> getClass();
 
-			echo '<select '.generateTagElementList($this -> tags).'>';
-			$this -> displayGroup($this->form->getValue($this->name.'Values', true), $this->form->getValue($this->name));
+			echo '<select '.$this->generateTags($this -> tags).'>';
+			$this -> displayGroup($this->form->getValue($this->name.'Values', true), $this->getValue(true));
 			echo '</select>';
 		} // end begin();
 		
@@ -288,8 +323,8 @@
 			{
 				echo '<ul>';
 			}
-			$values = $this->form->getValue($this->name.'Values', true);
-			$selected = $this->form->getValue($this->name);
+			$values = $this -> form -> getValue($this->name.'Values', true);
+			$selected = $this -> getValue(true);
 			
 			$this -> componentName = 'radio';
 			$this -> getClass();
@@ -300,12 +335,12 @@
 				if($selected == $id)
 				{
 					$this -> tags['checked'] = 'checked';
-					echo '<li><label><input type="radio" '.generateTagElementList($this -> tags).'/> '.htmlspecialchars($value).'</label></li>';
+					echo '<li><label><input type="radio" '.$this->generateTags($this -> tags).'/> '.htmlspecialchars($value).'</label></li>';
 					unset($this -> tags['checked']);
 				}
 				else
 				{
-					echo '<li><label><input type="radio" '.generateTagElementList($this -> tags).'/> '.htmlspecialchars($value).'</label></li>';
+					echo '<li><label><input type="radio" '.$this->generateTags($this -> tags).'/> '.htmlspecialchars($value).'</label></li>';
 				}						
 			}
 			echo '</ul>';
@@ -319,7 +354,7 @@
 		public function begin()
 		{
 			$this -> getClass();
-			echo '<input type="file"'.generateTagElementList($this -> tags).' />';
+			echo '<input type="file"'.$this->generateTags($this -> tags).' />';
 		} // end begin();
 	
 	}

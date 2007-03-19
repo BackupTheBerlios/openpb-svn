@@ -79,7 +79,7 @@
 			$tpl -> assign('date', 1);
 			$tpl -> assign('day', $opf->validator->day);
 			$tpl -> assign('month', $opf->validator->month);
-			$tpl -> assign('year', $opf->validator->year);		
+			$tpl -> assign('year', $opf->validator->year);
 		}
 		
 		$tpl -> parse('test_opt_forms_1.tpl');		

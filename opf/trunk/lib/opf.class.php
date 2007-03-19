@@ -39,6 +39,7 @@
 	define('OPF_E_INVALID_DATATYPE', 5);
 	define('OPF_E_NO_FORM_TAG', 6);
 	define('OPF_E_NOT_IN_FORM', 7);
+	define('OPF_E_INVALID_ARGS', 8);
 
 	interface iopfConstraintContainer
 	{
@@ -87,6 +88,7 @@
 		public $i18nGroup = 'opf';
 		public $magicQuotes = false;
 		public $invalidAjax = OPF_AJAX_IGNORE;
+		public $prefix = 'opf';
 	
 		// OPF elements
 		public $tpl;
@@ -113,9 +115,10 @@
 			
 			// Object configuration
 			$tpl -> opf = $this;
+			$tpl -> control[] = 'opfCall';
 			$tpl -> control[] = 'opfUrl';
 			$tpl -> control[] = 'opfForm';
-			$tpl -> control[] = 'opfJavascript';
+			$tpl -> control[] = 'opfJavascript';			
 			$tpl -> components['opfInput'] = 1;
 			$tpl -> components['opfPassword'] = 1;
 			$tpl -> components['opfTextarea'] = 1;
@@ -127,41 +130,17 @@
 			$tpl -> components['opfRetypePassword'] = 1;
 			$tpl -> components['opfCheckQuestion'] = 1;
 			$tpl -> instructionFiles[] = OPF_DIR.'opf.template.php';
-			
+
 			$tpl -> registerNamespace('opf');
 			$tpl -> assign('opfDesign', $this -> design);
+			$tpl -> opf = $this;
 			
 			$validator -> setOpfInstance($this);
-			
-			// Check whether the form is sent
-			if($this -> visit -> requestMethod == OPF_POST)
-			{
-				if($this -> validator -> map('opfFormName', OPF_POST, new opfStandardContainer(
-					new opfConstraint(MAP_TYPE, TYPE_STRING),
-					new opfConstraint(MAP_LEN_GT, 0)	
-				)))
-				{
-					$this -> formData = array('name' => $this -> validator -> opfFormName);
-					$this -> dynamicForms = true;
-					if($this -> validator -> map('opfStep', OPF_POST, new opfStandardContainer(
-						new opfConstraint(MAP_TYPE, TYPE_INTEGER),
-						new opfConstraint(MAP_GT, 0)			
-					)))
-					{
-						$this -> formData['step'] = $this -> validator -> opfStep;
-					}
-					else
-					{
-						$this -> formData['step'] = 1;
-					}
-				}	
-			}
 		} // end __construct();
 		
 		public function setRouter(iopfRouter $router)
 		{
 			$this -> router = $router;
-			$router -> setOpfInstance($this);
 		} // end setRouter();
 		
 		public function setI18n(ioptI18n $i18n)
@@ -179,10 +158,32 @@
 		public function getDynamicFormInfo($name, $step = false)
 		{
 			if($this -> dynamicForms == false)
-			{				
-				return false;
+			{
+				// A form request check required
+				if($this -> visit -> requestMethod == OPF_POST)
+				{
+					if($this -> validator -> map($this->prefix.'FormName', OPF_POST, new opfStandardContainer(
+						new opfConstraint(MAP_TYPE, TYPE_STRING),
+						new opfConstraint(MAP_LEN_GT, 0)	
+					)))
+					{
+						$this -> formData = array('name' => $this -> validator -> opfFormName);
+						$this -> dynamicForms = true;
+						if($this -> validator -> map($this->prefix.'Step', OPF_POST, new opfStandardContainer(
+							new opfConstraint(MAP_TYPE, TYPE_INTEGER),
+							new opfConstraint(MAP_GT, 0)			
+						)))
+						{
+							$this -> formData['step'] = $this -> validator -> opfStep;
+						}
+						else
+						{
+							$this -> formData['step'] = 1;
+						}
+					}
+				}
 			}
-			elseif($this -> formData['name'] == $name)
+			if($this -> formData['name'] == $name)
 			{
 				if($step == false)
 				{
@@ -286,6 +287,12 @@
 		{
 			$this -> xmlLock = false;
 		} // end enableOpfXML();
+		
+		public function error($code, $message)
+		{
+			require_once(OPF_DIR.'opf.error.php');
+			throw new opfException($code, $message, $this);
+		} // end error();
 
 	} // end opfClass;
 	
@@ -302,7 +309,7 @@
 			$this -> opf = $opf;
 			if(version_compare(phpversion(), '6.0.0-dev', '<'))
 			{
-				$this -> quotes = $this -> context -> magicQuotes;
+				$this -> quotes = $this -> opf -> magicQuotes;
 				$this -> quoteState = get_magic_quotes_gpc();
 			}
 			else
@@ -344,14 +351,14 @@
         	{
         		if($_SERVER['REQUEST_METHOD'] == 'POST')
         		{
-        			return 1;
+        			return true;
         		} 
         	}
         	elseif($_SERVER['REQUEST_METHOD'] == 'POST' && strpos($_SERVER['HTTP_REFERER'], $filename) !== FALSE)
 			{
-				return 1;
+				return true;
 			}
-			return 0;
+			return false;
 		} // end formSent();
 
 		public function map($name, $type, iopfConstraintContainer $container)
@@ -516,12 +523,12 @@
 			}
 			return false;
 		} // end setDatasource();
-		
+
 		final public function setRequestMethod($requestMethod)
 		{
 			$this -> requestMethod = $requestMethod;
 		} // end setRequestMethod();
-		
+
 		final public function nextStep(opfVirtualForm $form)
 		{
 			if(is_null($this -> nextStep))
@@ -531,7 +538,26 @@
 			}
 			return false;
 		} // end nextStep();
-		
+
+		final public function assign($name, $value = NULL)
+		{
+			if(is_array($name))
+			{
+				foreach($name as $idx => $value)
+				{
+					$this -> items[$idx] = $value;
+				}
+			}
+			elseif(!is_null($value))
+			{
+				$this -> items[$name] = $value;
+			}
+			else
+			{
+				$this -> opf -> error(OPF_E_INVALID_ARGS, 'Invalid arguments for method opfVirtualForm::assign(): A single key-value pair or an array of pairs required.');
+			}
+		} // end assign();
+
 		final public function getValue($name, $listData = false)
 		{
 			if($this -> valid == false && $listData == false)
@@ -561,15 +587,22 @@
 			}
 		} // end getValue();
 		
-		final protected function setError($name, $group, $id, $args = NULL)
+		final protected function setError($name, $group, $id = NULL, $args = NULL)
 		{
-			if(!is_null($args))
+			if(func_num_args() == 2)
 			{
-				$this -> errorMessages[$name][] = $this -> i18n -> putApply($group, $id, $args);
+				$this -> errorMessages[$name][] = $group;
 			}
 			else
 			{
-				$this -> errorMessages[$name][] = $this -> i18n -> put($group, $id);
+				if(!is_null($args))
+				{
+					$this -> errorMessages[$name][] = $this -> i18n -> putApply($group, $id, $args);
+				}
+				else
+				{
+					$this -> errorMessages[$name][] = $this -> i18n -> put($group, $id);
+				}
 			}
 		} // end setError();
 		
@@ -603,6 +636,11 @@
 			}
 			return '';
 		} // end __get();
+		
+		final public function getStep()
+		{
+			return $this -> step;
+		} // end getStep();
 		
 		final public function display()
 		{
@@ -681,7 +719,7 @@
 				}
 				catch(opfShowFormException $exception)
 				{
-					$this -> addPreviousItems($items);
+					$this -> assign($items);
 					if($exception -> invalid())
 					{
 						$this -> invalid = true;
@@ -697,7 +735,7 @@
 			else
 			{
 				$this -> invalid = false;
-				$this -> addPreviousItems($items);
+				$this -> assign($items);
 				$this -> render();
 				return $this -> ignored;
 			}
@@ -706,14 +744,6 @@
 		/*
 		 * Multi-step forms
 		 */
-		
-		public function addPreviousItems(Array $items)
-		{
-			foreach($items as $name => $value)
-			{
-				$this -> items[$name] = $value;
-			}		
-		} // end addPreviousItems();
 		
 		public function getItems()
 		{
@@ -807,9 +837,9 @@
 			foreach($this as $name => $value)
 			{
 				echo $name.' - '.$value.'<br/>';
-			}		
+			}
 		} // end printVals();
-		
+
 		public function generateJavascript()
 		{
 			$code = '';

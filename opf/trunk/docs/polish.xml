@@ -4,7 +4,7 @@
 <book id="opf" lang="pl">
 	<bookinfo id="bookinfo">
 		<title>Open Power Forms</title>
-		<subtitle>Dokumentacja - wersja 1.0.0</subtitle>
+		<subtitle>Dokumentacja - wersja rozwojowa</subtitle>
 		<authorgroup id="authors">
 			<author>
 				<firstname>Tomasz</firstname>
@@ -16,7 +16,7 @@
 			</author>
 		</authorgroup>
 		<copyright>
-			<year>2006</year>
+			<year>2006-2007</year>
 			<holder>Tomasz Jędrzejewski, Tomasz Szczupliński</holder>
 		</copyright>
 	</bookinfo>
@@ -42,70 +42,115 @@
 		katalogi, w których wspomniane pliki się znajdują. Kolejnym krokiem jest dołączenie pliku <filename>opf.class.php</filename>
 		oraz napisanie kodu PHP.</para>
 		<example id="example.installation.simple">
-				<title>Sample OPF script</title>
+				<title>Przykładowy skrypt OPF+OPT</title>
 				<programlisting><![CDATA[<?php
 
-	define('OPF_DIR', '../lib/'); // 1
-	define('OPT_DIR', '../../opt/lib/');
+	define('OPF_DIR', './opf/'); // 1
+	define('OPT_DIR', './opt/');
+	require(OPT_DIR.'opt.class.php');
 	require(OPF_DIR.'opf.class.php');
-	
+
 	try
 	{
-		$opf = opfClass::create('./config.php'); // 2
-		$resp = $opf -> getResponse();
-		$resp -> setContentType(OPT_HTML); // 3
-		$resp -> setContentEncoding('utf-8');
-		$resp -> sendHeaders();
-		
-		if($resp -> contentAvailable()) // 4
-		{
-			$resp -> assign('ip', $opf -> getVisit() -> ip);
-			$resp -> assign('address', $opf -> getVisit() -> currentAddress);
-			$resp -> assign('ssl', $opf -> getVisit() -> secure ? 'Yes' : 'No');
-			$resp -> assign('browser', $opf -> getVisit() -> friendly('browser'));
-			$resp -> assign('os', $opf -> getVisit() -> friendly('os'));
-			$resp -> parse('sample_template.tpl');
-		}	
+		$tpl = new optClass; // 2
+		$tpl -> loadConfig('./config.php');
+
+		$validator = new opfValidator(); // 3
+		$opf = new opfClass($tpl, $validator->defaultParams()); // 4
+		$opf -> createI18n('./'); // 5
+
+		/* tu kod aplikacji */
 	}
-	catch(optException $exception) // 5
+	catch(optException $exception) // 6
 	{
 		optErrorHandler($exception);
 	}
-	catch(opfException $exception) // 6
+	catch(opfException $exception) // 7
 	{
 		opfErrorHandler($exception);
 	}
-?>]]></programlisting>
+?>
+]]></programlisting>
 		</example>
 		<para>Oto opis działania:</para>
 		<orderedlist>
 			<listitem>Ustawianie stałych i załączanie kodu źródłowego biblioteki.</listitem>
-			<listitem>Wczytywanie konfiguracji OPF/OPT oraz inicjacja obiektów.</listitem>
-			<listitem>Ustawienia nagłówków HTTP.</listitem>
-			<listitem>Jeżeli wykorzystane nagłówki zezwalają na wygenerowanie treści, do akcji wkracza system szablonów
-				Open Power Template zajmujący się jej przygotowaniem.</listitem>
+			<listitem>Tworzymy obiekt parsera Open Power Template i konfigurujemy go w dowolny wybrany przez nas sposób.</listitem>
+			<listitem>Tworzymy kontroler danych. Zrzucenie tego na barki programisty daje możliwość stworzenia własnego kontrolera, rozszerzenia instniejącego lub jego wstępnego skonfigurowania.</listitem>
+			<listitem>Właściwa inicjacja OPF. Przy wprowadzaniu obiektu kontrolera nakazujemy jednocześnie domyślne pobieranie danych ze standardowego wejścia PHP: POST/GET/COOKIE</listitem>
+			<listitem>Tworzymy domyślny sterownik interfejsu językowego i nakazujemy mu poszukiwanie plików językowych w aktualnym katalogu. Jeżeli nie korzystamy z dynamicznych formularzy, można ten fragment pominąć. Możemy też użyć własnego kontrolera, jednak musi on implementować interfejs <classname>ioptI18n</classname> dostarczany przez Open Power Template.</listitem>
 			<listitem>Domyślna obsługa błędów OPT.</listitem>
-			<listitem>Domyślna obsługa błędów OPF.</listitem>			
+			<listitem>Domyślna obsługa błędów OPF.</listitem>
 		</orderedlist>
-		<para>Powyższy przykład ukazuje nam także ogólny widok na strukturę biblioteki. Posiada ona główny obiekt zajmujący
-		się obsługą konfiguracji oraz udostępnianiem wszystkich usług wtedy, gdy są potrzebne. Istnieje także obiekt
-		<classname>opfResponse</classname>, którego zadaniem jest przygotowanie odpowiedzi dla klienta. Jej część stanowi
-		system szablonów. Do gromadzenia i obróbki danych o kliencie wyznaczona jest klasa <classname>opfVisit</classname>,
-		a kontrolą nadesłanych danych zajmuje się nieuwzględniony w przykładzie <classname>opfRequest</classname>.</para>
-		<para>Korzystanie z tych podstawowych możliwości nie wymaga samodzielnego rozszerzania istniejących klas. Jednak
-		jeżeli chcemy zająć się obsługą formularzy z prawdziwego zdarzenia, będziemy musieli umieć tworzyć tzw. klasy
-		wirtualnych formularzy zawierające zbiory reguł opisujących, jak należy przetwarzać tego typu elementy. Zostanie
-		to opisane dokładniej w dalszej części dokumentacji.</para>
+		<para>Przykład ten ukazuje jednocześnie pewne elementy struktury biblioteki. Najważniejsza
+		w hierarchii jest klasa <classname>opfClass</classname>, w której przechowywana jest konfiguracja
+		oraz odwołania do wszystkich innych obiektów składowych. Dwoma nieodłącznymi składnikami są
+		parser szablonów OPT oraz kontroler danych wykorzystywany do sprawdzania ich poprawności.
+		Domyślnie pozwala on na sprawdzanie wejścia skryptu (POST/GET/COOKIE), lecz nic nie stoi na
+		przeszkodzie, aby zastosować go do dowolnej tablicy. OPF w żaden sposób nie ingeruje w działanie
+		parsera szablonów, poza zarejestrowaniem w nim własnych komponentów i instrukcji, dlatego
+		można swobodnie używać w tym miejscu klas dziedziczących po <classname>optClass</classname>.</para>
 	</chapter>
 	<chapter id="topics">
 		<title>Zagadnienia</title>
+		<para>Rozdział ten omawia praktyczne wykorzystanie różnych elementów biblioteki.</para>
 		
-		<sect1 id="topics.http">
-			<title>Protokół HTTP</title>
+		<sect1 id="topics.basics">
+			<title>Podstawy</title>
+			<para>Elementem spajającym całą bibliotekę jest klasa <classname>opfClass</classname>
+			zawierająca w formie pól odwołania do wszystkich innych obiektów, a także kilka metod
+			konfiguracyjnych. Jej inicjacja dokonuje się w momencie utworzenia jej obiektu. Konstruktor
+			musi otrzymać obiekt parsera OPT oraz obiekt kontrolera danych <classname>opfValidator</classname>.</para>
+			<para>Konfiguracja interfejsu językowego jest możliwa na dwa sposoby. Pierwszy to użycie
+			metody <link linkend="library.opfclass.create-i18n">createI18n()</link> inicjujący standardowy
+			sterownik interfejsu językowego. Musimy jedynie określić ścieżkę dostępu do plików językowych
+			będących w rzeczywistości typowymi plikami INI. Na dłuższą metę takie rozwiązanie jest
+			jednak nieskuteczne, ponieważ nie możemy dostosować interfejsu do naszych potrzeb.
+			Istnieje możliwość napisania własnej klasy językowej zgodnej z interfejsem <classname>ioptI18n</classname>
+			dostarczanym przez system szablonów Open Power Template, oznacza to więc, iż musi on działać
+			według zasad określonych przez tamtą bibliotekę. Opis implementacji takowej zawarty jest
+			w dokumentacji do niej i tam też odsyłamy zainteresowanych. Podpięcie własnego kodu polega
+			na stworzeniu obiektu takiej klasy i wprowadzeniu go do metody <link linkend="library.opfclass.set-i18n">setI18n()</link>.</para>
+			
+			<programlisting><![CDATA[$opf -> createI18n('./lang/pl');
+
+$i18n = new mojI18n;
+$opf -> setI18n($i18n);]]></programlisting>
+			
+			<para>Interfejs językowy jest bibliotece potrzebny wyłącznie do obsługi dynamicznych formularzy.
+			Jeżeli z nich nie korzystasz, nie musisz się zajmować również nim. Jednak w przeciwnym wypadku
+			należy wiedzieć, jak się nim posłużyć. OPT wymaga, aby każdy tekst, jaki chcemy wyświetlić,
+			był opisany dwuczęściowym identyfikatorem składającym się z nazwy grupy oraz ID właściwym.
+			Np. <emphasis>$news@title</emphasis> określa tekst "title" w grupie "news", a
+			<emphasis>$articles@title</emphasis> - tekst "title", ale w grupie "articles". Standardowo
+			przyjmuje się, że każdy plik językowy w podanym katalogu przechowuje inną grupę i ich
+			nazwy się pokrywają (tzn. grupa "news" będzie w pliku "%%news.php"). Domyślnie biblioteka
+			wykorzystuje grupę "opf", lecz można ją zmienić dyrektywą konfiguracyjną "i18nGroup":</para>
+			
+			<programlisting><![CDATA[$opf -> i18nGroup = 'forms';
+
+$i18n = new mojI18n;
+$opf -> setI18n($i18n);]]></programlisting>
+			
+			<para>W analogiczny sposób można ustawić inne dyrektywy.</para>
 		</sect1>
-		
+			
 		<sect1 id="topics.visit">
 			<title>Informacje o kliencie</title>
+			<para>W obiekcie <variable>opfClass::$visit</variable> przechowywane są różne informacje
+			o komputerze, jaki próbuje połączyć się z naszą stroną. Oprócz elementów protokołu HTTP,
+			tj. adresu IP, hosta, portu, protokołu, dokładnie określa on ścieżki aktualnie uruchomionego
+			skryptu, a także dokonuje identyfikacji wielu cech przeglądarki:</para>
+			<orderedlist>
+				<listitem>Akceptowane języki z uwzględnieniem ich priorytetów.</listitem>
+				<listitem>Rodzaj i wersję przeglądarki. Rozpoznawane aplikacje to: Internet Explorer,
+					Firefox, Opera, Mozilla, Galeon, Safari, Konqueror, Netscape, iCab, Lynx,
+					Links, Epiphany, Dillo, Camino, K-Meleon, NetPositive, OmniWeb, a także niektóre
+					roboty wyszukiwarek: GoogleBot, Scooter, MSNBOT, Lycos, Archive.org.</listitem>
+				<listitem>Co dana przeglądarka obsługuje (na razie dostępne wyłącznie dla IE, Firefoksa oraz Opery).</listitem>
+				<listitem>System operacyjny (produkty MS Windows oraz spora gama uniksowych,
+					z kilkunastoma dystrybucjami GNU/Linuksa włącznie).</listitem>
+			</orderedlist>
 		</sect1>
 		
 		<sect1 id="topics.validation">
@@ -116,12 +161,12 @@
 			<title>Obsługa formularzy</title>
 		</sect1>
 		
-		<sect1 id="topics.routers">
-			<title>Routery</title>
+		<sect1 id="topics.ajax">
+			<title>AJAX i JavaScript</title>
 		</sect1>
 		
-		<sect1 id="topics.ajax">
-			<title>Obsługa AJAX</title>
+		<sect1 id="topics.zend">
+			<title>Zend Framework</title>
 		</sect1>
 	</chapter>
 	
@@ -129,26 +174,780 @@
 		<title>Opis funkcji</title>
 		<sect1 id="library.opfclass">
 			<title>Klasa opfClass</title>
+			
+			<sect2 id="library.opfclass.__construct">
+				<title>__construct()</title>
+				<methodsynopsis>
+				<methodname>opfClass</methodname>
+					<methodparam><type>optClass</type><parameter>$tpl</parameter></methodparam>
+					<methodparam><type>opfValidator</type><parameter>$validator</parameter></methodparam>
+				</methodsynopsis>
+				<para>Inicjuje bibliotekę. Jako parametry podajemy obiekt parsera szablonów oraz klasy
+					<classname>opfValidator</classname>.</para>
+			</sect2>
+
+			<sect2 id="library.opfclass.create-i18n">
+				<title>createI18n()</title>
+				<methodsynopsis>
+				<type>void</type> <methodname>createI18n</methodname>
+					<methodparam><type>string</type><parameter>$sciezka</parameter></methodparam>
+				</methodsynopsis>
+				<para>Inicjuje domyślny sterownik językowy. Jako parametr podajemy ścieżkę do plików
+				językowych. Można go wykorzystać, kiedy w pozostałej części projektu wykorzystujemy
+				inny, niekompatybilny sterownik lub projekt jest na tyle niewielki, że nie opłaca się
+				specjalnie pisać własnego.</para>
+				<para>Metoda musi być wywołana przed rozpoczęciem korzystania z dynamicznych formularzy.</para>
+			</sect2>
+			
+			<sect2 id="library.opfclass.handle-ajax">
+				<title>handleAjax()</title>
+				<methodsynopsis>
+				<type>void</type> <methodname>handleAjax</methodname>
+				</methodsynopsis>
+				<para>Metoda ta służy do przechwytywania żądań AJAX dotyczących dynamicznych formularzy
+				stosowanych przez OPF. Detekcja następuje na podstawie faktu istnienia parametru "opfAjax"
+				oraz ewentualnie "opfAjaxControl" oznaczającego tryb sprawdzania formularza. Po przekierowaniu
+				żądania AJAX do obiektu obsługi odpowiedniego formularza i dokonaniu kontroli danych
+				odsyłana jest automatycznie generowana odpowiedź XML zawierająca rezultat kontroli.</para>
+			</sect2>
+			
+			<sect2 id="library.opfclass.set-i18n">
+				<title>setI18n()</title>
+				<methodsynopsis>
+				<type>void</type> <methodname>setI18n</methodname>
+					<methodparam><type>ioptI18n</type><parameter>$i18n</parameter></methodparam>
+				</methodsynopsis>
+				<para>Umożliwia skorzystanie z własnego sterownika obsługi plików językowych zgodnego
+				z interfejsem <classname>ioptI18n</classname> dostarczanym przez Open Power Template.
+				Metoda musi być wykonana przed skorzystaniem z dynamicznych formularzy.</para>
+			</sect2>
+			
+			<sect2 id="library.opfclass.set-router">
+				<title>setRouter()</title>
+				<methodsynopsis>
+				<type>void</type> <methodname>setRouter</methodname>
+					<methodparam><type>iopfRouter</type><parameter>$router</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda nieudokumentowana i nieobsługiwana.</para>
+			</sect2>
 		</sect1>
 
-		<sect1 id="library.opfresponse">
-			<title>Klasa opfResponse</title>
-		</sect1>
+		<sect1 id="library.opfvalidator">
+			<title>Klasa opfValidator</title>
+			
+			<sect2 id="library.opfvalidator.default-params()">
+				<title>defaultParams()</title>
+				<methodsynopsis>
+				<type>opfValidator</type> <methodname>defaultParams</methodname>
+				</methodsynopsis>
+				<para>Metoda definiuje standardowe źródła danych dla kontrolera:</para>
+				<itemizedlist>
+					<listitem><emphasis>OPF_GET</emphasis> - dane przesyłane metodą GET.</listitem>
+					<listitem><emphasis>OPF_POST</emphasis> - dane przesyłane metodą POST.</listitem>
+					<listitem><emphasis>OPF_COOKIE</emphasis> - dane z ciasteczek.</listitem>
+					<listitem><emphasis>OPF_REQUEST</emphasis> - dane przesyłane metodą GET lub POST.</listitem>
+					<listitem><emphasis>OPF_FILE</emphasis> - dane uploadowanych plików.</listitem>
+				</itemizedlist>
+				<para>Zwracany jest obiekt kontrolera, dlatego można ją szybko i łatwo wykorzystać w
+				konstruktorze biblioteki.</para>
+				
+				<programlisting><![CDATA[$validator = new opfValidator;
+	$opf = new opfClass($tpl, $validator->defaultParams());]]></programlisting>
+			</sect2>
+			
+			<sect2 id="library.opfclass.form-sent">
+				<title>formSent()</title>
+				<methodsynopsis>
+				<type>bool</type> <methodname>formSent</methodname>
+					<methodparam choice="opt"><type>string</type><parameter>$plik</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda sprawdza, czy do skryptu został przysłany formularz. Jeżeli określimy parametr
+				<variable>$plik</variable>, zostanie także sprawdzone, czy wysłano go z podanego adresu.</para>
 
-		<sect1 id="library.opfrequest">
-			<title>Klasa opfRequest</title>
+				<programlisting><![CDATA[$validator = new opfValidator;
+	$opf = new opfClass($tpl, $validator->defaultParams());]]></programlisting>
+			</sect2>
+			
+			<sect2 id="library.opfvalidator.map">
+				<title>map()</title>
+				<methodsynopsis>
+				<type>bool</type> <methodname>map</methodname>
+					<methodparam><type>string</type><parameter>$nazwa</parameter></methodparam>
+					<methodparam><type>int</type><parameter>$typ</parameter></methodparam>
+					<methodparam><type>iopfConstraintContainer</type><parameter>$kontener</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda dokonuje kontroli pola <variable>$nazwa</variable> ze źródła danych
+				<variable>$typ</variable>. Obiekt <variable>$kontener</variable> musi implementować
+				interfejs <classname>iopfConstraintContainer</classname> i pełni rolę zbiornika na
+				obiekty <classname>opfConstraint</classname> lub podobne, które definiują pojedynczą
+				właściwość kontrolowanego pola.</para>
+				
+				<programlisting><![CDATA[if($opf->validator->map('akcja', OPF_GET, new opfStandardContainer(
+	new opfConstraint(MAP_TYPE, TYPE_STRING),
+	new opfConstraint(MAP_LEN_GT, 3)				
+)))
+{
+	echo $opf->validator->akcja;			
+}]]></programlisting>
+				<para>Podany przykład dokonuje kontroli pola <variable>akcja</variable> przesłanego metodą
+				GET. Musi ono być tekstem zawierającym więcej, niż trzy znaki. Jeżeli zawartość pola jest
+				poprawna, można ją wyświetlić tak, jakby była ona polem obiektu kontrolera.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvalidator.set-params">
+				<title>setParams()</title>
+				<methodsynopsis>
+				<type>bool</type> <methodname>setParams</methodname>
+					<methodparam><type>int</type><parameter>$id</parameter></methodparam>
+					<methodparam><type>Array</type><parameter>&amp;$dane</parameter></methodparam>
+					<methodparam choice="opt"><type>bool</type><parameter>$nazywany</parameter>=true</methodparam>
+				</methodsynopsis>
+				<para>Metoda definiuje nowe źródło danych dla kontrolera. W pierwszym parametrze
+				określamy numeryczny identyfikator źródła (ID od 0 do 10 są zarezerwowane dla OPF),
+				w drugim jako referencję podajemy tablicę z danymi, które można poddawać kontroli.
+				Ostatni parametr określa format tablicy. Domyślna wartość "true" oznacza, że jest to
+				zwykła tablica asocjacyjna i można odwoływać się do elementów według ich nazwy. Wartość
+				"false" oznacza, że mamy do czynienia z tablicą o indeksach numerycznych, wobec do ich
+				kontrolowania używany jest prosty licznik. Po wywołaniu metody <link linkend="library.opfvalidator.map">opfValidator::map()</link>
+				jest on przesuwany na kolejny element (uwaga: liczniki nie są jeszcze zaimplementowane).</para>
+				<para>Metody tej można użyć do przechwytywania danych z własnych parserów parametrów.</para>
+			</sect2>
 		</sect1>
 
 		<sect1 id="library.opfvisit">
 			<title>Klasa opfVisit</title>
+			
+			<para>Klasa <classname>opfVisit</classname> gromadzi wszelkie dostępne informacje o
+			odwiedzającym stronę użytkowniku. Większość z nich udostępniana jest jako publiczne
+			pola.</para>
+			
+			<table frame="all" id="fields.optvisit">
+				<?dbhtml table-width="100%" ?>
+				<caption>opfVisit: pola publiczne</caption>
+				<tgroup cols="3" align="center">
+				<thead>
+				<row>
+				  <entry>Nazwa</entry>
+				  <entry>Typ</entry>
+				  <entry>Opis</entry>
+				</row>
+				</thead>
+				<tbody>
+				<row>
+				  <entry>$ip</entry>
+				  <entry>String</entry>
+				  <entry>Adres IP klienta</entry>
+				</row>
+				<row>
+				  <entry>$longIp</entry>
+				  <entry>Integer</entry>
+				  <entry>Adres IP w postaci 32-bitowej liczby.</entry>
+				</row>
+				<row>
+				  <entry>$host</entry>
+				  <entry>String</entry>
+				  <entry>Host klienta</entry>
+				</row>					
+				<row>
+				  <entry>$port</entry>
+				  <entry>Integer</entry>
+				  <entry>Port, na jakim nawiązano połączenie.</entry>
+				</row>
+				<row>
+				  <entry>$currentAddress</entry>
+				  <entry>String</entry>
+				  <entry>Pełen adres żądania HTTP, np. <emphasis>http://www.przyklad.pl/katalog/plik.php?parametr=wartosc</emphasis></entry>
+				</row>
+				<row>
+				  <entry>$currentFile</entry>
+				  <entry>String</entry>
+				  <entry>Adres żądania HTTP z pominięciem listy parametrów, np. <emphasis>http://www.przyklad.pl/katalog/plik.php</emphasis></entry>
+				</row>
+				<row>
+				  <entry>$currentParams</entry>
+				  <entry>String</entry>
+				  <entry>Parametry żądania HTTP, np. <emphasis>parametr=wartosc</emphasis></entry>
+				</row>
+				<row>
+				  <entry>$currentPath</entry>
+				  <entry>String</entry>
+				  <entry>Adres żądania HTTP z pominięciem nazwy pliku i listy parametrów, np. <emphasis>http://www.przyklad.pl/katalog/</emphasis></entry>
+				</row>
+				<row>
+				  <entry>$fileName</entry>
+				  <entry>String</entry>
+				  <entry>Nazwa pliku, do jakiego przesłano żądanie HTTP.</entry>
+				</row>
+				<row>
+				  <entry>$referer</entry>
+				  <entry>String</entry>
+				  <entry>Odpowiednik HTTP_REFERER</entry>
+				</row>
+				<row>
+				  <entry>$browser</entry>
+				  <entry>Array</entry>
+				  <entry>Tablica z informacjami o wykrytej przeglądarce. Zawiera trzy pola: <variable>name</variable> (nazwa), <variable>code</variable> (kod), <variable>version</variable> (wersja).</entry>
+				</row>
+				<row>
+				  <entry>$os</entry>
+				  <entry>Array</entry>
+				  <entry>Tablica z informacjami o wykrytym systemie operacyjnym. Zawiera trzy pola: <variable>name</variable> (nazwa), <variable>code</variable> (kod), <variable>version</variable> (wersja).</entry>
+				</row>
+				<row>
+				  <entry>$settings</entry>
+				  <entry>Array</entry>
+				  <entry>Tablica z informacjami o możliwościach przeglądarki. Pola:
+				  <orderedlist>
+					  <listitem><variable>richedit</variable> - możliwość stosowania edytorów WYSIWYG.</listitem>
+					  <listitem><variable>dom</variable> - obsługa DOM.</listitem>
+					  <listitem><variable>xhtml</variable> - obsługa XHTML.</listitem>
+					  <listitem><variable>gzip</variable> - obsługa kompresji gZip.</listitem>
+				  </orderedlist>
+				  Aktualnie obsługiwane są w ten sposób jedynie Internet Exporer, Firefox oraz Opera.</entry>
+				</row>
+				<row>
+				  <entry>$languages</entry>
+				  <entry>Array</entry>
+				  <entry>Tablica z informacjami o wykrytych językach akceptowanych przez przeglądarkę posortowana według ich priorytetów.</entry>
+				</row>
+				<row>
+				  <entry>$requestMethod</entry>
+				  <entry>Integer</entry>
+				  <entry>Metoda użyta w żądaniu (<emphasis>OPF_POST</emphasis>, <emphasis>OPF_GET</emphasis>).</entry>
+				</row>
+				<row>
+				  <entry>$secure</entry>
+				  <entry>Boolean</entry>
+				  <entry>Prawda, gdy żądanie używa szyfrowanego połączenia SSL.</entry>
+				</row>
+				<row>
+				  <entry>$ajax</entry>
+				  <entry>Boolean</entry>
+				  <entry>Prawda, gdy przesyłane jest żądanie OPF-AJAX.</entry>
+				</row>
+				<row>
+				  <entry>$ajaxMode</entry>
+				  <entry>Integer</entry>
+				  <entry>Tryb żądania OPF-AJAX.</entry>
+				</row>
+				<row>
+				  <entry>$ajaxControl</entry>
+				  <entry>Integer</entry>
+				  <entry>Numer pola do sprawdzenia.</entry>
+				</row>
+				</tbody>
+				</tgroup>
+			</table>
+			<para>Ostatnie trzy pola wykorzystywane są głównie przez OPF.</para>
+
+			<sect2 id="library.opfvisit.friendly">
+				<title>friendly()</title>
+				<methodsynopsis>
+				<type>bool</type> <methodname>setParams</methodname>
+					<methodparam><type>string</type><parameter>$indeks</parameter></methodparam>
+				</methodsynopsis>
+				<para>Szybko wyświetla sformatowaną wartość pól <variable>opfVisit::$os</variable> (indeks "os")
+				lub <variable>opfVisit::$browser</variable> (indeks "browser").</para>
+				
+				<example id="example.library.opfvisit.friendly">
+					<title>Szybkie wyświetlanie przyjaznej informacji o przeglądarce</title>
+					<programlisting><![CDATA[<?php
+	echo $opf -> visit -> friendly('browser');
+?>
+]]></programlisting>
+				</example>
+			</sect2>
 		</sect1>
 
 		<sect1 id="library.opfconstraint">
 			<title>Klasa opfConstraint</title>
+			
+			<para>Obiekty klasy <classname>opfConstraint</classname> reprezentują pojedyncze
+			ograniczenie, jakie muszą spełniać dane wejściowe. Obiekty te umieszcza się jako
+			parametry konstruktora klasy implementującej interfejs <classname>iopfConstraintContainer</classname>
+			pełniącej rolę zbiornika. Zbiornik natomiast wprowadza się jako parametr metody
+			<link linkend="library.opfvalidator.map">opfValidator::map()</link>, która dokonuje
+			sprawdzenia wszystkich zdefiniowanych ograniczeń dla konkretnego pola. Dla programisty
+			przydatny jest jedynie konstruktor tej klasy:
+			</para>
+			
+			<methodsynopsis>
+			<methodname>opfConstraint</methodname>
+				<methodparam><type>int</type><parameter>$typ</parameter></methodparam>
+				<methodparam>...</methodparam>
+			</methodsynopsis>
+			<para>Parametr <variable>$typ</variable> definiuje rodzaj ograniczenia, jakie
+			chcemy utworzyć. Dalsze parametry zależą od wybranego typu. Dostępne typy są
+			definiowane przez zestaw stałych. W opisach X, Y, Z oznaczają kolejne parametry
+			konstruktora, jakie należy podać w przypadku użycia określonego typu:</para>
+			<orderedlist>
+				<listitem><emphasis>MAP_TYPE</emphasis> - spodziewany rodzaj danych (patrz niżej)</listitem>
+				<listitem><emphasis>MAP_GT</emphasis> - wartość liczbowa większa od X.</listitem>
+				<listitem><emphasis>MAP_LT</emphasis> - wartość liczbowa mniejsza od X.</listitem>
+				<listitem><emphasis>MAP_LEN_GT</emphasis> - długość tekstu większa od X.</listitem>
+				<listitem><emphasis>MAP_LEN_LT</emphasis> - długość tekstu mniejsza od X.</listitem>
+				<listitem><emphasis>MAP_LEN_EQUAL</emphasis>, <emphasis>MAP_LENGTH</emphasis> - długość tekstu wynosi dokładnie X.</listitem>
+				<listitem><emphasis>MAP_EQUAL</emphasis> - wartość wynosi X.</listitem>
+				<listitem><emphasis>MAP_PASSWORD</emphasis> - wartość identyczna, jak w polu X przesłanym metodą POST.</listitem>
+				<listitem><emphasis>MAP_SCOPE</emphasis> - wartość liczbowa mieści się w przedziale otwartym od X do Y.</listitem>
+				<listitem><emphasis>MAP_PERMITTEDCHARS</emphasis> - wartość zawiera wyłącznie znaki określone jako ciąg tekstowy w parametrze X.</listitem>
+				<listitem><emphasis>MAP_NOTPERMITTEDCHARS</emphasis> - wartość nie zawiera żadnego ze znaków określonych jako ciąg tekstowy w parametrze X.</listitem>
+				<listitem><emphasis>MAP_MATCHTO</emphasis> - wartość pasuje do wyrażenia regularnego Perla zdefiniowanego w parametrze X.</listitem>
+				<listitem><emphasis>MAP_NOTMATCHTO</emphasis> - wartość nie pasuje do wyrażenia regularnego Perla zdefiniowanego w parametrze X.</listitem>
+			</orderedlist>
+			<para>W przypadku stałej <emphasis>MAP_TYPE</emphasis> jako drugi parametr konstruktora
+			niezbędne jest określenie typu danych:</para>
+			<orderedlist>
+				<listitem><emphasis>TYPE_INTEGER</emphasis> - liczba całkowita</listitem>
+				<listitem><emphasis>TYPE_FLOAT</emphasis> - liczba zmiennoprzecinkowa</listitem>
+				<listitem><emphasis>TYPE_NUMERIC</emphasis> - dowolna liczba</listitem>
+				<listitem><emphasis>TYPE_STRING</emphasis> - ciąg tekstowy (maks. 256 znaków)</listitem>
+				<listitem><emphasis>TYPE_TEXT</emphasis> - ciąg tekstowy dowolnej długości</listitem>
+				<listitem><emphasis>TYPE_BOOL</emphasis>, <emphasis>TYPE_BOOLEAN</emphasis> - wartość logiczna.</listitem>
+				<listitem><emphasis>TYPE_CHOOSE</emphasis> - wartość wysyłana przez pole "checkbox" w formularzach HTML. OPF dokonuje jej konwersji na wartość logiczną.</listitem>
+			</orderedlist>
+
 		</sect1>
 
 		<sect1 id="library.opfvirtualform">
 			<title>Klasa opfVirtualForm</title>
+			
+			<para>Klasa <classname>opfVirtualForm</classname> służy do obsługi tzw. wirtualnych
+			formularzy, które automatycznie zarządzają całą mechaniką odpowiedzialną za wyświetlanie
+			i przetwarzanie formularzy HTML. Jest to klasa abstrakcyjna, co oznacza, że stworzenie
+			nowego formularza wymaga napisania klasy pochodnej dziedziczącej jej właściwości oraz
+			nadpisującej niektóre metody.</para>
+			<para>Programista musi bezwzględnie rozszerzyć metodę <link linkend="library.opfvirtualform.create">create()</link>,
+			gdzie definiowane są właściwości poszczególnych pól formularza. Dodatkowy własny kod kontroli można
+			zaprogramować poprzez rozszerzenie metody <link linkend="library.opfvirtualform.process">process()</link>.
+			Jeśli chodzi o wyświetlanie formularza - kwestia ta może zostać pozostawiona skryptowi lub
+			oprogramowana wewnątrz tej klasy poprzez rozszerzenie metody <link linkend="library.opfvirtualform.view">view()</link>.</para>
+			
+			<para>Formularze OPF konstruowane są od strony szablonów OPT wewnątrz znacznika <link linkend="template.form">{opf:form}</link>,
+			który posiada określoną nazwę. Podczas tworzenia obiektu wirtualnego formularza także określamy taką nazwę,
+			dzięki czemu kod wewnątrz szablonu oraz tenże obiekt mogą zostać skojarzone ze sobą. Nieutworzenie
+			takiego obiektu powoduje, że zawartość instrukcji <emphasis>{opf:form}</emphasis> nie jest wyświetlana.
+			Przy odebraniu danych POST biblioteka przekazuje kontrolę temu formularzowi, który został faktycznie
+			wysłany, także na tej samej stronie można bez problemu umieścić kilkanaście różnych formularzy
+			i nie zostaną one pomylone.</para>
+			
+			<para>OPF obsługuje również formularze wielokrokowe, które przyjmują kolejne porcje danych w skończonej
+			liczbie kroków. Taki formularz wymaga stworzenia kilku klas dziedziczących po <classname>opfVirtualForm</classname>,
+			po jednej dla każdego kroku. Następnie ich obiekty łączone są w jednokierunkową listę za pomocą
+			metody <link linkend="library.opfvirtualform.next-step">nextStep()</link>. OPF sam zarządza
+			uruchamianiem i wyświetlaniem kolejnych kroków, podobnie jak przesyłaniem już wypełnionych pól
+			między nimi. Po wypełnieniu wszystkich kontrola wraca do skryptu PHP, który może przetworzyć
+			otrzymane informacje. Ta część skryptu w ogóle nie musi wiedzieć, czy i ilukrokowy był dany formularz.</para>
+			
+			<para>Dane przysłane z formularza są dostępne w obiekcie kontrolera <variable>opfClass::$validator</variable>.</para>
+			
+			<para>W opisie metod słowo kluczowe "public" oznacza, że jest ona przeznaczona do operowania
+			na już istniejącym obiekcie klasy pochodnej. Metody oznaczone jako "protected" są przydatne
+			podczas rozszerzania klasy <classname>opfVirtualForm</classname>.</para>
+			
+			<sect2 id="library.opfvirtualform.__construct">
+				<title>__construct()</title>
+				<methodsynopsis>
+				final public <methodname>__construct</methodname>
+					<methodparam><type>opfClass</type><parameter>$opf</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$nazwa</parameter></methodparam>
+				</methodsynopsis>
+				<para>Konstruktor klasy. Za parametry przyjmuje obiekt główny biblioteki OPF oraz
+				nazwę formularza, który ma obsługiwać. Nazwa ta musi pokrywać się z nazwą zdefiniowaną
+				w odpowiednim znaczniku <emphasis>{opf:form}</emphasis>.</para>
+				
+				<example id="example.library.opfvirtualform.__construct">
+					<title>Tworzenie wirtualnych formularzy</title>
+					<programlisting><![CDATA[<?php
+
+class mojFormularz extends opfVirtualForm
+{
+	public function create()
+	{
+		// ...
+	} // end create();
+					
+	// ...
+}
+					
+$form = new mojFormularz($opf, 'formularz');
+if($form -> execute())
+{
+	// przetwarzanie formularza
+}
+else
+{
+	// wyswietlanie formularza					
+}					
+?>
+]]></programlisting>
+					<programlisting><![CDATA[{* szablon OPT *}
+
+<opf:form name="formularz" method="post" action="`skrypt.php`">
+	{* tu zawartosc formularza *}		
+</opf:form>
+]]></programlisting>
+				</example>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.assign">
+				<title>assign()</title>
+				<methodsynopsis>
+				public <type>void</type> <methodname>assign</methodname>
+					<methodparam><type>mixed</type><parameter>$nazwa</parameter></methodparam>
+					<methodparam choice="opt"><type>mixed</type><parameter>$wartosc</parameter></methodparam>
+				</methodsynopsis>
+				<para>Przesyła w formularzu dodatkowe, zakodowane "na sztywno" dane za pomocą pól HIDDEN. Metoda
+				pozwala ustawić pojedyncze pole, podajemy wtedy w parametrach kolejno nazwę i wartość. Możemy
+				również za jednym zamachem ustawić kilka pól, przesyłając w pierwszym parametrze tablicę asocjacyjną
+				par nazwa-wartość.</para>
+				<para>W przypadku nieprawidłowego podania parametrów metoda generuje wyjątek.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.create">
+				<title>create()</title>
+				<methodsynopsis>
+				abstract public <type>void</type> <methodname>create</methodname>
+				</methodsynopsis>
+				<para>Tworzy definicję pól wykorzystywanych w formularzu. Programista musi koniecznie
+				rozszerzyć ją w klasie potomnej i zawrzeć w niej wywołania metody
+				<link linkend="library.opfvirtualform.map" endterm="">opfVirtualForm::map()</link> do
+				utworzenia definicji każdego z pól.</para>
+				<para>Jeżeli korzystamy z formularzy wielokrokowych, metoda musi zawierać wyłącznie
+				definicje dla pól z pojedynczego kroku. W trakcie jej wywołania dane z poprzednich
+				kroków zostały już sprawdzone i można się do nich odwoływać poprzez obiekt <classname>opfValidator</classname>.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.display">
+				<title>display()</title>
+				<methodsynopsis>
+				final public <type>void</type> <methodname>display</methodname>
+				</methodsynopsis>
+				<para>Liberalne przetwarzanie formularza. Formularz taki jest zawsze wyświetlany
+				na stronie i nie służy do wprowadzania do systemu jakichś ważnych informacji, lecz np.
+				służy pomocą przy ustawianiu opcji wyświetlania listy.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.execute">
+				<title>execute()</title>
+				<methodsynopsis>
+				final public <type>bool</type> <methodname>execute</methodname>
+				</methodsynopsis>
+				<para>Przetwarza formularz. Metoda zwraca <emphasis>true</emphasis>, jeżeli formularz
+				został wysłany i wszystkie pola zawierają dozwolone wartości - jest to sygnał dla skryptu,
+				że są one bezpieczne i mogą być dalej przetwarzane przez skrypt. W przeciwnym wypadku
+				zwracany jest <emphasis>false</emphasis>, który oznacza, że formularz albo nie
+				został wysłany i należy go wyświetlić, albo został nieprawidłowo wypełniony.</para>
+				<para>Wyświetlanie formularza można przeprowadzić w dwóch miejscach: albo poprzez
+				rozszerzenie w klasie potomnej metody <link linkend="library.opfvirtualform.view" endterm="">opfVirtualForm::view()</link>,
+				albo obsługując sytuację, gdy <emphasis>execute()</emphasis> zwróci "false". Dla
+				formularzy wielokrokowych metodę tę wywołuje się wyłącznie dla pierwszego kroku i
+				zwraca wtedy ona rezultat przetwarzania dla formularza jako całości. Jeśli zatem chcemy
+				według niego decydować o wyświetleniu go, musimy posłużyć się metodą 
+				<link linkend="library.opfvirtualform.get-step" endterm="">opfVirtualForm::getStep()</link>
+				do uzyskania informacji o tym, który krok ma być wyświetlony.</para>
+				<para>Jeśli formularz nie służy do wprowadzania ważnych danych, lecz np. pozwala
+				na wybór dodatkowych opcji wyświetlania listy wyników, skorzystaj z mniej restrykcyjnej
+				metody <link linkend="library.opfvirtualform.display" endterm="">opfVirtualForm::display()</link>.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.get-value">
+				<title>getValue()</title>
+				<methodsynopsis>
+				final public <type>mixed</type> <methodname>getValue</methodname>
+					<methodparam><type>string</type><parameter>$pole</parameter></methodparam>
+					<methodparam choice="opt"><type>bool</type><parameter>$lista</parameter> = false</methodparam>
+				</methodsynopsis>
+				<para>Metoda jeszcze nieudokumentowana.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.ignore">
+				<title>ignore()</title>
+				<methodsynopsis>
+				final public <type>void</type> <methodname>ignore</methodname>
+				</methodsynopsis>
+				<para>Metoda jeszcze nieudokumentowana.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.invalid">
+				<title>invalid()</title>
+				<methodsynopsis>
+				final public <type>bool</type> <methodname>invalid</methodname>
+				</methodsynopsis>
+				<para>Metoda zwraca <emphasis>true</emphasis>, jeżeli formularz został nieprawidłowo
+				wypełniony. Można jej użyć do reagowania na ten fakt w trakcie odświeżania błędnego
+				formularza.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.map">
+				<title>map()</title>
+				<methodsynopsis>
+				final protected <type>void</type> <methodname>map</methodname>
+					<methodparam><type>string</type><parameter>$nazwa</parameter></methodparam>
+					<methodparam><type>iopfConstraintContainer</type><parameter>$zbiornik</parameter></methodparam>
+					<methodparam><type>bool</type><parameter>$opcjonalny</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda definiuje reguły przetwarzania pola formularza <variable>$nazwa</variable>.
+				Pole <variable>$zbiornik</variable> ma identyczną funkcję, jak w przypadku metody
+				<link linkend="library.opfvalidator.map">opfValidator::map()</link>, tzn. jest używane
+				do kontroli danych. Ostatni parametr określa, czy pole jest obowiązkowe, czy nie.</para>
+				<para>W przeciwieństwie do <emphasis>opfValidator::map()</emphasis>, ta metoda
+				nie dokonuje kontroli danych od razu. Kiedy formularz jest wyświetlany, służy ona
+				do poinformowania biblioteki, jakie pola się w nim znajdują oraz jaki kod JavaScript
+				należy wygenerować dla niego, aby kontrolę taką móc przeprowadzić także po stronie
+				przeglądarki. Dopiero w momencie przysłania danych z formularza dane dostarczone
+				przez <emphasis>map()</emphasis> są używane do ich sprawdzenia.</para>
+				<para>Metoda ta jest przeznaczona do użytku wewnątrz abstrakcyjnej metody
+				<link linkend="library.opfvirtualform.create">create()</link>.</para>
+				
+				<example id="example.library.opfvirtualform.map">
+					<title>Przykładowy formularz</title>
+					<programlisting><![CDATA[<?php
+
+class mojFormularz extends opfVirtualForm
+{
+	public function create()
+	{
+		$this -> map('username', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_LEN_GT, 3)
+		), false);
+		$this -> map('password', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_LEN_GT, 3),
+			new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
+		), false);
+		$this -> map('email', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
+		), false);
+		$this -> map('age', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_INTEGER),
+			new opfConstraint(MAP_SCOPE, 12, 99)
+		), false);
+		$this -> map('content', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_TEXT),
+			new opfConstraint(MAP_LEN_GT, 10)
+		), false);
+	} // end create();
+}
+					
+$form = new mojFormularz($opf, 'formularz');
+if($form -> execute())
+{
+	// przetwarzanie formularza
+}
+else
+{
+	// wyswietlanie formularza					
+}					
+?>
+]]></programlisting>
+				</example>
+			</sect2>
+
+			<sect2 id="library.opfvirtualform.next-step">
+				<title>nextStep()</title>
+				<methodsynopsis>
+				final public <type>bool</type> <methodname>nextStep</methodname>
+					<methodparam><type>opfVirtualForm</type><parameter>$formularz</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda służy do tworzenia formularzy wielokrokowych. Każdy krok jest reprezentowany
+				przez osobny obiekt jednej lub więcej klas potomnych od <classname>opfVirtualForm</classname>.
+				Za pomocą <emphasis>nextStep()</emphasis> możemy połączyć je w łańcuch kroków, ustawiając
+				dla każdego obiektu jego następnik w sekwencji.</para>
+				
+				<example id="example.library.opfvirtualform.next-step">
+					<title>Sekwencja kroków w formularzu</title>
+					<programlisting><![CDATA[<?php
+
+$step1 = new form1Step1($opf, 'form1');
+$step2 = new form1Step2($opf, 'form1');	
+$step3 = new form1Step3($opf, 'form1');	
+$step4 = new form1Step4($opf, 'form1');
+
+$step1 -> nextStep($step2);
+$step2 -> nextStep($step3);
+$step3 -> nextStep($step4);
+
+if($step1 -> execute())
+{
+	// formularz prawidlowo wypelniony
+}
+?>
+]]></programlisting>
+				</example>
+				<para>Po utworzeniu sekwencji całość przetwarzamy, wywołując metodę
+				<link linkend="library.opfvirtualform.execute">execute()</link> na pierwszym
+				z obiektów.</para>
+				<para>Formularze składające się na poszczególne kroki muszą mieć identyczną nazwę,
+				gdyż inaczej OPF nie będzie w stanie powiązać ich w łańcuch. W powyższym przykładzie
+				dostały one wszędzie nazwę "form1".</para>
+			</sect2>
+						
+			<sect2 id="library.opfvirtualform.process">
+				<title>process()</title>
+				<methodsynopsis>
+				public <type>bool</type> <methodname>process</methodname>
+				</methodsynopsis>
+				<para>Programista może rozszerzyć tę metodę, by dodać do formularza niestandardowe
+				sprawdzanie poprawności wprowadzonych danych. Można przyjąć, że w momencie jej wywołania
+				dane przeszły przez domyślne filtry obiektu <classname>opfValidator</classname>, zatem
+				można wykorzystać go do ich pobierania. Metoda musi zwrócić "true", jeżeli kontrola
+				przebiegła poprawnie, lub "false" w przeciwnym wypadku. Dodatkowo programista ma możliwość
+				powiadomienia formularza o tym, które pole zawiera błąd oraz przypisać mu odpowiedni komunikat
+				błędu. Służy do tego metoda <link linkend="library.opfvirtualform.set-error">setError()</link>.</para>
+
+				<example id="example.library.opfvirtualform.process">
+					<title>Niestandardowa kontrola formularza</title>
+					<programlisting><![CDATA[<?php
+
+class mojFormularz extends opfVirtualForm
+{
+	public function create()
+	{
+		$this -> map('username', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_LEN_GT, 3)
+		), false);
+		$this -> map('password', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_LEN_GT, 3),
+			new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
+		), false);
+		$this -> map('email', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
+		), false);
+		$this -> map('age', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_INTEGER),
+			new opfConstraint(MAP_SCOPE, 12, 99)
+		), false);
+		$this -> map('content', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_TEXT),
+			new opfConstraint(MAP_LEN_GT, 10)
+		), false);
+	} // end create();
+					
+	public function process()
+	{
+		// Przyjmujemy, ze funkcja checkUniqueUser() sprawdza np. w bazie
+		// danych, czy podana nazwa uzytkownika jest juz wykorzystywana
+		if(checkUniqueUser($this->validator->username))
+		{
+			$this -> setError('username', 'opf', 'username_already_used');
+			return false;					
+		}
+		return true;
+	} // end process();
+}
+?>
+]]></programlisting>
+				</example>
+				<para>Przykład pokazuje, w jaki sposób wykorzystać metodę <emphasis>process()</emphasis>
+				do połączenia formularza np. z bazą danych w celu sprawdzenia, czy wpisana nazwa użytkownika
+				jest już wykorzystywana. Jeśli faktycznie internauta coś takiego wpisał, możemy go o tym
+				powiadomić dokładnie w ten sam sposób, jakby problem powstał w momencie standardowej
+				kontroli wykonywanej przez metodę <link linkend="library.opfvirtualform.create">create()</link>.</para>		
+				<para>W trakcie pojedynczego wywołania metody <emphasis>process()</emphasis> dozwolone jest
+				kilkakrotne wywołanie <link linkend="library.opfvirtualform.set-error">setError()</link> dla
+				różnych pól.</para>
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.set-datasource">
+				<title>setDatasource()</title>
+				<methodsynopsis>
+				final public <type>bool</type> <methodname>setDatasource</methodname>
+					<methodparam><type>Array</type><parameter>$dane</parameter></methodparam>
+				</methodsynopsis>
+				<para>Ustawia źródło domyślnych danych, jakimi ma być wypełniony formularz, jeżeli
+				jest wyświetlany po raz pierwszy. Przyjmuje się, że takim źródłem jest tablica asocjacyjna
+				wartości, gdzie pojedyncza para "nazwa"-"wartość" przypisuje domyślną wartość polu "nazwa".</para>
+				<para>Jeżeli formularz został błędnie wypełniony, OPF automatycznie przepisze wartości ze standardowego
+				wejścia, ignorując zawartość źródła danych, tak więc programista powinien co najwyżej zadbać,
+				by w takiej sytuacji nie pobierać niepotrzebnie różnych informacji.</para>
+				<para>Za pomocą tej metody można również ustawić zbiór wartości dla list rozwijanych.
+				Robi się to, podając za indeks nazwę pola zakończoną sufiksem "Values", a za wartość
+				tablicę z danymi. Te wartości źródła danych są uwzględniane nawet, jeżeli formularz jest
+				źle wypełniony tak, aby i w tym wypadku zawartość listy była kompletna.</para>
+
+				<example id="example.library.opfvirtualform.set-datasource">
+					<title>Źródło danych dla formularza</title>
+					<programlisting><![CDATA[<?php
+
+class mojFormularz extends opfVirtualForm
+{
+	public function create()
+	{
+		$this -> map('lista', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_INTEGER),
+			new opfConstraint(MAP_GT, 0)
+		), false);
+		$this -> map('tresc', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_LEN_GT, 3)
+		), false);
+	} // end create();
+					
+	public function view()
+	{
+		$data = array();
+		
+		// Zbior elementow dla listy
+		$data['listaValues'] = array(
+			0 => 'Nic',
+			1 => 'Element 1',
+			2 => 'Element 2',
+			3 => 'Element 3					
+		);
+		if(!$this -> invalid())
+		{
+			// Formularz jest wyswietlany pierwszy raz, wiec trzeba
+			// przypisac domyslne wartosci
+		
+			// domyslnie ma byc zaznaczony pierwszy element listy
+			$data['lista'] = 0;
+			
+			// domyslna wartoscia pola "tresc" ma byc "Wpisz cos tutaj"
+			$data['tresc'] = 'Wpisz coś tutaj';
+		}
+		$this -> setDatasource($data);
+		$this -> tpl -> parse('formularz.tpl');
+	} // end view();
+}
+?>
+]]></programlisting>
+				</example>		
+			</sect2>
+			
+			<sect2 id="library.opfvirtualform.set-error">
+				<title>setError()</title>
+				<methodsynopsis>
+				final protected <type>void</type> <methodname>setError</methodname>
+					<methodparam><type>string</type><parameter>$pole</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$grupa</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$id</parameter></methodparam>
+					<methodparam choice="opt"><type>Array</type><parameter>$parametry</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda jeszcze nieudokumentowana.</para>
+			</sect2>
+
+			<sect2 id="library.opfvirtualform.set-request-method">
+				<title>setRequestMethod()</title>
+				<methodsynopsis>
+				final public <type>void</type> <methodname>setRequestMethod</methodname>
+					<methodparam><type>int</type><parameter>$metoda</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda jeszcze nieudokumentowana.</para>
+			</sect2>
+
+			<sect2 id="library.opfvirtualform.view">
+				<title>view()</title>
+				<methodsynopsis>
+				public <type>bool</type> <methodname>view</methodname>
+				</methodsynopsis>
+				<para>Metoda jeszcze nieudokumentowana.</para>
+			</sect2>
 		</sect1>
 
 		<sect1 id="library.opfdesign">
@@ -166,15 +965,200 @@
 		<sect1 id="library.iopfrouter">
 			<title>Interfejs iopfRouter</title>
 		</sect1>
-
-		<sect1 id="library.components">
-			<title>Komponenty</title>
-		</sect1>
 	</chapter>
 	<chapter id="templates">
 		<title>Dla twórców szablonów</title>
-		<sect1 id="templates.iopfrouter">
-			<title>Interfejs iopfRouter</title>
+		<para>Open Power Forms jest nadbudówką na system szablonów Open Power Template. W tym
+		rozdziale opisane zostaną nowe instrukcje oraz komponenty dostarczane przez OPF, które
+		umożliwiają także prostą oraz czytelną automatyzację wyświetlania formularzy za pomocą
+		szablonów.</para>
+		<para>Podczas budowania formularzy OPF należy niemal całkowicie zapomnieć o istnieniu HTML-owych
+		znaczników <literallayout>&lt;form&gt;, &lt;input&gt;, &lt;textarea&gt;</literallayout>, ponieważ
+		w ich miejsce stosuje się albo nowe instrukcje OPF, albo komponenty.</para>
+		<sect1 id="templates.instructions">
+			<title>Instrukcje</title>
+			<para>Wszystkie instrukcje OPF umiejscowione są w przestrzeni nazw "opf".</para>
+			<sect2 id="templates.instructions.opf-form">
+				<title>opf:form</title>
+				<para>Definiuje położenie formularza w kodzie HTML. Wewnątrz niej powinien
+				być umiejscowiony cały kod formularza oraz należących do niego komponentów.</para>
+				<table frame="all" id="params.opf-form">
+					<?dbhtml table-width="100%" ?>
+					<caption>opf:form - parametry</caption>
+					<tgroup cols="4" align="center">
+					<thead>
+					<row>
+					  <entry>Nazwa</entry>
+					  <entry>Typ</entry>
+					  <entry>Wymagany?</entry>
+					  <entry>Opis</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>name</entry>
+					  <entry>ID</entry>
+					  <entry>Tak</entry>
+					  <entry>Nazwa formularza. Parametr ten musi być koniecznie podany i pokrywać się
+					  z nazwą zdefiniowaną po stronie PHP dla odpowiadającego mu obiektu klasy wirtualnego
+					  formularza, ponieważ na podstawie niego OPF decyduje, dokąd przekazać kontrolę.</entry>
+					</row>
+					<row>
+					  <entry>display</entry>
+					  <entry>Wyrażenie</entry>
+					  <entry>Nie</entry>
+					  <entry>Umożliwia zdefiniowanie warunku wyświetlania formularza. Jeśli wartość wyrażenia
+					  wynosi "true", formularz zostanie wyświetlony, w przeciwnym wypadku cała zawartość znacznika
+					  zostanie ukryta. Ukrycie następuje także, jeśli dla danego znacznika "opf:form" nie został
+					  utworzony w skrypcie PHP odpowiadający mu obiekt wirtualnego formularza. W takim wypadku
+					  należy męczyć programistę.</entry>
+					</row>
+					<row>
+					  <entry>Pozostałe</entry>
+					  <entry>Wyrażenie</entry>
+					  <entry>No</entry>
+					  <entry>"opf:form" przyjmuje także identyczne argumenty, jak znacznik "FORM" w HTML-u, np.
+					  "metod" czy "action". Należy pamiętać jednak, że wprowadzona do nich wartość jest traktowana
+					  jak wyrażenie OPT, przez co statyczny tekst musimy obiejmować np. odwróconymi apostrofami. W zamian
+					  wewnątrz nich możemy dowolnie stosować operatory udostępniane przez OPT oraz umieszczać tam wartości
+					  bloków.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				
+				<example id="example.templates.opf-form">
+					<title>Szablon dla formularza OPF</title>
+					<programlisting><![CDATA[<opf:form name="formularz" method="`post`" action="`skrypt.php?id=`::$id">
+<table>
+	<tr>
+		<td class="nazwa">Imię:</td>
+		<td class="wartosc"><opt:opfInput name="imie"></opt:opfInput></td>			
+	</tr>	
+	<tr>
+		<td class="nazwa">Nazwisko:</td>
+		<td class="wartosc"><opt:opfInput name="nazwisko"></opt:opfInput></td>			
+	</tr>
+	<tr>
+		<td class="stopka" colspan="2"><input type="submit" value="OK"/></td>
+	</tr>	
+</table>		
+</opf:form>]]></programlisting>
+				</example>
+				
+				<para>Zwróćmy uwagę na sposób ustawiania wartości dla HTML-owych argumentów w instrukcji <emphasis>opf:form</emphasis>.
+				Tak jak wspominaliśmy, są to wyrażenia, zatem statyczny tekst musi być objęty np. odwróconymi apostrofami. W zamian
+				możemy jednak swobodnie stosować tam wszelkiej maści operatory oraz elegancko osadzać bloki.</para>
+			</sect2>
+		</sect1>
+		<sect1 id="templates.components">
+			<title>Komponenty</title>
+			<para>Każdy komponent potrafi komunikować się ze swoim formularzem. Pobiera w ten sposób wartość,
+			klasę CSS oraz ewentualny komunikat błędu. Wszystkie komponenty obsługują zdarzenie "onMessage"
+			generowane w przypadku wystąpienia błędu w sprawdzaniu danego pola. Zaleca się, aby kod obsługi
+			tego zdarzenia wyekspediować do szablonu kompilacyjnego (master template) do instrukcji <emphasis>{bindEvent}</emphasis>
+			udostępnianej przez OPT, a następnie tylko ładować go w każdym z komponentów, co znacznie poprawi przenośność i oszczędzi
+			pisania. Poniżej podany jest przykład takiego rozwiązania:</para>
+			
+			<example id="example.templates.on-message">
+				<title>Zdarzenie "onMessage"</title>
+				<programlisting><![CDATA[{* szablon kompilacyjny *}
+					
+<opt:bindEvent id="aMessage" name="onMessage" message="msg" position="down">
+{foreach=@msg; id; simpleMessage}
+<p class="error">{@simpleMessage}</p>
+{/foreach}
+</opt:bindEvent>]]></programlisting>
+					
+				<programlisting><![CDATA[{* wewnatrz formularza *}
+<opt:opfInput name="nazwa"><opt:load event="aMessage"/></opt:opfInput>]]></programlisting>
+			</example>
+			<para>Do kodu zdarzenia przekazywana jest tablica komunikatów (w razie, gdyby wartość
+			w polu nie spełniała aż kilku narzuconych warunków), dlatego należy przetwarzać ją
+			pętlą foreach tak, jak na przykładzie.</para>
+			<para>Każdy komponent traktuje wszystkie podane mu parametry jako argumenty znaczników HTML,
+			w ten sposób możemy określić np. nazwę czy długość pola. Dodatkowo rozpoznaje także specjalny
+			parametr "refresh". Domyślna jego wartość to "true" i oznacza ona, że w razie błędnego odświeżenia
+			formularza wartość tego pola ma być odświeżona na bazie tego, co użytkownik do niego wpisał. Jeśli
+			ustawimy je na "false", pole zostanie wtedy zainicjowane pustą wartością.</para>	
+			<sect2 id="templates.components.opf-checklist">
+				<title>opfChecklist</title>
+				<para>Lista wielokrotnego wyboru zbudowana z pól CHECKBOX. Komponent niezaimplementowany.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-check-question">
+				<title>opfCheckQuestion</title>
+				<para>Pytanie "Tak"/"Nie" reprezentowane przez pojedyncze pole CHECKBOX.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-file">
+				<title>opfFile</title>
+				<para>Pole do uploadu pliku.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-input">
+				<title>opfInput</title>
+				<para>Komponent reprezentujący zwykłe pole tekstowe.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-label">
+				<title>opfLabel</title>
+				<para>Komponent reprezentujący statyczny tekst, który wyświetlany jest na stronie,
+				a przesyłany jest do formularza jako pole HIDDEN.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-password">
+				<title>opfPassword</title>
+				<para>Pole do wpisywania hasła. Jego zawartość nie jest odświeżana wraz z formularzem
+				w przypadku jego błędnego wypełnienia.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-question">
+				<title>opfQuestion</title>
+				<para>Pytanie "Tak"/"Nie" zrealizowane za pomocą dwóch pól RADIO.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-radio">
+				<title>opfRadio</title>
+				<para>Lista zbudowana z pól RADIO umieszczonych wewnątrz znacznika UL.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-retype-password">
+				<title>opfRetypePassword</title>
+				<para>Pole do powtórzenia wpisanego hasła.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-select">
+				<title>opfSelect</title>
+				<para>Tradycyjne pole SELECT.</para>
+			</sect2>
+			<sect2 id="templates.components.opf-textarea">
+				<title>opfTextarea</title>
+				<para>Tradycyjne pole TEXTAREA.</para>
+			</sect2>
 		</sect1>
 	</chapter>
+	<appendix label="A" id="appendix.a">
+		<title>Do zrobienia</title>
+		<para>Biblioteka Open Power Forms nie jest jeszcze ukończona. Do zrobienia pozostały:</para>
+		<orderedlist>
+			<listitem>Napisać javascriptową implementację kontrolera danych.</listitem>
+			<listitem>Napisać nakładkę umożliwiającą szybką integrację z Zend Frameworkiem.</listitem>
+			<listitem>Ukończyć prace nad komponentami.</listitem>
+			<listitem>Rozstrzygnąć sprawę routerów i generowania adresów URL.</listitem>
+			<listitem>Ukończyć dokumentację.</listitem>
+		</orderedlist>
+	</appendix>
+	<appendix label="B" id="appendix.b">
+		<title>Autorzy i licencja</title>
+		<para>Open Power Forms jest rozpowszechniany na licencji GNU Lesser General Public License 2.1.
+		Pełen jej tekst jest dołączony do każdej paczki z OPF. Dokumentacja jest dostępna na zasadach licencji
+		GNU Free Documentation License 2.1, której tekst rozpowszechniany jest wraz z dokumentacją w
+		zewnętrznym pliku.</para>
+		<para>Autorzy:</para>
+		<orderedlist>
+			<listitem><ulink url="http://www.zyxist.com">Tomasz "Zyx" Jędrzejewski</ulink> - projektant i programista PHP.</listitem>
+			<listitem>Łukasz "Destroyer" Giza - programista PHP/JavaScript.</listitem>
+			<listitem>Tomasz "Slump" Szczupliński - koordynator projektów Open Power.</listitem>
+		</orderedlist>
+		<para>Dane kontaktowe dostępne są na stronie <ulink url="http://www.openpb.net">www.openpb.net</ulink></para>
+		<para>Pragniemy podziękować:</para>
+		<orderedlist>
+			<listitem>Krzysztof J. Szklarski - sponsoring.</listitem>
+			<listitem><ulink url="http://www.acs.pl">acs.pl</ulink> - za dobry hosting :).</listitem>
+			<listitem>Wszystkim, którzy używają OPF w swoich projektach.</listitem>		
+		</orderedlist>
+		<para>Jest to koniec dokumentacji OPF.</para>
+	</appendix>
 </book>

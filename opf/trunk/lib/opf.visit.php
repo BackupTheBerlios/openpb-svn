@@ -22,6 +22,7 @@
 	{
 		public
 			$ip,
+			$longIp,
 			$host,
 			$port,
 			$currentAddress,
@@ -45,6 +46,7 @@
 		{
 			// Get the IP and similar stuff
 			$this -> ip = $_SERVER['REMOTE_ADDR'];
+			$this -> longIp = ip2long($this -> ip);
 			if(!isset($_SERVER['REMOTE_HOST']))
 			{
 				$this -> host = @gethostbyaddr($_SERVER['REMOTE_ADDR']);

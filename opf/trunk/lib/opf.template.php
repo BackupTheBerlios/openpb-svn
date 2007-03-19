@@ -47,6 +47,7 @@
 				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 				'method' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, 'post'),
 				'action' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, '`index.php`'),
+				'display' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, 'true'),
 				'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
 			$tags = $this -> compiler -> parametrize('opfForm', $block -> getAttributes(), $params);
@@ -60,10 +61,10 @@
 			{
 				$urlBlock = $urlNode -> getFirstBlock();
 				$urlParams = array(
-					'file' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+					'_load' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
 					'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
-				$variables = $this -> compiler -> parametrize('opfFormUrl', $urlBlock -> getAttributes(), $urlParams);
+				$variables = $this -> compiler -> parametrize('opf:formUrl', $urlBlock -> getAttributes(), $urlParams);
 				
 				$code = ' $rVariables = array(';
 				// Build code
@@ -72,17 +73,26 @@
 					$code .= '\''.$name.'\' => '.$value.',';
 				}
 				$code .= '); ';
-				$action = '$this->opf->router->createURL('.$urlParams['file'].', $rVariables);';
+				if(!is_null($params['_load']))
+				{
+					$action = '(is_array('.$params['_load'].') ? $this->opf->router->createURL($rVariables + '.$params['_load'].') : $this->opf->router->createURL($rVariables)); ';
+				}
+				else
+				{
+					$action = '$this->opf->router->createURL($rVariables);';
+				}
 			}
 			// /do przerobki
 						
-			$this -> compiler -> out(' if(isset($this->data[\''.$params['name'].'\'])){ '.$code);
+			$this -> compiler -> out(' if(isset($this->data[\''.$params['name'].'\']) && '.$params['display'].'){ '.$code);
 			
 			$code = '<form';
 			foreach($tags as $name => $value)
 			{
 				switch($name)
 				{
+					case 'display':
+						break;
 					case 'method':
 						$code .= ' method="'.$value.'"';
 						break;
@@ -95,16 +105,16 @@
 						$code .= ' '.$name.'="<'.'?php echo '.$value.' ?'.'>"';
 				}
 			}
-			$code .= '><input type="hidden" name="opfFormName" value="'.$params['name'].'"/>';
+			$code .= '><input type="hidden" name="<?=$this->opf->prefix?>FormName" value="'.$params['name'].'"/>';
 			$this -> compiler -> out($code, true);
 			
 			$this -> compiler -> out(' global $formName; $formName = \''.$params['name'].'\'; if($this->data[\''.$params['name'].'\']->step !== NULL){
-				echo \'<input type="hidden" name="opfStep" value="\'.($this->data[\''.$params['name'].'\']->step+1).\'"/>\';
+				echo \'<input type="hidden" name="\'.$this->opf->prefix.\'Step" value="\'.($this->data[\''.$params['name'].'\']->step+1).\'"/>\';
 			}
 			if(count($this->data[\''.$params['name'].'\']->items) > 0){
 				foreach($this->data[\''.$params['name'].'\']->items as $itemName => $itemValue){
 					echo \'<input type="hidden" name="\'.$itemName.\'" value="\'.$itemValue."\\"/>\\n";				
-				}			
+				}
 			} ');
 		} // end formBegin();
 
@@ -113,6 +123,14 @@
 			$this -> compiler -> out('</form>', true);
 			$this -> compiler -> out(' } ');
 		} // end formEnd();
+		
+		public function processAttribute(optBlock $block)
+		{
+			if($block -> getName() == 'opf:classfor')
+			{
+				$this -> compiler -> out(' echo $this->data[$formName]->getClass(\''.$block -> getAttributes().'\'); ');
+			}
+		} // end processAttribute();
 	} // end opfForm;
 	
 	class opfJavascript extends optInstruction
@@ -196,15 +214,14 @@
 		
 		public function instructionNodeProcess(ioptNode $node)
 		{
-			// do przerobki!
-
 			$block = $node -> getFirstBlock();
 			$params = array(
-				'file' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
+				'_load' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
+				'_capture' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, NULL),
 				'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
-			$variables = $this -> compiler -> parametrize('opfUrl', $block -> getAttributes(), $params);
-			
+			$variables = $this -> compiler -> parametrize('opf:url', $block -> getAttributes(), $params);
+
 			$code = ' $rVariables = array(';
 			// Build code
 			foreach($variables as $name => $value)
@@ -212,10 +229,59 @@
 				$code .= '\''.$name.'\' => '.$value.',';
 			}
 			$code .= '); ';
-			$this -> compiler -> out($code.' echo $this->opf->router->createURL('.$params['file'].', $rVariables); ');
+			if(!is_null($params['_capture']))
+			{	
+				$dest = '$this->capture[\''.$params['_capture'].'\'] = ';
+			}
+			else
+			{
+				$dest = ' echo ';
+			}
+			if(!is_null($params['_load']))
+			{
+				$this -> compiler -> out($code.' '.$dest.'(is_array('.$params['_load'].') ? $this->opf->router->createURL($rVariables + '.$params['_load'].') : $this->opf->router->createURL($rVariables)); ');
+			}
+			else
+			{
+				$this -> compiler -> out($code.' '.$dest.'$this->opf->router->createURL($rVariables); ');
+			}
 		} // end instructionNodeProcess();
 	} // end opfUrl;
 	
-	
+	class opfCall extends optInstruction
+	{
+		public function configure()
+		{
+			return array(
+				// processor name
+				0 => 'opfCall',
+				// instructions
+				'opf:call' => OPT_COMMAND
+			);
+		} // end configure();
+
+		public function instructionNodeProcess(ioptNode $node)
+		{
+			$block = $node -> getFirstBlock();
+			$params = array(
+				'event' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+				'for' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
+			);
+			
+			$variables = $this -> compiler -> parametrize('opf:call', $block -> getAttributes(), $params);
+			if(isset($this -> compiler -> genericBuffer['bindEvent'][$params['event']]))
+			{
+				$info = $this -> compiler -> genericBuffer['bindEvent'][$params['event']];
+
+				$this -> compiler -> out('if(isset($this -> data[$formName] -> errorMessages[\''.$params['for'].'\']))
+				{ $this->vars[\''.$info['message'].'\'] = $this -> data[$formName] -> errorMessages[\''.$params['for'].'\']; ');
+				foreach($info['tree'] as $block)
+				{
+					$this -> defaultTreeProcess($block);
+				}
+				$this -> compiler -> out(' } ');
+			}
+		} // end instructionNodeProcess();
+	} // end opfCall;
 
 ?>
