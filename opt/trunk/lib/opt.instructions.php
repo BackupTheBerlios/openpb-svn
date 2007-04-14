@@ -244,9 +244,10 @@
 		
 		private function showAction($name, $order, $state, $datasource, $show)
 		{
+			$link = '';
 			if($this -> tpl -> sectionDynamic == OPT_SECTION_COMPILE)
 			{
-				if($this -> tpl -> data[$name] instanceof optDynamicData)
+				if(isset($this -> tpl -> data[$name]) && $this -> tpl -> data[$name] instanceof optDynamicData)
 				{
 					// This is a dynamic section
 					$output = ' if(is_object($this->data[\''.$name.'\'])){ $__'.$name.'_data = $this->data[\''.$name.'\']->call(); }else{ $__'.$name.'_data = array(); }';
@@ -254,8 +255,7 @@
 					$link = '$__'.$name.'_data';
 				}
 				else
-				{
-					$link = '';
+				{					
 					$syntax = $this -> getLink($name, $datasource, $link); 
 					$output = '';
 				}
@@ -768,8 +768,7 @@ case 0:
 
 		} // end psEnd();
 
-
-	}
+	} // end optPagesystem;
 
 	class optInclude extends optInstruction
 	{
@@ -794,33 +793,6 @@ case 0:
 			);
 			$variables = $this -> compiler -> parametrize('include', $block -> getAttributes(), $params);
 
-			// Find the code snippets
-			$snippetName = '';
-			$snippet = $this -> findSnippets($block, $snippetName, true);
-			if(is_null($snippet))
-			{
-				$snippet = array();
-				foreach($block as $testnode)
-				{
-					if($testnode -> getType() == OPT_UNKNOWN)
-					{
-						switch($testnode -> getName())
-						{
-							case 'page':
-							case 'active':
-							case 'separator':
-							case 'prev':
-							case 'next':
-							case 'first':
-							case 'last':
-								$snippet[$testnode->getName()] = $testnode->getFirstBlock();
-								break;
-						}
-					}
-				}
-			}
-
-
 			$code = '';
 			foreach($variables as $name => $variable)
 			{
@@ -832,7 +804,7 @@ case 0:
 			}
 			if($params['default'] != NULL)
 			{
-				$code .= ' if(!$this -> doInclude('.$params['file'].')){ $this -> doInclude('.$params['default'].'); } ';
+				$code .= ' if(!$this -> doInclude('.$params['file'].', true)){ $this -> doInclude('.$params['default'].'); } ';
 			}
 			else
 			{
@@ -974,11 +946,7 @@ case 0:
 		} // end process();
 		
 		private function ifBegin($group)
-		{
-			# nestingLevel	 	
-		 	$this -> nesting++;
-		 	# /nestingLevel
-		 	
+		{	 	
 			if($this -> compiler -> tpl->xmlsyntaxMode == 1 || $this -> compiler -> tpl -> strictSyntax == 1)
 			{
 				$params = array(
@@ -995,62 +963,28 @@ case 0:
 		
 		private function ifElseif($group)
 		{
-			# nestingLevel
-			if($this -> nesting > 0)
+			if($this -> compiler->tpl->xmlsyntaxMode == 1 || $this -> compiler->tpl->strictSyntax == 1)
 			{
-			# /nestingLevel
-				if($this -> compiler->tpl->xmlsyntaxMode == 1 || $this -> compiler->tpl->strictSyntax == 1)
-				{
-					$params = array(
-						'test' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
-					);
-					$this -> compiler -> parametrize('elseif', $group, $params);
-					$this -> compiler -> out('; }elseif('.$params['test'].'){ ');
-				}
-				else
-				{
-					$this -> compiler -> out(' }elseif('.$this -> compiler -> compileExpression($group[4]).'){ ');
-				}
-		 	# nestingLevel
-		 	}
+				$params = array(
+					'test' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION)
+				);
+				$this -> compiler -> parametrize('elseif', $group, $params);
+				$this -> compiler -> out('; }elseif('.$params['test'].'){ ');
+			}
 			else
 			{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'ELSEIF called when not in IF.', OPT_E_IF_ELSEIF);
-		 	}
-		 	# /nestingLevel
+				$this -> compiler -> out(' }elseif('.$this -> compiler -> compileExpression($group[4]).'){ ');
+			}
 		} // end ifElseif();
 		
 		private function ifElse($group)
 		{
-			# nestingLevel
-		 	if($this -> nesting > 0)
-			{
-			# /nestingLevel
-		 		$this -> compiler -> out(' }else{ ');
-		 	# nestingLevel
-		 	}
-			else
-			{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'ELSE called when not in IF.', OPT_E_IF_ELSE);
-		 	}
-		 	# /nestingLevel
+	 		$this -> compiler -> out(' }else{ ');
 		} // end ifElse();
 		
 		private function ifEnd()
 		{
-			# nestingLevel
-		 	if($this -> nesting > 0)
-			{
-		 		$this -> nesting--;
-		 	# /nestingLevel
-		 		$this -> compiler -> out(' } ');
-		 	# nestingLevel
-		 	}
-			else
-			{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/IF called when not in IF.', OPT_E_IF_END);
-		 	}
-		 	# /nestingLevel
+	 		$this -> compiler -> out(' } ');
 		} // end ifEnd();
 	}
 	
@@ -1097,21 +1031,12 @@ case 0:
 			$this -> names[$this->nesting] = $params['to'];
 			$this -> compiler -> out(' ob_start(); ');
 			$this -> nesting++;
-			
-			$this -> oldMaster = $this -> compiler -> masterLevel;
 		} // end captureBegin();
 		
 		private function captureEnd()
 		{
-			if($this -> nesting > 0)
-			{			
-				$this -> nesting--;
-				$this -> compiler -> out(' $this -> capture[\''.$this->names[$this->nesting].'\'] = ob_get_clean(); ');
-			}
-			else
-			{
-				$this -> compiler -> tpl -> error(E_USER_ERROR, 'Trying to call sub-capture command ('.$matches[4].')', OPT_E_CAPTURE_SUB);
-			}
+			$this -> nesting--;
+			$this -> compiler -> out(' $this -> capture[\''.$this->names[$this->nesting].'\'] = ob_get_clean(); ');
 		} // end captureEnd();
 
 		public function processOpt($namespace)
@@ -1122,8 +1047,6 @@ case 0:
 	
 	class optFor extends optInstruction
 	{
-		private $nesting;
-	
 		public function configure()
 		{
 			return array(
@@ -1160,30 +1083,12 @@ case 0:
 				'iterate' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ASSIGN_EXPR)
 			);
 			$this -> compiler -> parametrize('for', $group, $params);
-	
-			# nestingLevel
-		 	
-		 	$this -> nesting++;
-		 	# /nestingLevel
-	
 	 		$this -> compiler -> out(' for('.$params['begin'].'; '.$params['end'].'; '.$params['iterate'].'){ ');
 		} // end forBegin();
 		
 		private function forEnd()
 		{
-			# nestingLevel
-		 	if($this -> nesting > 0)
-		 	{
-		 		$this -> nesting--;
-		 	# /nestingLevel
-		 		$this -> compiler -> out(' } ');
-		 	# nestingLevel
-		 	}
-		 	else
-		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/FOR called when not in FOR.', OPT_E_FOR_END);
-		 	}
-		 	# /nestingLevel
+	 		$this -> compiler -> out(' } ');
 		} // end forEnd();
 	}
 	
@@ -1228,10 +1133,6 @@ case 0:
 		
 		private function foreachBegin($group)
 		{
-			# nestingLevel
-			$this -> nesting++;
-			# /nestingLevel
-	
 			$params = array(
 				'table' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
 				'index' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
@@ -1251,30 +1152,12 @@ case 0:
 		
 		private function foreachElse()
 		{
-		 	# nestingLevel
-		 	if($this -> nesting == 0)
-		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, 'FOREACHELSE called when not in FOREACH.', OPT_E_FOREACH_ELSE);
-		 	}
-		 	# /nestingLevel
 		 	$this -> compiler -> out(' } }else{ { ');		
 		} // end foreachElse();
 		
 		private function foreachEnd()
 		{
-			# nestingLevel
-		 	if($this -> nesting > 0)
-		 	{
-		 		$this -> nesting--;
-		 	# /nestingLevel
-	 			$this -> compiler -> out(' } } ');
-		 	# nestingLevel
-		 	}
-		 	else
-		 	{
-		 		$this -> compiler -> tpl -> error(E_USER_ERROR, '/FOREACH called when not in FOREACH.', OPT_E_FOREACH_END);
-		 	}
-		 	# /nestingLevel
+ 			$this -> compiler -> out(' } } ');
 		} // end foreachEnd();
 	}
 	

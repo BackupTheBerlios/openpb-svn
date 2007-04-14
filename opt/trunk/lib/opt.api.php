@@ -20,10 +20,30 @@
 		define('OPT_SECTION_SINGLE', 1);
 		define('OPT_PRIORITY_NORMAL', 0);
 		define('OPT_PRIORITY_HIGH', 1);
-		define('OPT_VERSION', '1.1.0');
+		define('OPT_VERSION', '1.1.1');
 
 		define('OPT_E_ARRAY_REQUIRED', 2);
 		define('OPT_E_FILE_NOT_FOUND', 6);
+		define('OPT_E_ENCLOSING_STATEMENT', 101);
+		define('OPT_E_UNKNOWN', 102);
+		define('OPT_E_FUNCTION_NOT_FOUND', 103);
+		define('OPT_E_CONSTANT_NOT_FOUND', 104);
+		define('OPT_E_COMMAND_NOT_FOUND', 105);
+		define('OPT_E_EXPRESSION', 106);
+		define('OPT_E_REQUIRED_NOT_FOUND', 107);
+		define('OPT_E_INVALID_PARAMETER', 108);
+		define('OPT_E_DEFAULT_MARKER', 109);
+		define('OPT_E_UNKNOWN_PARAM', 110);
+		define('OPT_E_PARAM_STYLE', 111);
+		define('OPT_W_LANG_NOT_FOUND', 151);
+		define('OPT_E_IF_ELSEIF', 201);
+		define('OPT_E_IF_ELSE', 202);
+		define('OPT_E_IF_END', 203);
+		define('OPT_E_BIND_NOT_FOUND', 208);
+		define('OPT_W_DYNAMIC_OPENED', 301);
+		define('OPT_W_DYNAMIC_CLOSED', 302);
+		define('OPT_W_SNIPPETS_NOT_DEF', 303);
+		define('OPT_W_SHORT_CYCLE', 304);
 		
 		# OBJECT_I18N
 		interface ioptI18n
@@ -45,8 +65,6 @@
 	{
 		define('OPT_DIR', './');
 	}
-
-	require(OPT_DIR.'opt.error.php');
 
 	class optApi
 	{
@@ -90,8 +108,8 @@
 		public $components = array();
 		# /COMPONENTS
 		public $delimiters = array(0 => 
-								'\{(\/?)(([a-zA-Z]+)\:)?(.*?)(\/?)\}',
-								'([a-zA-Z]*)(\:)([a-zA-Z0-9\_]*)\=\"(.*?[^\\\\])\"'
+								'\{(\/?)(($$NS$$)\:)?(.*?)(\/?)\}',
+								'($$NS$$)(\:)([a-zA-Z0-9\_]*)\=\"(.*?[^\\\\])\"'
 							);
 		public $filters = array(
 								'pre' => array(),
@@ -100,6 +118,7 @@
 								'output' => array()
 							);
 		public $instructionFiles = array();
+		public $nschange = true;
 		public $namespaces = array(0 => 'opt');
 		
 		// I18n
@@ -114,6 +133,7 @@
 
 		public function error($type, $message, $code)
 		{
+			require_once(OPT_DIR.'opt.error.php');
 			require_once(OPT_DIR.'opt.core.php');
 			optErrorMessage($this, $type, $message, $code);
 		} // end error();
@@ -232,22 +252,10 @@
 				return false;
 			}
 
-			// Only if we want to return the output as a text
-			if(!$display)
-			{
-				ob_start();
-			}
-
 			// Disable E_NOTICE and include the compiled version
 			$oldErrorReporting = error_reporting(E_ALL ^ E_NOTICE);
 			include($this -> compile.$compiled);
 			error_reporting($oldErrorReporting);
-			
-			// Return the output, if needed.
-			if(!$display)
-			{
-				return ob_get_clean();
-			}
 		} // end doInclude();
 		
 		protected function needCompile($filename, $noException = false)

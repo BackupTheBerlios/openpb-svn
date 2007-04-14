@@ -403,7 +403,6 @@
 				}
 				$regex = str_replace('$$NS$$', $nslist, implode('|', $this -> tpl -> delimiters));
 			}
-
 			$this -> output = '';			
 			// initialize the tree
 			$root = $current = new optNode(NULL, OPT_ROOT, NULL);
@@ -476,7 +475,6 @@
 							{
 								continue;
 							}
-							
 							// an attribute
 							if($result[8][$i] == ':')
 							{

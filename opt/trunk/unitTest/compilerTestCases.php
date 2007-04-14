@@ -131,13 +131,12 @@
 			$this -> control = array(0 => 'optCompilerTester', 'optEscaper');
 			$this -> functions['checkrole'] = 'checkrole';
 			$this -> functions['menuperms'] = 'menuperms';
+			$this -> xmlsyntaxMode = true;
 			$this -> compiler = new optCompiler($this);
 		} // end __construct();
 	
 		public function codeParse($code)
 		{
-			$this -> captureTo = 'echo';
-			$this -> captureDef = 'echo';
 			return $this -> compiler -> parse($code);
 		} // end doParse();
 	
@@ -165,7 +164,7 @@
 		{
 			unset($this -> opt);		
 		} // end tearDown();
-		
+
 		public function testExpressionStrings()
 		{
 			try
@@ -1167,6 +1166,20 @@ test="foo"
 				$this -> fail('Exception returned: '.$exc -> getMessage());
 			}
 		} // end testStaticTextEntities();
+		
+		public function testUnusedNamespaces()
+		{
+			try
+			{
+				$template = '<test foo:attribute="{$variable}" opt:attribute="{$value}"/>';
+				echo $result = $this->opt->compiler->parse(NULL, $template);
+				$this -> assertEquals('<test foo:attribute="<'.'?php echo $this->data[\'variable\']; ?'.'>" opt:attribute="{$value}"/>', $result);
+			}
+			catch(optException $exc)
+			{
+				$this -> fail('Exception returned: '.$exc->getMessage());
+			}			
+		} // end testUnusedNamespaces();
 	}
 
 ?>

@@ -1,7 +1,7 @@
 <?php 
 	define('OPT_DIR', '../lib/');
 	require('../lib/opt.class.php');
-
+	require('../lib/opt.components.php');
 	try{ 
 		$tpl = new optClass; 
 		$tpl -> root = './templates/';

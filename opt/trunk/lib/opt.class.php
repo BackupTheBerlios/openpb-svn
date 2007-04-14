@@ -58,10 +58,6 @@
 	define('OPT_E_IF_ELSEIF', 201);
 	define('OPT_E_IF_ELSE', 202);
 	define('OPT_E_IF_END', 203);
-	define('OPT_E_CAPTURE_SUB', 204);
-	define('OPT_E_FOR_END', 205);
-	define('OPT_E_FOREACH_ELSE', 206);
-	define('OPT_E_FOREACH_END', 207);
 	define('OPT_E_BIND_NOT_FOUND', 208);
 	define('OPT_W_DYNAMIC_OPENED', 301);
 	define('OPT_W_DYNAMIC_CLOSED', 302);
@@ -312,61 +308,60 @@
 			{
 				$charset = ';charset='.$this -> charset;
 			}
-
-			switch($content)
-			{		
-				case OPT_HTML:
-					$this -> contentType = 'text/html';
-					break;
-				case OPT_XHTML:
-					if(preg_match('/application\/xhtml\+xml(?![+a-z])(;q=(0\.\d{1,3}|[01]))?/i', $_SERVER['HTTP_ACCEPT'], $matches))
-					{
-						$xhtmlQ = isset($matches[2]) ? ($matches[2]+0.2) : 1;
-						if(preg_match('/text\/html(;q=(0\.\d{1,3}|[01]))s?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+			if(is_string($content))
+			{
+				$this -> contentType = $content;
+			}
+			else
+			{
+				switch($content)
+				{		
+					case OPT_HTML:
+						$this -> contentType = 'text/html';
+						break;
+					case OPT_XHTML:
+						if(preg_match('/application\/xhtml\+xml(?![+a-z])(;q=(0\.\d{1,3}|[01]))?/i', $_SERVER['HTTP_ACCEPT'], $matches))
 						{
-							$htmlQ = isset($matches[2]) ? $matches[2] : 1;
-							if($xhtmlQ >= $htmlQ)
+							$xhtmlQ = isset($matches[2]) ? ($matches[2]+0.2) : 1;
+							if(preg_match('/text\/html(;q=(0\.\d{1,3}|[01]))s?/i', $_SERVER['HTTP_ACCEPT'], $matches))
+							{
+								$htmlQ = isset($matches[2]) ? $matches[2] : 1;
+								if($xhtmlQ >= $htmlQ)
+								{
+									$this -> contentType = 'application/xhtml+xml';
+									break;
+								}
+							}
+							else
 							{
 								$this -> contentType = 'application/xhtml+xml';
 								break;
 							}
 						}
-						else
+						$this -> contentType = 'text/html';
+						break;
+					case OPT_FORCED_XHTML:
+						if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
 						{
 							$this -> contentType = 'application/xhtml+xml';
-							break;
 						}
-					}
-					$this -> contentType = 'text/html';
-					break;
-				case OPT_FORCED_XHTML:
-					if(stristr($_SERVER['HTTP_ACCEPT'], 'application/xhtml+xml'))
-					{
-						$this -> contentType = 'application/xhtml+xml';
-					}
-					else
-					{
-						$this -> contentType = 'text/html';
-					}
-					break;
-				case OPT_XML:
-					$this -> contentType = 'application/xml';
-					break;
-				case OPT_WML:
-					$this -> contentType = 'text/vnd.wap.wml';
-					break;
-				case OPT_TXT:
-					$this -> contentType = 'text/plain';
-					break;
-				default:
-					if(is_string($content))
-					{
-						$this -> contentType = $content;
-					}
-					else
-					{
+						else
+						{
+							$this -> contentType = 'text/html';
+						}
+						break;
+					case OPT_XML:
+						$this -> contentType = 'application/xml';
+						break;
+					case OPT_WML:
+						$this -> contentType = 'text/vnd.wap.wml';
+						break;
+					case OPT_TXT:
+						$this -> contentType = 'text/plain';
+						break;
+					default:
 						$this -> error(E_USER_ERROR, 'Unknown content type: '.$content, OPT_E_CONTENT_TYPE);
-					}
+				}
 			}
 			if($this -> contentType == 'application/xhtml+xml' && $this -> debugConsole)
 			{
@@ -966,7 +961,7 @@
 						'Compile directory' => $this -> compile,
 						'Plugin directory' => (!is_null($this -> plugins) ? $this -> plugins : '&nbsp;'),
 						'Cache directory' => (!is_null($this -> cache) ? $this -> cache : '&nbsp;'),
-						'GZip compression' => $this -> gzipCompression,
+						'GZip compression' => ($this->gzipCompression==true ? '<font color="green">Yes</font>' : 'No'),
 						'Always rebuild' => ($this->alwaysRebuild==true ? '<font color="red">Yes</font> (Please turn off this option to improve performance)' : 'No'),
 						'Performance tuning' => ($this->performance==true ? '<font color="green">Yes</font>' : 'No'),
 						'Charset' => (!is_null($this -> charset) ? $this -> charset : '&nbsp;'),

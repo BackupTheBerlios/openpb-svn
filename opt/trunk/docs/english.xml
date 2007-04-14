@@ -6249,7 +6249,10 @@ bar]]></programlisting>
 	</appendix>
 	<appendix label="H" id="appendix.h">
 		<title>In the next release</title>
-		<para>The plans for the next releases are to improve the 1.1.x branch and remove the remaining bugs.</para>
+		<para>In the nearest future, we will start implementing a new template compiler for OPT,
+		which fully supports XHTML language. The version with the compiler will be released as
+		OPT 2.0.0 because of the backward incompability. During the development process, there
+		may appear also the releases of 1.1.x branch with bugfixes.</para>
 	</appendix>
 	<appendix label="I" id="appendix.i">
 		<title>Authors and license</title>

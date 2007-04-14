@@ -290,6 +290,28 @@ bar - abc - def
 			$this -> assertEquals('Content-type: text/html', $this -> opt -> hh);	
 		} // end testContentTypeDetection5();
 		
+		public function testContentTypeDetection6()
+		{
+			$this -> opt -> httpHeaders('image/jpeg');			
+			$this -> assertEquals('Content-type: image/jpeg', $this -> opt -> hh);	
+		} // end testContentTypeDetection6();
+		
+		public function testInvalidContentType()
+		{
+			try
+			{
+				$this -> opt -> httpHeaders(17);
+			}
+			catch(optException $e)
+			{
+				if($e -> getCode() == OPT_E_CONTENT_TYPE)
+				{
+					return 1;
+				}
+			}		
+			$this -> fail('Exception not returned.');	
+		} // end testContentTypeDetection6();
+		
 		public function testApi()
 		{
 			require_once(OPT_DIR.'opt.api.php');
