@@ -80,7 +80,7 @@
 		2006, still seems to have problems with gZip compression on the snapshot from 24 September.</para>
 		<sect1 id="installation.simple">
 			<title>Simple installation</title>
-			<para>A typical installation process is done in two stages. Firstly, copying files. The project
+			<para>A typical installation process is done in two stages. First, copying files. The project
 			contains several PHP scripts named <filename>opt.filename.php</filename>. These files need to be
 			copied into your project directory tree, wherever you want. You may create a separate directory for
 			them, or mix with other core files. It is recommended to make the directory unavailable from the
@@ -96,7 +96,7 @@
 				This may cause the application gets slower - PHP has to check every predefined path.
 				</listitem>
 				<listitem>Include <filename>opt.class.php</filename> file containing the main library class.</listitem>
-				<listitem>1.Place the rest of the code inside <emphasis>try{ ... } catch(){ ... }</emphasis> block.
+				<listitem>Place the rest of the code inside <emphasis>try{ ... } catch(){ ... }</emphasis> block.
 				OPT reports the errors using PHP exception system and we need it to catch them. If you do not want
 				to write your own exception handler, you may use the standard one placed in
 				<function>optErrorHandler()</function> function.</listitem>
@@ -155,7 +155,7 @@ gzipCompression = 1]]></programlisting>
 		</sect1>
 		<sect1 id="installation.advanced">
 			<title>Advanced installation</title>
-			<para>Unlike to other PHP 5 template engines, OPT does not have a native singleton design pattern implemented.
+			<para>Unlike other PHP 5 template engines, OPT does not have a native singleton design pattern implemented.
 			Thanks to this fact, you may extend the default <classname>optClass</classname> with additional methods, and
 			add this pattern manually, if you really need it. Let's take a look at the sample aplication that extends the
 			base class and adds some commonly used parts of code to the OPT.</para>
@@ -201,9 +201,7 @@ gzipCompression = 1]]></programlisting>
 ?>				]]></programlisting>
 			</example>
 			<para>Using this way, you may extend the engine with additional features or enclose some commonly made
-			operations in additional methods. The main example that shows, how brilliant idea it is, is the official
-			OPT add-on called Open Power Forms. It contains a class <classname>opfResponse</classname> that is both
-			a template engine and an application response sender.</para>
+			operations in additional methods.</para>
 		</sect1>
 		<sect1 id="installation.opt_api">
 			<title>OPT API</title>
@@ -263,7 +261,15 @@ gzipCompression = 1]]></programlisting>
 				find it sometimes useful.</listitem>
 			<listitem>Red bar - a programming feature, which requires to be a bit experienced. If you are a template designer,
 				you do not have to know it.</listitem>
+			<listitem>Blue bar - sometimes we have to provide an explaination for PHP programmers in order to tell them,
+				how to support a feature on the PHP script side. Such parts are marked with blue bar and a template
+				designer does not have to read them at all.</listitem>
 		</itemizedlist>
+		
+		<para><emphasis>Note:</emphasis> Although OPT allows programming on the template side (there is all the
+		required stuff: expressions, conditional instructions and loops), this is not its main philosophy! Unlike
+		some other template engines, the programming should be used only if there is no other way to implement
+		something you want. OPT has all the tools required to have clean and easy to read templates.</para>		
 		<sect1 id="syntax.introduction">
 			<title>Introduction</title>
 			<para>A template is a single file with a static text content and OPT template tags. They are parsed by
@@ -3351,7 +3357,7 @@ Bbb]]></programlisting>
 				</methodsynopsis>
 
 				<para>Registers the new namespace <variable>$namespace</variable> for the OPT compiler. Only the registered
-				namespaces are parsed by OPT. The rest of the tags is simply displayed in the output. Note that OPT registers
+				namespaces are parsed by OPT in the XML syntax mode. The rest of the tags is simply displayed in the output. Note that OPT registers
 				one namespace by default: "opt".</para>
 
 				<para>Note: this method is not available, if the <emphasis>Register method family</emphasis> was removed from the
@@ -6207,7 +6213,7 @@ bar]]></programlisting>
 	<appendix label="F" id="appendix.f">
 		<title>Support</title>
 		<para>If you have any problems with OPT, you can always find help on the project
-			discussion board under <ulink url="http://www.openpb.net/forum">www.openpb.net/forum</ulink> address. This is an international
+			discussion board under <ulink url="http://forum.openpb.net">forum.openpb.net</ulink> address. This is an international
 			forum with English language as default. If there is a big group of people of
 			one nation, there is a possibility to create a national forum for them. Currently
 			such forum only the Polish have. Below, there are the main rules that we require
@@ -6244,7 +6250,7 @@ bar]]></programlisting>
 			<listitem>Two complete, real world projects - if everything is working, the test is passed.</listitem>
 		</orderedlist>
 		<para>However, there still may occur some situations that we could not predict. If you notice any bug, please visit
-		<ulink url="http://openpb.net/bugs">openpb.net/bugs</ulink> and report it us! The report has to be written in English
+		<ulink url="http://bugs.openpb.net">bugs.openpb.net</ulink> and report it us! The report has to be written in English
 		and must contain a test case that causes bug, which can be reproduced by everyone who is interested.</para>
 	</appendix>
 	<appendix label="H" id="appendix.h">
