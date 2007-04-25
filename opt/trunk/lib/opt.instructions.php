@@ -635,10 +635,17 @@ case 0:
 					$this->compiler->out(' if($__'.$block->getAttributes().'_id == $__'.$block->getAttributes().'_cnt - 1){ echo \'class="last"\'; } ');
 					break;
 				case 'sectioncycle':
+					$sid = 0;
 					foreach($this -> sections as $id => &$void)
 					{
-						if($void['name'] == $block->getAttributes());
-						$sid = $id;
+						if(!isset($void['name']))
+						{
+							continue;
+						}
+						if($void['name'] == $block->getAttributes())
+						{
+							$sid = $id;
+						}
 					}
 					if(isset($this->sections[$sid]['cycle']))
 					{

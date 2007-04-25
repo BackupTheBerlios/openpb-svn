@@ -1,8 +1,11 @@
 <h3>Compiler</h3>
 <form method="post" action="compiler.php?cmd=chdir">
-<p>Source template directory: &nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="spl" value="{$splValue}" size="35"/></p>
-<p>Compiled template directory: &nbsp;&nbsp;<input type="text" name="cpl" value="{$cplValue}" size="35"/></p>
-<p>Plugin directory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="plg" value="{$plgValue}" size="35"/></p>
+<p>Source template directory: &nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="spl" value="{$splValue}" size="50"/></p>
+<p>Compiled template directory: &nbsp;&nbsp;<input type="text" name="cpl" value="{$cplValue}" size="50"/></p>
+<p>Plugin directory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="plg" value="{$plgValue}" size="50"/></p>
+<p>Master template: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" name="mas" value="{$masValue}" size="50"/></p>
+<p>XML Syntax Mode: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yes <input type="radio" name="xml" value="1" {$sel1}/> <input type="radio" name="xml" value="0" {$sel0}/> No</p>
+
 <p><input type="submit" value="Change directory"/></p>
 </form>
 
@@ -19,8 +22,8 @@
 <tbody>
  {section=templates}
   <tr>
-   <td><input type="checkbox" name="sel[]" value="{$templates.filename}" /></td>
-   <td>{$templates.filename}</td>
+   <td><input type="checkbox" name="sel[]" value="{$templates.filename}" id="lb{$templates.filename}"/></td>
+   <td><label for="lb{$templates.filename}">{$templates.filename}</label></td>
    <td>{$templates.cdate}</td>
    <td>{$templates.srcSize} / {$templates.cplSize}</td>
   </tr> 

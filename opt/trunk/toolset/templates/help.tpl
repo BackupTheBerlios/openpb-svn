@@ -21,8 +21,16 @@ directory, where will be placed the "new" OPT; 3/ the features you want to keep.
 the templates are modified. This means the programmer must recompile them on his own. This tool is intended
 to those ones, who have already run their websites and do not want to change the settings just to make
 tiny changes. They can compile the template here and send the precompiled version to the server.</p>
-<p>The screen shows two text fields: "root" and "compile" directory, which point to the directories with
-the source and compiled templates. Below, there is a list of templates from these directories. You can:</p>
+<p>Above the list of templates, you see some configuration options:</p>
+<ol>
+ <li>Source template directory - a path to the source versions of the templates.</li>
+ <li>Destination template directory - where the compiled templates must be placed to.</li>
+ <li>Plugin directory - a directory with external OPT plugins to load.</li>
+ <li>Master template - OPT Toolset allows to pre-load one master template file. If you use master templates, write down here the filename with the full path.</li>
+ <li>XML Syntax Mode - whether to compile the templates in XML Syntax Mode.</li>
+</ol>
+
+<p>In the template list, you can:</p>
 <ol>
  <li>Recompile all the templates at once (for a big number of templates it may take several seconds).</li>
  <li>Recompile the selected templates</li>

@@ -20,7 +20,7 @@
 		define('OPT_SECTION_SINGLE', 1);
 		define('OPT_PRIORITY_NORMAL', 0);
 		define('OPT_PRIORITY_HIGH', 1);
-		define('OPT_VERSION', '1.1.1');
+		define('OPT_VERSION', '1.1.2');
 
 		define('OPT_E_ARRAY_REQUIRED', 2);
 		define('OPT_E_FILE_NOT_FOUND', 6);

@@ -1,5 +1,4 @@
 <?php
-	define('OPT_VERSION', '1.1.0');
 	$availableDirectives = array(
 		'PLUGIN_AUTOLOAD' => array(
 			'title' => 'Autoloading plugins support',
