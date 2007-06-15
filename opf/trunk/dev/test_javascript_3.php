@@ -17,24 +17,30 @@
 			$this -> map('username', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3)
-			), false);
+			), false, array(MAP_JS, JS_BLUR));
 			$this -> map('password', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3),
+				new opfConstraint(MAP_TYPE, TYPE_COMPARABLE),
 				new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
-			), false);
+			), false, array(MAP_JS, JS_BLUR ));
+			$this -> map('password2', new opfStandardContainer(
+				new opfConstraint(MAP_TYPE, TYPE_STRING),
+				new opfConstraint(MAP_LEN_GT, 3),
+				new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
+			), false, array(MAP_JS, JS_BLUR ));
 			$this -> map('email', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
-			), false);
+			), false, array(MAP_JS, JS_BLUR ));
 			$this -> map('age', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 				new opfConstraint(MAP_SCOPE, 12, 99)
-			), false);
+			), false, array(MAP_JS, JS_BLUR ));
 			$this -> map('content', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_TEXT),
 				new opfConstraint(MAP_LEN_GT, 10)
-			), false);
+			), false, array(MAP_JS, JS_BLUR ));
 		} // end create();
 		
 		public function process()
@@ -54,7 +60,7 @@
 			{
 				$this -> tpl -> assign('error_msg', 1);
 			}
-			$this -> tpl -> parse('test_forms_5.tpl');
+			$this->tpl -> parse('test_javascript_3.tpl');
 		} // end view();
 	}
 
@@ -69,16 +75,37 @@
 		$validator = new opfValidator();
 		$opf = new opfClass($tpl, $validator->defaultParams());
 		$opf -> createI18n('./');
+		$opf -> handleAjax();
 
 		$form = new myForm($opf, 'form1');
+
 		if($form -> execute())
 		{
-			$tpl -> assign('username', $opf -> validator -> username);
-			$tpl -> assign('email', $opf -> validator -> email);
-			$tpl -> assign('age', $opf -> validator -> age);
-			$tpl -> assign('content', $opf -> validator -> content);
-			$tpl -> parse('report.tpl');		
+			if(!$opf->visit->ajax)
+			{
+				$tpl -> assign('username', $opf -> validator -> username);
+				$tpl -> assign('email', $opf -> validator -> email);
+				$tpl -> assign('age', $opf -> validator -> age);
+				$tpl -> assign('content', $opf -> validator -> content);
+				//$tpl -> parse('report.tpl');
+			}
 		}
+
+		/*$form2 = new myForm($opf, 'drugi');
+
+		if($form2 -> execute())
+		{
+			if(!$opf->visit->ajax)
+			{
+				$tpl -> assign('username', $opf -> validator -> username);
+				$tpl -> assign('email', $opf -> validator -> email);
+				$tpl -> assign('age', $opf -> validator -> age);
+				$tpl -> assign('content', $opf -> validator -> content);
+				//$tpl -> parse('report.tpl');
+			}
+		}*/
+		//$tpl -> parse('test_javascript_3.tpl');
+		//$form->tpl->parse('test_javascript_3.tpl');
 	}
 	catch(opfException $exception)
 	{

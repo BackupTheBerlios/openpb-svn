@@ -1,6 +1,6 @@
 <?php
 	define('OPF_DIR', '../lib/');
-	define('OPT_DIR', '../../../opt-dev/www/lib/');
+	define('OPT_DIR', '../../opt/lib/');
 	require(OPT_DIR.'opt.class.php');
 	require(OPF_DIR.'opf.class.php');
 	

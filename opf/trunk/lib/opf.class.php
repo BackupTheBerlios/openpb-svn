@@ -236,7 +236,7 @@
 		{
 			if(!$this -> xmlLock)
 			{
-				header('Content-type: application/xml;charset='.$this -> charset);
+				header('Content-type: application/xml;charset='.$this -> tpl -> charset);
 				echo '<'.'?xml version="1.0" encoding="'.$this -> tpl -> charset.'"?'.">\r\n";
 				echo "<opfResponse>\r\n";
 			}
@@ -485,9 +485,10 @@
 			return true;
 		} // end process();
 		
-		final protected function map($name, iopfConstraintContainer $constraints, $null, $errorMsgGroup = NULL, $errorMsgText = NULL)
+		final protected function map($name, iopfConstraintContainer $constraints, $null, $js = null, $errorMsgGroup = NULL, $errorMsgText = NULL)
 		{
 			$this -> fields[$name] = $constraints;
+			$this -> fields[$name]->js = $js;
 			$this -> nullValues[$name] = $null;
 			
 			if(!is_null($errorMsgGroup) && !is_null($errorMsgText))

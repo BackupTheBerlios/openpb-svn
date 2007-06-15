@@ -33,7 +33,7 @@ var opf = new function()
 				}
 				catch(e)
 				{
-					alert(e+"\n\n"+e.toSource());
+					alert(e+"\n\n");
 				}
 			}
 		}
@@ -68,3 +68,5 @@ function ucfirst(str)
    remainChar = remainChar.toLowerCase();
    return firstChar + remainChar;
 }
+
+

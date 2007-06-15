@@ -9,7 +9,7 @@
   //  published by the Free Software Foundation; either version 2.1 of the  //
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
-
+ 
 	define('MAP_TYPE', 0);
 	define('MAP_GT', 1);
 	define('MAP_LT', 2);
@@ -23,6 +23,7 @@
 	define('MAP_PERMITTEDCHARS', 10);
 	define('MAP_NOTPERMITTEDCHARS', 11);
 	define('MAP_SCOPE', 12);
+	define('MAP_JS', 13);
 	
 	define('TYPE_INTEGER', 0);
 	define('TYPE_FLOAT', 1);
@@ -33,23 +34,36 @@
 	define('TYPE_BOOLEAN', 5);
 	define('TYPE_CHOOSE', 6);
 	define('TYPE_COMPARABLE', 7);
+
+	define('JS_SUBMIT', 2);
+	define('JS_SELECT', 4);
+	define('JS_CHANGE', 8);
+	define('JS_RESET', 16);
+	define('JS_FOCUS', 32);
+	define('JS_BLUR', 64);
+	define('JS_KEYPRESS', 128);
+	define('JS_KEYUP', 256);
+	define('JS_KEYDOWN', 512);
+	define('JS_CLICK', 1024);
+	define('JS_DBLCLICK', 2048);
 	
 	define('OPF_MAIL_PATTERN', '/(.+)\@(.+)\.(.+)/');
 	
 	class opfStandardContainer implements iopfConstraintContainer
     {
+			public $js;
     	protected $constraintList;
-
+ 
     	protected $valid = true;
     	protected $errors = array();
     	protected $i;
-
+ 
     	public function __construct()
     	{
     		$this -> constraintList = func_get_args();
     		$this -> i = 0;
     	} // end __construct();
-
+ 
     	public function process($name, $type, &$value)
     	{
     		foreach($this -> constraintList as $item)
@@ -64,12 +78,12 @@
     		$this -> i = 0;
     		return $this -> valid;
     	} // process();
-
+ 
 		public function valid()
 		{
 			return $this -> valid;
 		} // end valid();
-
+ 
 		public function error()
 		{
 			if(isset($this -> errors[$this -> i]))
@@ -80,15 +94,29 @@
     	
     	public function createJavaScript($name)
     	{
-    		$code = "__opf.beginValidation('".$name."');\r\n";
-    		foreach($this -> constraintList as $item)
+				$code = "form.map('".$name."', new opfStandardContainer(\r\n";
+    		foreach($this -> constraintList as $key => $item)
     		{
     			$code .= $item -> createJavaScript($name);
+					if(($key+1) < count($this -> constraintList))
+					{
+						$code.= ', ';
+					}
+					$code.= "\r\n";
     		}
-    		return $code;
+				$code.= '));'."\r\n";
+
+				if(is_array($this->js))
+				{
+					$code.= 'form.setEvent(\''.$name.'\', '.$this->js[1].');'."\r\n";
+				}
+
+				$scriptSrc = '<script type="text/javascript" src="js/forms/"></script>';
+
+				return $code;
     	} // createJavaScript();
     }
-
+ 
 	class opfArrayContainer extends opfStandardContainer
     {
     	public function process($name, $type, &$value)
@@ -126,8 +154,8 @@
     		return $jsCode;
     	} // createJavaScript();
     }
-
-
+ 
+ 
     class opfConstraint implements iopfConstraint
     {  	
     	private $valid = true;
@@ -143,7 +171,7 @@
     		$this -> type = $type;
     		$this -> params = $params;
 		} // end __construct();
-
+ 
     	public function process($name, $type, &$value)
     	{
     		switch($this -> type)
@@ -291,7 +319,7 @@
 		{
 			return $this -> valid;
 		} // end valid();
-
+ 
 		public function error()
 		{
 			return $this -> error;
@@ -299,22 +327,17 @@
     	
     	public function createJavaScript($name)
     	{
-			switch($this -> type)
-			{
-				case MAP_GT:
-    				return "__opf.addConstraint('gt', ".$this->params[1].");\r\n";
-				case MAP_LT:
-    				return "__opf.addConstraint('lt', ".$this->params[1].");\r\n";
-				case MAP_LEN_GT:
-    				return "__opf.addConstraint('len_gt', ".$this->params[1].");\r\n";
-				case MAP_LEN_LT:
-    				return "__opf.addConstraint('len_lt', ".$this->params[1].");\r\n";
-				case MAP_EQUAL:
-    				return "__opf.addConstraint('equal', ".$this->params[1].");\r\n";
-				case MAP_LEN_EQUAL:
-    				return "__opf.addConstraint('len_equal', ".$this->params[1].");\r\n";
-			}
-			return '';
+				$code = "new opfConstraint(".$this->type.", ";
+ 
+				foreach($this->params as $key => $param)
+				{
+					$code.= is_string($param) ? "'".$param."'" : $param;
+					$code.= ($key) < count($this->params) ? ', ' : '';
+				}
+				$code.= ")";
+ 
+				return $code;
+ 
     	} // createJavaScript();
     	
     	private function setError($id)
@@ -329,7 +352,5 @@
     			$this -> error['args'] = $args;
     		}
     	} // end setError();
-
+ 
 	}
-
-?>

@@ -9,7 +9,7 @@
   //  published by the Free Software Foundation; either version 2.1 of the  //
   //  License, or (at your option) any later version.                       //
   //  --------------------------------------------------------------------  //
-
+ 
 	class opfForm extends optInstruction
 	{
 		public function configure()
@@ -23,7 +23,7 @@
 				'opf:classfor' => OPT_ATTRIBUTE
 			);
 		} // end configure();
-
+ 
 		public function instructionNodeProcess(ioptNode $node)
 		{
 			foreach($node as $block)
@@ -117,7 +117,7 @@
 				}
 			} ');
 		} // end formBegin();
-
+ 
 		public function formEnd()
 		{
 			$this -> compiler -> out('</form>', true);
@@ -144,7 +144,7 @@
 				'opf:javascript' => OPT_COMMAND
 			);
 		} // end configure();
-
+ 
 		public function instructionNodeProcess(ioptNode $node)
 		{
 			foreach($node as $block)
@@ -165,40 +165,33 @@
 				'form' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 			);
 			$this -> compiler -> parametrize('opfJavascript', $block -> getAttributes(), $params);
-			$this -> compiler -> out('
+			$jsCode = 'function opf'.ucfirst($params['form']).'Validator()';
+			$jsCode.= '{';
+			$jsCode.= 'var form = new opfForm();';
+			$jsCode.= $this -> compiler -> tpl -> data[$params['form']]->generateJavascript();
+			$jsCode.= 'return form;';
+			$jsCode.= '}';
+			file_put_contents('js/forms/form'.ucfirst($params['form']).'.js', $jsCode);
+			/*$this -> compiler -> out('
 		<script type="text/javascript">
 		
-		function opf'.ucfirst($params['form']).'Validator(__opf)
+		function opf'.ucfirst($params['form']).'Validator()
 		{
-			if(!__opf.languageInitialized)
-			{
-				__opf.addErrorMessage(\'gt\', \''.$this->tpl->i18n->put('opf', 'constraint_gt').'\');
-				__opf.addErrorMessage(\'lt\', \''.$this->tpl->i18n->put('opf', 'constraint_lt').'\');
-				__opf.addErrorMessage(\'len_gt\', \''.$this->tpl->i18n->put('opf', 'constraint_len_gt').'\');
-				__opf.addErrorMessage(\'len_lt\', \''.$this->tpl->i18n->put('opf', 'constraint_len_lt').'\');
-				__opf.addErrorMessage(\'equal\', \''.$this->tpl->i18n->put('opf', 'constraint_equal').'\');
-				__opf.addErrorMessage(\'len_equal\', \''.$this->tpl->i18n->put('opf', 'constraint_len_equal').'\');
-				__opf.addErrorMessage(\'matchto\', \''.$this->tpl->i18n->put('opf', 'constraint_matchto').'\');
-				__opf.addErrorMessage(\'scope\', \''.$this->tpl->i18n->put('opf', 'constraint_scope').'\');
-				__opf.addErrorMessage(\'permittedchars\', \''.$this->tpl->i18n->put('opf', 'constraint_permittedchars').'\');
-			}
-			__opf.addForm(\''.$params['form'].'\');
-			alert(\'Tralala\');
-		',true);
+			var form = new opfForm();
+			', true);
+ 
 			$this -> compiler -> out(' echo $this->data[\''.$params['form'].'\']->generateJavascript(); ');
 			$this -> compiler -> out('
-			if(__opf.valid == 1)
-			{
-				return 1;
-			}
-			return 0;
-		}
 
+			return form;
+		}
 		</script>
-			', true);
+			', true);*/
+			$this -> compiler -> out('echo \'<script type="text/javascript" src="js/forms/form'.ucfirst($params['form']).'.js"></script>\'');
+			$this -> compiler -> out('echo "\r\n"');
 		} // end generateJavascript();
 	} // end opfJavascript;
-
+ 
 	
 	class opfUrl extends optInstruction
 	{
@@ -221,7 +214,7 @@
 				'__UNKNOWN__' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
 			$variables = $this -> compiler -> parametrize('opf:url', $block -> getAttributes(), $params);
-
+ 
 			$code = ' $rVariables = array(';
 			// Build code
 			foreach($variables as $name => $value)
@@ -259,7 +252,7 @@
 				'opf:call' => OPT_COMMAND
 			);
 		} // end configure();
-
+ 
 		public function instructionNodeProcess(ioptNode $node)
 		{
 			$block = $node -> getFirstBlock();
@@ -272,7 +265,7 @@
 			if(isset($this -> compiler -> genericBuffer['bindEvent'][$params['event']]))
 			{
 				$info = $this -> compiler -> genericBuffer['bindEvent'][$params['event']];
-
+ 
 				$this -> compiler -> out('if(isset($this -> data[$formName] -> errorMessages[\''.$params['for'].'\']))
 				{ $this->vars[\''.$info['message'].'\'] = $this -> data[$formName] -> errorMessages[\''.$params['for'].'\']; ');
 				foreach($info['tree'] as $block)
@@ -283,5 +276,5 @@
 			}
 		} // end instructionNodeProcess();
 	} // end opfCall;
-
+ 
 ?>
