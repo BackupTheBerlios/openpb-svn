@@ -1,6 +1,5 @@
 <?php
-	define('OPF_DIR', '../lib/');
-	define('OPT_DIR', '../../opt/lib/');
+	require('./common.php');
 	require(OPT_DIR.'opt.class.php');
 	require(OPF_DIR.'opf.class.php');
 
@@ -17,30 +16,37 @@
 			$this -> map('username', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3)
-			), false, array(MAP_JS, JS_BLUR));
+			), OPF_REQUIRED);
 			$this -> map('password', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3),
 				new opfConstraint(MAP_TYPE, TYPE_COMPARABLE),
 				new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
-			), false, array(MAP_JS, JS_BLUR ));
+			), OPF_REQUIRED);
 			$this -> map('password2', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3),
 				new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
-			), false, array(MAP_JS, JS_BLUR ));
+			), OPF_REQUIRED);
 			$this -> map('email', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
-			), false, array(MAP_JS, JS_BLUR ));
+			), OPF_REQUIRED);
 			$this -> map('age', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 				new opfConstraint(MAP_SCOPE, 12, 99)
-			), false, array(MAP_JS, JS_BLUR ));
+			), OPF_REQUIRED);
 			$this -> map('content', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_TEXT),
 				new opfConstraint(MAP_LEN_GT, 10)
-			), false, array(MAP_JS, JS_BLUR ));
+			), OPF_REQUIRED);
+			
+			$this -> setJavascriptEvent('username', JS_BLUR);
+			$this -> setJavascriptEvent('password', JS_BLUR);
+			$this -> setJavascriptEvent('password2', JS_BLUR);
+			$this -> setJavascriptEvent('email', JS_BLUR);
+			$this -> setJavascriptEvent('age', JS_BLUR);
+			$this -> setJavascriptEvent('content', JS_BLUR);
 		} // end create();
 		
 		public function process()
@@ -74,6 +80,8 @@
 
 		$validator = new opfValidator();
 		$opf = new opfClass($tpl, $validator->defaultParams());
+		$opf -> jsDir = '../js/';
+		$opf -> jsUrl = '../js/';
 		$opf -> createI18n('./');
 		$opf -> handleAjax();
 
@@ -88,6 +96,11 @@
 				$tpl -> assign('age', $opf -> validator -> age);
 				$tpl -> assign('content', $opf -> validator -> content);
 				//$tpl -> parse('report.tpl');
+			}
+			else
+			{
+				
+				
 			}
 		}
 

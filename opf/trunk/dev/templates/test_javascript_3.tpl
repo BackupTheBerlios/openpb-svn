@@ -7,20 +7,21 @@
 <head> 
   <title>Example with JavaScript</title>
   <link rel="stylesheet" href="style.css" type="text/css" /> 
-	<script type="text/javascript" src="js/mintAjax.js"></script>
-	<script type="text/javascript" src="js/opfMapType.js"></script>
-	<script type="text/javascript" src="js/opf.js"></script>
-	<script type="text/javascript" src="js/opfForm.js"></script>
-	<script type="text/javascript" src="js/opfAjax.js"></script>
-	<script type="text/javascript" src="js/opfEventHandler.js"></script>
-	<script type="text/javascript" src="js/opfStandardContainer.js"></script>
-	<script type="text/javascript" src="js/opfConstraint.js"></script>
-	<script type="text/javascript" src="js/opfError.js"></script>
+  <script type="text/javascript" src="js/mintAjax.js"></script>
+  <script type="text/javascript" src="../js/opfMapType.js"></script>
+  <script type="text/javascript" src="../js/opf.js"></script>
+  <script type="text/javascript" src="../js/opfForm.js"></script>
+  <script type="text/javascript" src="../js/opfAjax.js"></script>
+  <script type="text/javascript" src="../js/opfEventHandler.js"></script>
+  <script type="text/javascript" src="../js/opfStandardContainer.js"></script>
+  <script type="text/javascript" src="../js/opfConstraint.js"></script>
+  <script type="text/javascript" src="../js/opfError.js"></script>
 </head> 
 <body onLoad="var _opf = opf.getInstance(); _opf.Load()">
 <h1>Example with JavaScript</h1>
 <h3>JavaScript validation</h3>
-<p>This example shows, how to customize the look of the OPF components. Try to fill in the form incorrectly and see, what happens.</p>
+<p>This example shows the JavaScript form validation. Note this is an experimental code and some parts of
+it may change in the future.</p>
 <hr/>
  
 <opt:if test="$error_msg">

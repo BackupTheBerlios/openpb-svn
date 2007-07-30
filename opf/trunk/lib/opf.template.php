@@ -160,35 +160,28 @@
 		
 		public function generateJavascript($block)
 		{
-			// do przerobki!
 			$params = array(
 				'form' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 			);
 			$this -> compiler -> parametrize('opfJavascript', $block -> getAttributes(), $params);
-			$jsCode = 'function opf'.ucfirst($params['form']).'Validator()';
-			$jsCode.= '{';
-			$jsCode.= 'var form = new opfForm();';
-			$jsCode.= $this -> compiler -> tpl -> data[$params['form']]->generateJavascript();
-			$jsCode.= 'return form;';
-			$jsCode.= '}';
-			file_put_contents('js/forms/form'.ucfirst($params['form']).'.js', $jsCode);
-			/*$this -> compiler -> out('
-		<script type="text/javascript">
-		
-		function opf'.ucfirst($params['form']).'Validator()
-		{
-			var form = new opfForm();
-			', true);
- 
-			$this -> compiler -> out(' echo $this->data[\''.$params['form'].'\']->generateJavascript(); ');
-			$this -> compiler -> out('
 
-			return form;
-		}
-		</script>
-			', true);*/
-			$this -> compiler -> out('echo \'<script type="text/javascript" src="js/forms/form'.ucfirst($params['form']).'.js"></script>\'');
-			$this -> compiler -> out('echo "\r\n"');
+			if(!is_writeable($this -> tpl -> opf -> jsDir))
+			{
+				$this -> opf -> error(OPF_E_NOT_WRITEABLE, 'Javascript directory "'.$this->tpl->opf->jsDir.'" is not writeable for the server.');			
+			}
+			else
+			{
+				$jsCode = 'function opf'.ucfirst($params['form']).'Validator()';
+				$jsCode.= '{';
+				$jsCode.= 'var form = new opfForm();';
+				$jsCode.= $this -> tpl -> data[$params['form']]->generateJavascript();
+				$jsCode.= 'return form;';
+				$jsCode.= '}';
+				file_put_contents($this -> tpl -> opf -> jsDir.'form'.ucfirst($params['form']).'.js', $jsCode);
+
+				$this -> compiler -> out('echo \'<script type="text/javascript" src="'.$this->tpl->opf->jsUrl.'form'.ucfirst($params['form']).'.js"></script>\'');
+				$this -> compiler -> out('echo "\r\n"');
+			}
 		} // end generateJavascript();
 	} // end opfJavascript;
  

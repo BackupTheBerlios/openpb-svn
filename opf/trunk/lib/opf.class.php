@@ -40,10 +40,17 @@
 	define('OPF_E_NO_FORM_TAG', 6);
 	define('OPF_E_NOT_IN_FORM', 7);
 	define('OPF_E_INVALID_ARGS', 8);
+	define('OPF_E_NOT_WRITEABLE', 9);
+	define('OPF_E_CONTAINER_NOT_DEFINED', 10);
+	
+	define('OPF_REQUIRED', 0);
+	define('OPF_LAZY_OPTIONAL', 1);
+	define('OPF_OPTIONAL', 2);
 
 	interface iopfConstraintContainer
 	{
 		public function __construct();
+		public function setOpfInstance(opfClass $opf);
 		public function process($name, $type, &$value);
 		public function createJavaScript($name);
 		public function valid();
@@ -53,6 +60,7 @@
 	interface iopfConstraint
 	{
 		public function __construct($type);
+		public function setOpfInstance(opfClass $opf);
 		public function process($name, $type, &$value);
 		public function createJavaScript($name);
 		public function valid();
@@ -89,6 +97,8 @@
 		public $magicQuotes = false;
 		public $invalidAjax = OPF_AJAX_IGNORE;
 		public $prefix = 'opf';
+		public $jsDir = NULL;
+		public $jsUrl = NULL;
 	
 		// OPF elements
 		public $tpl;
@@ -181,6 +191,10 @@
 							$this -> formData['step'] = 1;
 						}
 					}
+				}
+				else
+				{
+					return false;
 				}
 			}
 			if($this -> formData['name'] == $name)
@@ -371,7 +385,7 @@
 					return false;
 				}
 				$this -> rmquot($this->__source[$type][$name]);
-				
+				$container -> setOpfInstance($this -> opf);
 				if($container -> process($name, $type, $this->__source[$type][$name]))
 				{
 					$this -> __mappedData[$name] = &$this->__source[$type][$name];
@@ -384,6 +398,44 @@
 				$this -> opf -> error(OPF_E_INVALID_DATATYPE, 'The datatype "'.$type.'" is not registered in the validator.');
 			}
 		} // end map();
+		
+		public function exists($name, $type)
+		{
+			if(isset($this->__source[$type]))
+			{
+				if(isset($this->__source[$type][$name]))
+				{
+					if(trim($this->__source[$type][$name]) != '')
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+			else
+			{
+				$this -> opf -> error(OPF_E_INVALID_DATATYPE, 'The datatype "'.$type.'" is not registered in the validator.');
+			}
+		} // end exists();
+		
+		public function compare($name1, $name2, $type)
+		{
+			if(isset($this->__source[$type]))
+			{
+				if(isset($this->__source[$type][$name1]) && isset($this->__source[$type][$name2]))
+				{
+					if($this->__source[$type][$name1] == $this->__source[$type][$name2])
+					{
+						return true;
+					}					
+				}
+				return false;
+			}
+			else
+			{
+				$this -> opf -> error(OPF_E_INVALID_DATATYPE, 'The datatype "'.$type.'" is not registered in the validator.');
+			}
+		} // end compare();
 
 		public function __get($name)
 		{
@@ -485,10 +537,9 @@
 			return true;
 		} // end process();
 		
-		final protected function map($name, iopfConstraintContainer $constraints, $null, $js = null, $errorMsgGroup = NULL, $errorMsgText = NULL)
+		final protected function map($name, iopfConstraintContainer $constraints, $null, $errorMsgGroup = NULL, $errorMsgText = NULL)
 		{
 			$this -> fields[$name] = $constraints;
-			$this -> fields[$name]->js = $js;
 			$this -> nullValues[$name] = $null;
 			
 			if(!is_null($errorMsgGroup) && !is_null($errorMsgText))
@@ -497,6 +548,16 @@
 				$this -> errorTexts[$name] = $errorMsgText;
 			}
 		} // end map();
+		
+		final protected function setJavascriptEvent($name, $js)
+		{
+			if(is_object($this -> fields[$name]))
+			{
+				$this -> fields[$name]->js = $js;				
+				return;
+			}
+			$this -> opf -> error(OPF_E_CONTAINER_NOT_DEFINED, 'A container for field "'.$name.'" is not defined.');			
+		} // end setJavaScriptEvent();
 		
 		final public function ignore()
 		{
@@ -766,7 +827,7 @@
 			$this -> tpl -> assign($this -> name, $this);
 			reset($this -> fields);
 			$this -> view();
-			return 1;	
+			return true;	
 		} // end render();
 
 		private function validate()
@@ -786,50 +847,72 @@
 			$ok = true;
 			foreach($this -> fields as $name => $container)
 			{
-				$this -> validator -> map($name, $this -> requestMethod, $container);
-
-				if(!$this -> nullValues[$name] && !$container -> valid())
+				switch($this -> nullValues[$name])
 				{
-					$this -> errorMessages[$name] = array();
-					$ok = false;
-					
-					if(isset($this -> errorGroups[$name]))
-					{
-						$this -> errorMessages[$name][] = $this -> i18n -> put($this -> errorGroups[$name], $this -> errorTexts[$name]);					
-					}
-					else
-					{
-						// If no null values allowed for this field, we have to throw an error
-						while($error = $container -> error())
+					case OPF_REQUIRED:
+						$this -> validator -> map($name, $this -> requestMethod, $container);
+						if(!$container -> valid())
 						{
-							if(isset($error['args']))
+							$ok = false;
+							$this -> setInvalid($name, $container);
+						}
+						break;
+					case OPF_LAZY_OPTIONAL:
+						$this -> validator -> map($name, $this -> requestMethod, $container);
+						break;
+					case OPF_OPTIONAL:
+						if($this -> validator -> exists($name, $this -> requestMethod))
+						{
+							$this -> validator -> map($name, $this -> requestMethod, $container);
+							if(!$container -> valid())
 							{
-								if($error['id'] == 'constraint_type')
-								{
-									$error['args'][1] = $this -> i18n -> put($this -> opf -> i18nGroup, $error['args'][1]); 
-								}
-								$this -> errorMessages[$name][] = $this -> i18n -> putApply($this -> opf -> i18nGroup, $error['id'], $error['args']);
-							}
-							else
-							{							
-								$this -> errorMessages[$name][] = $this -> i18n -> put($this -> opf -> i18nGroup, $error['id']);
+								$ok = false;
+								$this -> setInvalid($name, $container);
 							}
 						}
-					}
+						break;					
 				}
 			}
 			return $ok && $this -> process();
 		} // end stepValidate();
 		
+		private function setInvalid($name, $container)
+		{
+			$this -> errorMessages[$name] = array();			
+			if(isset($this -> errorGroups[$name]))
+			{
+				$this -> errorMessages[$name][] = $this -> i18n -> put($this -> errorGroups[$name], $this -> errorTexts[$name]);					
+			}
+			else
+			{
+				// If no null values allowed for this field, we have to throw an error
+				while($error = $container -> error())
+				{
+					if(isset($error['args']))
+					{
+						if($error['id'] == 'constraint_type')
+						{
+							$error['args'][1] = $this -> i18n -> put($this -> opf -> i18nGroup, $error['args'][1]); 
+						}
+						$this -> errorMessages[$name][] = $this -> i18n -> putApply($this -> opf -> i18nGroup, $error['id'], $error['args']);
+					}
+					else
+					{							
+						$this -> errorMessages[$name][] = $this -> i18n -> put($this -> opf -> i18nGroup, $error['id']);
+					}
+				}
+			}
+		} // end setInvalid();
+			
 		private function getCssClass($item)
 		{
 			if(isset($this -> errorMessages[$item]))
 			{
-				return $this -> design -> getClass('row', false);
+				return $this -> design -> getClass('row', $this->name, false);
 			}
 			else
 			{
-				return $this -> design -> getClass('row', true);
+				return $this -> design -> getClass('row', $this->name, true);
 			}
 		} // end getCssClass();
 		
@@ -890,6 +973,7 @@
 	class opfDesign
 	{
 		private $designInfo;
+		private $fieldDesignInfo;
 		
 		public function __construct()
 		{
@@ -897,6 +981,7 @@
 				'valid' => '',
 				'invalid' => ''
 			));
+			$this -> fieldDesignInfo = array();
 		} // end __construct();
 		
 		public function loadDesign($filename)
@@ -911,28 +996,42 @@
 		public function setDesign($component, $valid, $invalid)
 		{
 			$this -> designInfo[$component] = array(
-				'valid' => $valid,
-				'invalid' => $invalid
+				'valid' => (strlen($valid) > 0 ? $valid : NULL),
+				'invalid' => (strlen($invalid) > 0 ? $invalid : NULL)
 			);		
 		} // end setDesign();
 		
-		public function getClass($component, $valid)
+		public function setFieldDesign($component, $name, $valid = NULL, $invalid = NULL)
 		{
-			if(!isset($this -> designInfo[$component]))
+			$this -> fieldDesignInfo[$component.'_'.$name] = array(
+				'valid' => (strlen($valid) > 0 ? $valid : NULL),
+				'invalid' => (strlen($invalid) > 0 ? $invalid : NULL)
+			);		
+		} // end setFieldDesign();
+		
+		public function getClass($component, $name, $valid)
+		{
+			$src = array();
+			if(isset($this->fieldDesignInfo[$component.'_'.$name]))
 			{
-				$di = $this -> designInfo['base'];
+				$src[] = $this -> fieldDesignInfo[$component.'_'.$name];
 			}
-			else
+			if(isset($this -> designInfo[$component]))
 			{
-				$di = $this -> designInfo[$component];
+				$src[] = $this -> designInfo[$component];
 			}
-			if($valid && strlen($di['valid']) > 0)
+			$src[] = $this -> designInfo['base'];
+			
+			foreach($src as $item)
 			{
-				return $di['valid'];
-			}
-			elseif(!$valid && strlen($di['invalid']) > 0)
-			{
-				return $di['invalid'];
+				if($valid && !is_null($item['valid']))
+				{
+					return $item['valid'];
+				}
+				elseif(!$valid && !is_null($item['invalid']))
+				{
+					return $item['invalid'];
+				}
 			}
 			return false;
 		} // end getClass();

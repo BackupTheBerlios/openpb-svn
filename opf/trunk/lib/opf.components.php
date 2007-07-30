@@ -22,6 +22,9 @@
 		protected $tags;
 		protected $refresh = true;
 		
+		protected $cssClass = NULL;
+		protected $invalidCssClass = NULL;
+		
 		public function __construct($name = '')
 		{
 			$this -> name = $name;
@@ -61,6 +64,12 @@
 				case 'refresh':
 					$this -> refresh = (bool)$value;
 					return;
+				case 'class':
+					$this -> cssClass = $value;
+					return;
+				case 'invalidClass':
+					$this -> invalidCssClass = $value;
+					return;				
 			}
 			$this -> tags[$name] = $value;
 		} // end set();
@@ -99,11 +108,27 @@
 		{
 			if(isset($this -> form -> errorMessages[$this -> name]))
 			{
-				$class = $this -> design -> getClass($this -> componentName, false);
+				// There are bugs
+				if(!is_null($this -> invalidCssClass))
+				{
+					$class = $this -> invalidCssClass;
+				}
+				else
+				{
+					$class = $this -> design -> getClass($this -> componentName, $this->name, false);
+				}
 			}
 			else
 			{
-				$class = $this -> design -> getClass($this -> componentName, true);
+				// Valid field
+				if(!is_null($this -> cssClass))
+				{
+					$class = $this -> cssClass;
+				}
+				else
+				{
+					$class = $this -> design -> getClass($this -> componentName, $this->name, true);
+				}
 			}
 			
 			if($class !== false && !$return)
@@ -245,6 +270,7 @@
 				echo '<input type="radio" '.$this->generateTags($this -> tags).'/>';
 			}
 			echo $this->form->i18n->put($this->context->i18nGroup, 'text_no').'</label>';
+			$this -> componentName = 'questionYes';
 		} // end begin();
 	
 	}
@@ -349,7 +375,7 @@
 	
 	class opfFile extends opfComponent
 	{
-		protected $componentName = 'input';
+		protected $componentName = 'file';
 		
 		public function begin()
 		{

@@ -1,6 +1,5 @@
 <?php
-	define('OPF_DIR', '../lib/');
-	define('OPT_DIR', '../../opt/lib/');
+	require('./common.php');
 	require(OPT_DIR.'opt.class.php');
 	require(OPF_DIR.'opf.class.php');
 
@@ -13,15 +12,15 @@
 			$this -> map('day', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 				new opfConstraint(MAP_GT, 0)
-			), true);
+			), OPF_LAZY_OPTIONAL);
 			$this -> map('month', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 				new opfConstraint(MAP_GT, 0)
-			), true);
+			), OPF_LAZY_OPTIONAL);
 			$this -> map('year', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 				new opfConstraint(MAP_GT, 0)
-			), true);
+			), OPF_LAZY_OPTIONAL);
 		} // end create();
 		
 		public function view()

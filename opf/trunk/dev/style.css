@@ -29,3 +29,23 @@ textarea.incorrect{
 	border: 1px solid #ff0000;
 	background: #ffdddd;
 }
+
+input.av{
+	border: 1px solid #ff0000;
+	background: #ccccff;
+}
+
+input.nav{
+	border: 1px solid #ff0000;
+	background: #ffccff;
+}
+
+input.mv{
+	border: 1px solid #ff0000;
+	background: #ccffcc;
+}
+
+input.nmv{
+	border: 1px solid #ff0000;
+	background: #ffffcc;
+}

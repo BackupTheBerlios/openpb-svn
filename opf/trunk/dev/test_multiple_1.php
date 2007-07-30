@@ -1,6 +1,5 @@
 <?php
-	define('OPF_DIR', '../lib/');
-	define('OPT_DIR', '../../opt/lib/');
+	require('./common.php');
 	require(OPT_DIR.'opt.class.php');
 	require(OPF_DIR.'opf.class.php');
 
@@ -17,7 +16,7 @@
 			$this -> map('someText', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3)
-			), false);
+			), OPF_REQUIRED);
 		} // end create();
 		
 		public function view()
@@ -36,7 +35,7 @@
 			$this -> map('someText', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3)
-			), false);
+			), OPF_REQUIRED);
 		} // end create();
 		
 		public function view()

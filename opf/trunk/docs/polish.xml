@@ -155,6 +155,18 @@ $opf -> setI18n($i18n);]]></programlisting>
 		
 		<sect1 id="topics.validation">
 			<title>Kontrola danych</title>
+			<para>Do kontroli danych służy klasa <classname>opfValidator</classname> zapewniająca
+			mechanizm sprawdzania. <classname>opfValidator</classname> domyślnie jest inicjowany
+			do kontroli danych przesyłanych metodami POST oraz GET, ciastkami, sesjami oraz zmiennymi
+			środowiskowymi, lecz można go łatwo zintegrować z dowolnego rodzaju tablicą, również samodzielnie
+			wygenerowaną, lub też obiektem klasy implementującej tablicowe interfejsy dostępu.</para>
+			<para>Klasa <classname>opfValidator</classname> przeprowadza kontrolę danych za pomocą
+			pojedynczej metody <link linkend="library.opfvalidator.map">map()</link>. Pobiera ona
+			trzy parametry: nazwę pola, identyfikator źródła danych (np. <variable>OPF_POST</variable> dla
+			danych przesłanych metodą POST) oraz listę reguł. Lista reguł zbudowana jest w sposób obiektowy.
+			Na początku definiujemy obiekt listy, do którego poprzez parametry konstruktora wprowadzamy
+			mniejsze obiekty, z których każdy definiuje pojedynczą regułę, jaką musi spełniać dane pole,
+			aby zostało udostępnione skryptowi. </para>
 		</sect1>
 		
 		<sect1 id="topics.forms">
@@ -321,7 +333,7 @@ $opf -> setI18n($i18n);]]></programlisting>
 			odwiedzającym stronę użytkowniku. Większość z nich udostępniana jest jako publiczne
 			pola.</para>
 			
-			<table frame="all" id="fields.optvisit">
+			<table frame="all" id="fields.opfvisit">
 				<?dbhtml table-width="100%" ?>
 				<caption>opfVisit: pola publiczne</caption>
 				<tgroup cols="3" align="center">
@@ -685,12 +697,20 @@ else
 				final protected <type>void</type> <methodname>map</methodname>
 					<methodparam><type>string</type><parameter>$nazwa</parameter></methodparam>
 					<methodparam><type>iopfConstraintContainer</type><parameter>$zbiornik</parameter></methodparam>
-					<methodparam><type>bool</type><parameter>$opcjonalny</parameter></methodparam>
+					<methodparam><type>int</type><parameter>$opcjonalny</parameter></methodparam>
 				</methodsynopsis>
 				<para>Metoda definiuje reguły przetwarzania pola formularza <variable>$nazwa</variable>.
 				Pole <variable>$zbiornik</variable> ma identyczną funkcję, jak w przypadku metody
 				<link linkend="library.opfvalidator.map">opfValidator::map()</link>, tzn. jest używane
-				do kontroli danych. Ostatni parametr określa, czy pole jest obowiązkowe, czy nie.</para>
+				do kontroli danych. Ostatni parametr określa, czy pole jest obowiązkowe, czy nie. Ten status
+				opisywany jest jedną z trzech stałych:</para>
+				<orderedlist>
+					<listitem><emphasis>OPF_REQUIRED</emphasis> - pole jest niezbędne do wypełnienia.</listitem>
+					<listitem><emphasis>OPF_OPTIONAL</emphasis> - pole jest opcjonalne, lecz jeśli użytkownik zdecyduje się je wypełnić i popełni błąd,
+						formularz pokaże mu komunikat, że należy dane poprawić. Gdy pole nie jest ustawione, OPF ustawia wartość na NULL.</listitem>
+					<listitem><emphasis>OPF_LAZY_OPTIONAL</emphasis> - pole jest opcjonalne, lecz jeśli użytkownik zdecyduje się je wypełnić i popełni błąd,
+						formularz nie zgłosi tego, lecz podstawi za wartość NULL.</listitem>
+				</orderedlist>
 				<para>W przeciwieństwie do <emphasis>opfValidator::map()</emphasis>, ta metoda
 				nie dokonuje kontroli danych od razu. Kiedy formularz jest wyświetlany, służy ona
 				do poinformowania biblioteki, jakie pola się w nim znajdują oraz jaki kod JavaScript
@@ -711,24 +731,24 @@ class mojFormularz extends opfVirtualForm
 		$this -> map('username', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_LEN_GT, 3)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('password', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_LEN_GT, 3),
 			new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('email', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('age', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 			new opfConstraint(MAP_SCOPE, 12, 99)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('content', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_TEXT),
 			new opfConstraint(MAP_LEN_GT, 10)
-		), false);
+		), OPF_REQUIRED);
 	} // end create();
 }
 					
@@ -809,24 +829,24 @@ class mojFormularz extends opfVirtualForm
 		$this -> map('username', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_LEN_GT, 3)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('password', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_LEN_GT, 3),
 			new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('email', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('age', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 			new opfConstraint(MAP_SCOPE, 12, 99)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('content', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_TEXT),
 			new opfConstraint(MAP_LEN_GT, 10)
-		), false);
+		), OPF_REQUIRED);
 	} // end create();
 					
 	public function process()
@@ -882,11 +902,11 @@ class mojFormularz extends opfVirtualForm
 		$this -> map('lista', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 			new opfConstraint(MAP_GT, 0)
-		), false);
+		), OPF_REQUIRED);
 		$this -> map('tresc', new opfStandardContainer(
 			new opfConstraint(MAP_TYPE, TYPE_STRING),
 			new opfConstraint(MAP_LEN_GT, 3)
-		), false);
+		), OPF_REQUIRED);
 	} // end create();
 					
 	public function view()
@@ -929,7 +949,45 @@ class mojFormularz extends opfVirtualForm
 					<methodparam><type>string</type><parameter>$id</parameter></methodparam>
 					<methodparam choice="opt"><type>Array</type><parameter>$parametry</parameter></methodparam>
 				</methodsynopsis>
-				<para>Metoda jeszcze nieudokumentowana.</para>
+				<para>Metoda ta używana jest najczęściej wewnątrz metody <link linkend="library.opfvirtualform.process">process()</link>
+				i umożliwia zdefiniowanie własnego komunikatu błędu dla wybranego pola. Za pierwszy parametr podajemy nazwę pola, za dwa kolejne
+				identyfikator komunikatu w systemie językowym. Jeśli komunikat wymaga dodatkowych parametrów do umieszczenia w treści, przekazujemy
+				je w opcjonalnej tablicy na czwartym miejscu. Użycie tej metody na wskazanym polu powoduje, że podczas renderingu pole to jest
+				w formularzu natychmiast oznaczane jako niewłaściwie wypełnione.</para>
+				
+				<example id="example.library.opfvirtualform.set-error">
+					<title>Własne komunikaty błędów</title>
+					<programlisting><![CDATA[<?php
+
+class mojFormularz extends opfVirtualForm
+{
+	public function create()
+	{
+		$this -> map('login', new opfStandardContainer(
+			new opfConstraint(MAP_TYPE, TYPE_STRING),
+			new opfConstraint(MAP_GT, 0)
+		), OPF_REQUIRED);
+	} // end create();
+					
+	public function process()
+	{
+		if(loginExists($this -> validator -> login))
+		{
+			// Ustaw niestandardowy komunikat bledu dla podanego pola.
+			$this -> setError('login', 'opf', 'login_already_exists');
+			return false;		
+		}
+		return true;
+	} // end process();
+					
+	public function view()
+	{
+		$this -> tpl -> parse('formularz.tpl');
+	} // end view();
+}
+?>
+]]></programlisting>
+				</example>
 			</sect2>
 
 			<sect2 id="library.opfvirtualform.set-request-method">
@@ -938,7 +996,9 @@ class mojFormularz extends opfVirtualForm
 				final public <type>void</type> <methodname>setRequestMethod</methodname>
 					<methodparam><type>int</type><parameter>$metoda</parameter></methodparam>
 				</methodsynopsis>
-				<para>Metoda jeszcze nieudokumentowana.</para>
+				<para>Umożliwia zdefiniowanie alternatywnego sposobu przesyłania danych do formularza zamiast
+				domyślnego OPF_POST. Za parametr podajemy jedną ze stałych identyfikujących sposób przekazywania
+				lub numeryczny identyfikator własnej tablicy podpiętej do kontrolera danych.</para>
 			</sect2>
 
 			<sect2 id="library.opfvirtualform.view">
@@ -946,12 +1006,112 @@ class mojFormularz extends opfVirtualForm
 				<methodsynopsis>
 				public <type>bool</type> <methodname>view</methodname>
 				</methodsynopsis>
-				<para>Metoda jeszcze nieudokumentowana.</para>
+				<para>Metoda <methodname>view()</methodname> wywoływana jest automatycznie, gdy zachodzi potrzeba
+				wyświetlenia formularza. Można w niej umieścić kod odpowiedzialny za jego wyświetlenie czy inicjację źródeł
+				danych. Nie jest konieczne implementowanie tej metody, ponieważ wyświetlanie można zaprogramować również
+				dodając alternatywę do instrukcji warunkowej z wywołaniem metody <link linkend="library.opfvirtualform.execute">execute()</link></para>
 			</sect2>
 		</sect1>
 
 		<sect1 id="library.opfdesign">
 			<title>Klasa opfDesign</title>
+			<para>Obiekt tej klasy tworzony jest automatycznie. Służy on do zarządzania wyglądem formularza
+			poprzez przechowywanie informacji o klasach CSS, do których należy przypisać poszczególne kontrolki
+			w typowej sytuacji oraz gdy są one źle wypełnione. Z obiektu tego najlepiej korzystać po stronie
+			systemu szablonów, uniezależniając w ten sposób wygląd formularzy od skryptu PHP.</para>
+			<sect2 id="library.opfdesign.set-design">
+				<title>setDesign()</title>
+				<methodsynopsis>
+				public <type>void</type> <methodname>setDesign</methodname>
+					<methodparam><type>string</type><parameter>$komponent</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$cssZwykly</parameter></methodparam>
+					<methodparam><type>string</type><parameter>$cssBledny</parameter></methodparam>
+				</methodsynopsis>
+				<para>Metoda <methodname>setDesign()</methodname> definiuje klasy CSS dla podanego komponentu. W pierwszym
+				parametrze podajemy identyfikator komponentu, w drugim nazwę klasy CSS, która ma być użyta domyślnie, gdy pole
+				jest wypełnione prawidłowo. Trzeci parametr określa klasę CSS używaną, gdy pole zawiera błędne dane. Identyfikatory
+				komponentów przedstawia poniższa tabelka:</para>
+				<table frame="all" id="fields.opfdesign">
+					<?dbhtml table-width="100%" ?>
+					<caption>opfDesign: identyfikatory komponentów</caption>
+					<tgroup cols="3" align="center">
+					<thead>
+					<row>
+					  <entry>Komponent</entry>
+					  <entry>Identyfikatory</entry>
+					  <entry>Opis</entry>
+					</row>
+					</thead>
+					<tbody>
+					<row>
+					  <entry>opfInput</entry>
+					  <entry>input</entry>
+					  <entry>Wygląd kontrolki tekstowej.</entry>
+					</row>
+					<row>
+					  <entry>opfTextarea</entry>
+					  <entry>textarea</entry>
+					  <entry>Wygląd pola tekstowego.</entry>
+					</row>
+					<row>
+					  <entry>opfLabel</entry>
+					  <entry>label</entry>
+					  <entry>Wygląd tekstu etykiety.</entry>
+					</row>
+					<row>
+					  <entry>opfPassword</entry>
+					  <entry>password</entry>
+					  <entry>Wygląd pola wpisywania hasła.</entry>
+					</row>
+					<row>
+					  <entry>opfRetypePassword</entry>
+					  <entry>retype password</entry>
+					  <entry>Wygląd pola ponownego wpisywania hasła.</entry>
+					</row>
+					<row>
+					  <entry>opfQuestion</entry>
+					  <entry>questionYes, questionNo</entry>
+					  <entry>Pierwszy identyfikator określa wygląd pola "radio" oznaczającego zgodę (Yes), drugi - wygląd pola oznaczającego brak zgody (No).</entry>
+					</row>
+					<row>
+					  <entry>opfCheckQuestion</entry>
+					  <entry>checkQuestion</entry>
+					  <entry>Wygląd pola checkbox do zaznaczania swego wyboru.</entry>
+					</row>
+					<row>
+					  <entry>opfSelect</entry>
+					  <entry>select</entry>
+					  <entry>Wygląd listy rozwijanej SELECT.</entry>
+					</row>
+					<row>
+					  <entry>opfRadio</entry>
+					  <entry>radioList, radio</entry>
+					  <entry>Pierwszy identyfikator określa wygląd listy wypunktowanej zawierającej poszczególne wybory, drugi - wygląd pojedynczego pola RADIO.</entry>
+					</row>
+					<row>
+					  <entry>-</entry>
+					  <entry>row</entry>
+					  <entry>Klasa CSS dla atrybutu <emphasis>opf:classfor</emphasis>, za pomocą którego można zdefiniować wygląd całego wiersza tabeli, w którym znajduje się
+					  wybrane pole formularza.</entry>
+					</row>
+					</tbody>
+					</tgroup>
+				</table>
+				<para>Przykładowe użycie:</para>
+				<example id="example.library.opfdesign.set-design">
+					<title>Konfiguracja wyglądu formularzy</title>
+					<programlisting><![CDATA[{$opfDesign->setDesign('row', '', 'incorrect')}
+{$opfDesign->setDesign('input', 'input', 'input incorrect')}
+{$opfDesign->setDesign('textarea', 'textarea', 'textarea incorrect')}
+{$opfDesign->setDesign('questionYes', 'radioYes', 'radioYes')}
+{$opfDesign->setDesign('questionNo', 'radioNo', 'radioNo')}
+]]></programlisting>
+				</example>
+				<para>Najlepiej jest umieścić tego typu fragment w pliku szablonu odpowiedzialnym za
+				generowanie nagłówka HTML, który ładowany jest za każdym razem. W ten sposób gwarantujemy,
+				że wszystkie formularze na naszej stronie będą mieć automatycznie skonfigurowany poprawny
+				wygląd.</para>
+			</sect2>
 		</sect1>
 
 		<sect1 id="library.opfexception">

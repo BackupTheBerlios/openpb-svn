@@ -43,7 +43,7 @@
 			{
 				return true;
 			}
-			$this -> setError('username', 'Statically custom defined message');
+			$this -> setError('username', 'opf', 'invaliduser');
 			return false;
 		} // end process();
 		
@@ -53,7 +53,7 @@
 			{
 				$this -> tpl -> assign('error_msg', 1);
 			}
-			$this -> tpl -> parse('test_forms_5.tpl');
+			$this -> tpl -> parse('test_forms_6.tpl');
 		} // end view();
 	}
 

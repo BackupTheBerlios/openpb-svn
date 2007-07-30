@@ -1,6 +1,5 @@
 <?php
-	define('OPF_DIR', '../lib/');
-	define('OPT_DIR', '../../opt/lib/');
+	require('./common.php');
 	require(OPT_DIR.'opt.class.php');
 	require(OPF_DIR.'opf.class.php');
 
@@ -17,12 +16,12 @@
 			$this -> map('username', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3)
-			), false);
+			), OPF_REQUIRED);
 			$this -> map('password', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_LEN_GT, 3),
 				new opfConstraint(MAP_PERMITTEDCHARS, 'abcdefghijklmnopqrstuvwxyz0123456789')
-			), false);
+			), OPF_REQUIRED);
 		} // end create();
 		
 		public function process()
@@ -54,11 +53,11 @@
 			$this -> map('email', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_STRING),
 				new opfConstraint(MAP_MATCHTO, OPF_MAIL_PATTERN)
-			), false);
+			), OPF_REQUIRED);
 			$this -> map('age', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_INTEGER),
 				new opfConstraint(MAP_SCOPE, 12, 99)
-			), false);
+			), OPF_REQUIRED);
 		} // end create();
 		
 		public function view()
@@ -78,7 +77,7 @@
 			$this -> map('content', new opfStandardContainer(
 				new opfConstraint(MAP_TYPE, TYPE_TEXT),
 				new opfConstraint(MAP_LEN_GT, 10)
-			), false);
+			), OPF_REQUIRED);
 		} // end create();
 		
 		public function view()
