@@ -4,7 +4,7 @@
 <book id="opt" lang="pl">
 	<bookinfo id="bookinfo">
 		<title>Open Power Template</title>
-		<subtitle>Dokumentacja - wersja 1.1.2</subtitle>
+		<subtitle>Dokumentacja - wersja 1.1.3</subtitle>
 		<authorgroup id="authors">
 			<author>
 				<firstname>Tomasz</firstname>
@@ -16,7 +16,7 @@
 			</author>
 		</authorgroup>
 		<copyright>
-			<year>2006</year>
+			<year>2006-2007</year>
 			<holder>Tomasz Jędrzejewski, Tomasz Szczupliński</holder>
 		</copyright>
 	</bookinfo>
@@ -314,143 +314,157 @@ wielolinijkowy *}
 			</example>
 		</sect1>
 		<sect1 id="syntax.blocks">
-			<title>Blocks and variables</title>
-			<para>A block is a place in the template, where you can put the results of your application. It
-			starts with a dollar sign and can contain numbers, letters and underscores, just like PHP variables.
-			The block may have both simple values, for example strings or numbers, and the complex types: arrays
-			and objects. The block values are passed to the templates, using <function>optClass::assign()</function>
-			method. This is a sample template that allows to put a dynamic date into the static text:</para>
+			<title>Bloki i zmienne</title>
+			<para>Blokiem nazywamy miejsce w szablonie, w które szablon może wstawić jakieś dane wygenerowane
+			przez Twoją aplikację. Blok zaczyna się od znaku dolara, a dalsza część jego nazwy może zawierać
+			liczby, litery, znaki podkreślenia, dokładnie identycznie jak zmienne w PHP. Blok reprezentuje
+			zarówno wartości skalarne (liczby, ciągi tekstowe) oraz złożone typy: tablice oraz obiekty.
+			Wartości przypisywane są blokom z poziomu skryptu za pomocą metody <function>optClass::assign()</function>.
+			
+			Poniższy przykładowy szablon pozwala na wyświetlenie w statycznym kodzie dynamicznie zmieniającej
+			się nazwy przedmiotu przekazanej ze skryptu:</para>
 			<example id="example.syntax.blocks1">
-				<title>Simple block</title>
-				<programlisting><![CDATA[<p>Hello my friend, do you need {$thing}?</p>]]></programlisting>
+				<title>Prosty blok</title>
+				<programlisting><![CDATA[<p>Witaj, przyjacielu! Czy potrzebujesz {$przedmiot}?</p>]]></programlisting>
 			</example>
-			<para>Now, if the application programmer assigns the text "sunglasses" into the <emphasis>$thing</emphasis>
-			block, the guest will see:</para>
-			<programlisting><![CDATA[<p>Hello my friend, do you need sunglasses?</p>]]></programlisting>
+			<para>Jeśli teraz skrypt przypisze blokowi  <emphasis>$przedmiot</emphasis> wartość "okulary przeciwsłoneczne",
+			internauta zobaczy:</para>
+			<programlisting><![CDATA[<p>Witaj, przyjacielu! Czy potrzebujesz okularów przeciwsłonecznych?</p>]]></programlisting>
 			<mark type="orange">
-			<para>Blocks can handle not only strings or numbers. They support also compound types known from PHP, like
-			arrays and objects. An array is a set of variables grouped under the same name. For example, instead of writing
-			<emphasis>$person_name, $person_surname</emphasis>, we use <emphasis>$person.name, $person.surname</emphasis>.
-			You can say, it is almost the same, but the main difference is in the PHP code, where the data are more simply
-			assigned to the templates. You should consult your PHP programmer, where you are going to use them.</para>
-			<para>Arrays bring also some more dynamics. For example, we have two of them: <variable>$titles</variable> and
-			<variable>$values</variable>. They contain different kinds of data, and the titles for them, but we have another
-			block: <variable>$id</variable> that describes, what record should be shown. OPT allows to do it:</para>
+			<para>Jak wspominaliśmy, bloki mogą przechowywać nie tylko wartości skalarne, ale i złożone struktury
+			znane z PHP: tablice oraz obiekty. Tablica jest zbiorem zmiennych zgrupowanych pod tą samą nazwą. Przykładowo,
+			zamiast pisać <emphasis>$osoba_imie, $osoba_nazwisko</emphasis>, robimy <emphasis>$osoba.imie, $osoba.nazwisko</emphasis>.
+			Niektórzy powiedzą, że to praktycznie to samo, lecz główna różnica leży w kodzie PHP i możliwościach. Od strony kodu
+			dane są prościej przypisywane do szablonów, a ponadto tablica sama w sobie jest jednym wielkim blokiem i jeśli trzeba,
+			można napisać po prostu <emphasis>$osoba</emphasis>, aby przekazać gdzieś wszystkie informacje o facecie za jednym
+			zamachem. Skonsultuj się z Twoim programistą PHP, gdzie będziecie używać tablic..</para>
+			<para>Tablice pozwalają również na dodanie większego dynamizmu. Załóżmy, że mamy dwie takie: <variable>$tytuly</variable> i
+			<variable>$wartosci</variable>. Zawierają różne rodzaje informacji, lecz my posiadamy jeszcze jeden blok: <variable>$ktory</variable>.
+			W nim zapisane jest, który konkretnie element tablicy chcemy wyświetlić. OPT pozwala w tym miejscu na następującą operację:</para>
 			<example id="example.syntax.blocks2">
 				<title>Blocks and arrays</title>
-				<programlisting><![CDATA[<p><strong>{$titles[$what]}</strong>: {$values[$what]}</p>]]></programlisting>
+				<programlisting><![CDATA[<p><strong>{$tytuly[$ktory]}</strong>: {$wartosci[$ktory]}</p>]]></programlisting>
 			</example>
-			<para>This code tells: take the element from <variable>$titles</variable>, whose key (identifier) is in the <variable>$what</variable>
-			block. The identifiers of array elements may be both numbers and strings. The full list of possible ways to access
-			array data is shown below:</para>
-			<programlisting><![CDATA[{$foo}           {* display a simple data (numbers, strings) *}
-{$foo[4]         {* display the 5th element of a zero-indexed array *}
-{$foo.bar}       {* display the "bar" key value of an array *}
-{$foo[bar]}      {* display the "bar" key value of an array *}
-{$foo.bar[pub]}  {* display the "pub" key of "bar" array in $foo block. *}
-{$foo[$bar]}     {* display value of an array, whose name is in the $bar block *}]]></programlisting>
-			<para>The notation with dots can be used, if we define the key statically. The notation with
-			brackets allows to use dynamic keys, stored in some other blocks. Note also that we can mix
-			those two notations in this way: firstly dot-based access, later brackets. The way, where the
-			brackets are first and dots last, like <emphasis>$foo[bar].joe</emphasis> is not allowed.</para>
+			<para>Kod ten mówi nam: weź z tablicy <variable>$tytuly</variable> element, którego identyfikator (czyli tzw. indeks) masz zapisany
+			w bloku <variable>$what</variable>. Identyfikatorami wartości w tablicach mogą być zarówno liczby, jak i ciągi
+			tekstowe. Lista możliwych odwołań do danych tablicy pokazana jest poniżej:</para>
+			<programlisting><![CDATA[{$foo}           {* wyświetla proste dane (liczby, teksty) *}
+{$foo[4]}        {* wyświetl 5-ty element tablicy indeksowanej od zera. *}
+{$foo.bar}       {* wyświetl element tablicy o indeksie "bar" *}
+{$foo[bar]}      {* wyświetl element tablicy o indeksie "bar" *}
+{$foo.bar[pub]}  {* wyświetl element "pub" z tablicy umieszczonej pod indeksem "bar" w tablicy "foo". *}
+{$foo[$bar]}     {* wyświetl z tablicy $foo element, którego indeks jest zapisany w bloku $bar *}]]></programlisting>
+			<para>Notacja z kropkami może być używana, jeśli indeksy określone są statycznie w kodzie.
+			Notacja nawiasowa pozwala nam używać dynamicznych indeksów (zapisanych w innym bloku). Zauważmy,
+			że obie notacje można w pewnym stopniu mieszać, przechodząc z notacji kropkowej na tablicową
+			(ale nie na odwrót). Zapis <emphasis>$foo[bar].joe</emphasis> nie jest dozwolony.</para>
 			</mark>
 			<mark type="red">
-			<para>Another compound type supported by OPT are objects. Unsually there is no need to use them
-			in templates, although some programmers may find them important. An object is more than array. It contains
-			not only the grouped data, but also the <emphasis>methods</emphasis>, which may perform some operations on
-			them. The methods can take parameters, which are both static values, like "5" and "Mike", and other blocks.
-			The code below shows, how to access the object data in OPT:</para>
-			<programlisting><![CDATA[{$foo->bar}			{* the "bar" field of the object *}
-{$foo->method()}			{* the method "method" of the $foo object called *}
-{$foo->method(5)}			{* the method with a static parameter called *}
-{$foo->method($bar)}		{* the method with a dynamic parameter $foo called *}
-{$foo->method($abc, $def)}	{* the method with more than one parameters *}]]></programlisting>
-			<para>Consult with the script programmer, which elements of the syntax you are going to use.</para>
+			<para>Kolejnym złożonym typem wspieranym przez OPT są obiekty. Zazwyczaj nie ma potrzeby używania
+			ich w szablonach, lecz niektórym programistom ich obecność może wydać się niezbędna. Obiekt jest
+			czymś więcej, niż tablica. Nie tylko grupuje on w sobie nieco danych, ale zawiera również <emphasis>metody</emphasis>
+			mówiące, w jaki sposób te dane można przetwarzać. Metody mogą pobierać parametry zarówno statyczne,
+			np. "5", "Maciek", jak i dynamiczne, zapisane w innych blokach czy generowane przez inne metody.
+			Poniższy kod pokazuje sposoby odwoływania się do wnętrza obiektów w OPT:</para>
+			<programlisting><![CDATA[{$foo->bar}			{* pole "bar" obiektu $foo *}
+{$foo->method()}			{* wywołanie metody "method()" dla danych obiektu $foo *}
+{$foo->method(5)}			{* jw, ze statycznym parametrem *}
+{$foo->method($bar)}		{* jw, z dynamicznym parametrem *}
+{$foo->method($abc, $def)}	{* metoda z więcej, niż jednym parametrem. *}]]></programlisting>
+			<para>Nie zapomnij skonsultować się ze swoim programistą w sprawie elementów składni,
+			których będziecie używać.</para>
 			</mark>
-			<para>Block names can contain letters, numbers and underscores, where the first character must not
-			be a number. OPT has only one reserved block name: <emphasis>$opt</emphasis>. It allows to access various
-			information about different elements of the system. Note that the programmer may extend the field of use of
-			this block, and here we will describe only the built-in options:</para>
-			<programlisting><![CDATA[$opt.get.name - reads the "name" parameter from the URL address
-$opt.post.name - reads the "name" field sent to the script by the HTML form
-$opt.cookie.name - reads the "name" cookie value
-$opt.session.name - reads the "name" value from the session data
-$opt.server.name - reads the "name" value from the server information
-$opt.env.name - reads the "name" value from the server information
-$opt.request.name - reads the "name" value from the URL, the form or the cookie
-$opt.now - returns the current time in seconds from 1.1.1970
-$opt.const.name - returns the value of "name" PHP constant
-$opt.version - returns the OPT version]]></programlisting>
-			<para>Sometimes the template engine must set some values for the template designer, but as we said, it
-			must not use blocks for this. All the data generated by OPT can be displayed, using the next syntax structure
-			that is called <emphasis>variable</emphasis>. Its name begins with an at character, but it also can contain
-			numbers, strings and compound types. The only difference is that it is set by the template engine, not the
-			script. In the example below, we will define a variable inside a template and display it:</para>
+			<para>W OPT tylko jedna nazwa bloku jest zarezerwowana: <emphasis>$opt</emphasis>. Dzięki niej
+			możemy uzyskać szereg użytecznych informacji niedostępnych w inny sposób. Należy dodać, że
+			programiści mogą rozszerzać funkcjonalność tego bloku, tak więc dalsze możliwości zostaną
+			omówione w późniejszych rozdziałach:</para>
+			<programlisting><![CDATA[$opt.get.nazwa - pobiera parametr "nazwa" z adresu URL
+$opt.post.nazwa - pobiera parametr "nazwa" przysłany z formularza
+$opt.cookie.nazwa - pobiera ciastko "nazwa"
+$opt.session.nazwa - pobiera z sesji zmienną "nazwa"
+$opt.server.nazwa - pobiera informację o żądaniu HTTP opatrzoną nazwą "nazwa"
+$opt.env.nazwa - pobiera informacje środowiskowe o nazwie "nazwa"
+$opt.request.nazwa - zwraca parametr "nazwa" z adresu URL, formularza lub ciastek.
+$opt.now - zwraca aktualny czas w sekundach od 1.1.1970.
+$opt.const.nazwa - zwraca wartość stałej PHP o nazwie "nazwa"
+$opt.version - zwraca numer wersji OPT]]></programlisting>
+			<para>Niekiedy sam system szablonów musi zapisać gdzieś jakieś informacje do późniejszego
+			użycia przez szablon, lecz jak wspomnieliśmy wcześniej, zwykłe bloki tworzy programista z
+			poziomu skryptu. Dane generowane przez OPT zapisywane są w innym rodzaju "pojemników", zwanych
+			<emphasis>zmiennymi</emphasis>. Ich nazwa rozpoczyna się znakiem małpy, a dalsze użycie jest niemal
+			identyczne, jak w przypadku zwykłyuch bloków. Zmienne zostały wprowadzone, aby uniknąć konfliktów
+			nazw między pojemnikami z danymi generowanymi przez szablon, a tworzonymi przez programistę blokami.
+			W poniższym przykładzie tworzymy zmienną tekstową i wyświetlamy jej zawartość:</para>
 			<example id="example.syntax.blocks3">
 				<title>Variables</title>
-				<programlisting><![CDATA[{var=variable; "This is a variable"}
-<p>{@variable}</p>]]></programlisting>
+				<programlisting><![CDATA[{var=zmienna; "Wartość zmiennej"}
+<p>{@zmienna}</p>]]></programlisting>
 			</example>
-			<para>The first line defines a new variable. It will be explained later.</para>
+			<para>Pierwsza linijka tworzy nową zmienną. Jej znaczenie zostanie omówione później.</para>
 			<mark type="red">
-			<para>OPT allows to access directly its configuration, using <emphasis>configuration directives</emphasis>. Their
-			names are followed by the hash character (#): <emphasis>{#root}</emphasis>.</para>			
+			<para>OPT umożliwia bezpośredni dostęp do swojej konfiguracji poprzez udostępnienie specjalnej
+			składni dla dyrektyw konfiguracyjnych. Ich nazwy poprzedzone są znakiem hasza (#),np. <emphasis>{#root}</emphasis> - 
+			spowoduje to wyświetlenie ścieżki, w której zapisane są szablony.</para>			
 			</mark>
-			<para>Some websites may use multilingual interfaces. The messages displayed on the page are dynamically loaded
-			depending on the selected language. OPT has a special kind of block, <emphasis>language blocks</emphasis>. They
-			allow to read the texts directly from the language system used by the script. Each message is identified by the
-			ID and belongs to a group. The language block looks like this: <emphasis>{$group@id}</emphasis>. The i18n system
-			used by OPT is described later.</para>
+			<para>Niektóre witryny mogą posiadać wielojęzyczny interfejs. System sam wybiera komunikat, jaki
+			ma się w danym miejscu wyświetlić, w zależności od wybranej wersji językowej. OPT posiada specjalny
+			rodzaj bloków dla tego rodzaju danych. Zwane są one <emphasis>blokami językowymi</emphasis> i
+			pozwalają na bezpośrednie pobieranie komunikatów z systemu językowego. Każdy komunikat ma swój
+			identyfikator oraz przypisany jest do pewnej grupy, zatem odwołanie się do niego za pomocą bloku
+			językowego będzie wyglądać następująco: <emphasis>{$grupa@identyfikator}</emphasis>. Obsługa wielojęzykowości
+			została wytłumaczona w dalszej części dokumentacji.</para>
 		</sect1>
 		<sect1 id="syntax.expressions">
-			<title>Expressions</title>
+			<title>Wyrażenia</title>
 			<mark type="orange">
-			<para>Blocks and variables can be combined in bigger structures called expressions. Let's say that the programmer
-			passed to the template the amount of active and inactive users. Can you still display the total number of accounts?
-			The answer is: yes. Take a look at the example:</para>
+			<para>Bloki i zmienne mogą być łączone w większe struktury zwane wyrażeniami. Przypuśćmy, że do
+			szablonu przekazane zostały dwa bloki z liczbą aktywnych i nieaktywnych użytkowników. Czy mimo tego
+			nadal jest możliwe wyświetlenie również łącznej ich liczby bez konieczności przekazywania kolejnego
+			bloku? Odpowiedź brzmi: tak. Popatrzmy na przykład:</para>
 			<example id="example.syntax.expressions1">
-				<title>Variables</title>
-				<programlisting><![CDATA[<p>Active accounts: {$active}</p>
-<p>Inactive accounts: {$inactive}</p>
-<p>Total accounts: {$active + $inactive}</p>]]></programlisting>
+				<title>Dodawanie w OPT</title>
+				<programlisting><![CDATA[<p>Aktywne konta: {$aktywne}</p>
+<p>Nieaktywne konta: {$nieaktywne}</p>
+<p>Łącznie kont: {$aktywne + $nieaktywne}</p>]]></programlisting>
 			</example>
-			<para>As you see, the blocks are connected with an operator that sums the values and returns the result. OPT allows to
-			create compound expressions built of many different operators.</para>
-			<para>An expression contains:</para>
+			<para>Jak widać, dwa bloki zostały połączone operatorem dodawania, dzięki czemu w miejscu
+			nawiasów klamrowych ukaże nam się suma dwóch wartości. OPT pozwala na budowanie złożonych wyrażeń
+			z użyciem wielu różnych operatorów.</para>
+			<para>Wyrażenie składa się z:</para>
 			<orderedlist>
-				<listitem>Numbers in decimal and hexadecimal format: 1234567890 or 0x123456789ABCDEF0 or 0x123456789abcdef0</listitem>
-				<listitem>Strings enclosed with:
+				<listitem>Liczb w formacie dziesiętnym lub szesnastkowym: 1234567890 lub 0x123456789ABCDEF0 lub 0x123456789abcdef0</listitem>
+				<listitem>Ciągów tekstowych zawartych w:
 				<orderedlist>
-					<listitem>Single quotes: <emphasis>'this is a text'</emphasis></listitem>
-					<listitem>Double quotes: <emphasis>"this is a text"</emphasis></listitem>
-					<listitem>Reversed quotes: <emphasis>`this is a text`</emphasis></listitem>
-					<listitem>Single words may be written without quotes, only if they are not operators and are not located on an
-						operator place.</listitem>
-					<listitem>To write a quote as a part of text, you follow it with backslash: <emphasis>"double \" quote in a text"</emphasis></listitem>
+					<listitem>Apostrofach: <emphasis>'to jest tekst'</emphasis></listitem>
+					<listitem>Cudzysłowach: <emphasis>"to jest tekst"</emphasis></listitem>
+					<listitem>Odwróconych apostrofach: <emphasis>`to jest tekst`</emphasis></listitem>
+					<listitem>Pojedyncze słowa mogą być zapisywane bez apostrofów/cudzysłowów, jeśli nie są operatorami
+						lub nie stoją na miejscu przeznaczonym dla operatora.</listitem>
+					<listitem>Aby napisać apostrof/cudzysłów jako część tekstu, a nie jego zakończenie, stosujemy backslash: <emphasis>"cudzysłów \" w tekście"</emphasis></listitem>
 				</orderedlist>
 				</listitem>
-				<listitem>Operators: connect two smaller expressions and return the value. The precedence of an operator specifies
-					how "tightly" it binds two expressions together. For example, in the expression <emphasis>1 + 5 * 3</emphasis>,
-					the answer is 16 and not 18 because the multiplication ("*") operator has a higher precedence than the addition
-					("+") operator. Parentheses may be used to force precedence, if necessary. The precendence in OPT is the same,
-					as in PHP.</listitem>
-				<listitem>Functions - they take some parameters (arguments) and generate a result for them, like in maths or PHP.
-					The syntax: <emphasis>functionName(parameters)</emphasis> where parameters is a list of expressions divided
-					with a comma. For example, the function <emphasis>foo(1, 2, 3)</emphasis> takes three parameters: 1, 2 and 3.
-					<emphasis>bar()</emphasis> does not take any parameters. Similar syntax is used for object methods.</listitem>			
+				<listitem>Operatorów łączących dwa mniejsze wyrażenia i generujących wynik. Kolejność operatorów decyduje
+					o tym, które z nich zostaną obliczone jako pierwsze. Przykładowo, w wyrażeniu <emphasis>1 + 5 * 3</emphasis>,
+					odpowiedzią będzie 16, nie 18, ponieważ operator mnożenia ("*") jest ważniejszy, niż operator dodawania.
+					Za pomocą okrągłych nawiasów można wymuszać inną kolejność, gdy to jest potrzebne. Kolejność operatorów
+					jest identyczna, jak w języku PHP.</listitem>
+				<listitem>Funkcji pobierających parametry (argumenty) i generujących na ich podstawie wynik, jak w matematyce lub PHP.
+					Składnia przypomina to, co spotykamy w językach programowania: <emphasis>nazwaFunkcji(lista_parametrów)</emphasis> gdzie listą parametrów jest zbiór wyrażeń
+					oddzielonych od siebie przecinkiem. Przykładowo, funkcja <emphasis>foo(1, 2, 3)</emphasis> pobiera trzy parametry: 1, 2 i 3.
+					<emphasis>bar()</emphasis> nie pobiera żadnych parametrów. Identyczna składnia używana jest w odwołaniach do metod obiektów.</listitem>			
 			</orderedlist>
-			<para>The following operators are available in OPT. Some of them have two variants: symbolic and text.</para>
+			<para>W OPT dozwolone jest stosowanie następujących operatorów. Niektóre z nich mają dwie wersje: tekstową i symboliczną.</para>
 			
 			<table frame="all" id="operator_list">
 				<?dbhtml table-width="100%" ?>
-				<caption>List of operators</caption>
+				<caption>Lista operatorów</caption>
 				<tgroup cols="4" align="center">
 				<thead>
 				<row>
-				  <entry>Symbolic</entry>
-				  <entry>Text</entry>
-				  <entry>Example</entry>
-				  <entry>Description</entry>
+				  <entry>Symoliczny</entry>
+				  <entry>Tekstowy</entry>
+				  <entry>Przykład</entry>
+				  <entry>Opis</entry>
 				</row>
 				</thead>
 				<tbody>
@@ -458,218 +472,222 @@ $opt.version - returns the OPT version]]></programlisting>
 				  <entry>==</entry>
 				  <entry>eq</entry>
 				  <entry>$a == $b</entry>
-				  <entry>true if $a is equal to $b</entry>
+				  <entry>prawda, gdy $a jest równe $b</entry>
 				</row>
 				<row>
 				  <entry>!=</entry>
 				  <entry>neq</entry>
 				  <entry>$a != $b</entry>
-				  <entry>true if $a is not equal to $b</entry>
+				  <entry>prawda, gdy $a nie jest równe $b</entry>
 				</row>
 				<row>
 				  <entry>===</entry>
 				  <entry></entry>
 				  <entry>$a === $b</entry>
-				  <entry>true if $a is equal to $b and both have the same type</entry>
+				  <entry>prawda, gdy $a jest równe $b i oba wyrażenia mają ten sam typ</entry>
 				</row>
 				<row>
 				  <entry>!==</entry>
 				  <entry></entry>
 				  <entry>$a !== $b</entry>
-				  <entry>true if $a is not equal to $b or they have different types</entry>
+				  <entry>prawda, gdy $a nie jest równe $b lub oba wyrażenia mają różne typy</entry>
 				</row>
 				<row>
 				  <entry>&gt;</entry>
 				  <entry>gt</entry>
 				  <entry>$a &gt; $b</entry>
-				  <entry>true if $a is greater than $b</entry>
+				  <entry>prawda, gdy $a jest większe niż $b</entry>
 				</row>
 				<row>
 				  <entry>&lt;</entry>
 				  <entry>lt</entry>
 				  <entry>$a &lt; $b</entry>
-				  <entry>true if $a is lower than $b</entry>
+				  <entry>prawda, gdy $a jest mniejsze niż $b</entry>
 				</row>
 				<row>
 				  <entry>&gt;=</entry>
 				  <entry>gte, ge</entry>
 				  <entry>$a &gt;= $b</entry>
-				  <entry>true if $a is greater or equal to $b</entry>
+				  <entry>prawda, gdy $a jest większe lub równe $b</entry>
 				</row>
 				<row>
 				  <entry>&lt;=</entry>
 				  <entry>lte, le</entry>
 				  <entry>$a &lt;= $b</entry>
-				  <entry>true if $a is lower or equal to $b</entry>
+				  <entry>prawda, gdy $a jest mniejsze lub równe $b</entry>
 				</row>
 				<row>
 				  <entry>&amp;&amp;</entry>
 				  <entry>and</entry>
 				  <entry>$a &amp;&amp; $b</entry>
-				  <entry>true if both $a and $b are true</entry>
+				  <entry>prawda, gdy $a i $b są prawdziwe</entry>
 				</row>
 				<row>
 				  <entry>||</entry>
 				  <entry>or</entry>
 				  <entry>$a || $b</entry>
-				  <entry>true if $a or $b is true</entry>
+				  <entry>prawda, gdy $a lub $b lub oba naraz są prawdziwe</entry>
 				</row>
 				<row>
 				  <entry></entry>
 				  <entry>xor</entry>
 				  <entry>$a xor $b</entry>
-				  <entry>true if $a or $b is true, but not both.</entry>
+				  <entry>prawda, gdy $a lub $b jest prawdziwe, lecz nie oba naraz.</entry>
 				</row>
 				<row>
 				  <entry>!</entry>
 				  <entry>not</entry>
 				  <entry>! $a</entry>
-				  <entry>true if $a is false</entry>
+				  <entry>prawda, gdy $a jest fałszywe</entry>
 				</row>
 				<row>
 				  <entry>+</entry>
 				  <entry>add</entry>
 				  <entry>$a + $b</entry>
-				  <entry>sum of $a and $b</entry>
+				  <entry>suma $a i $b</entry>
 				</row>
 				<row>
 				  <entry>-</entry>
 				  <entry>sub</entry>
 				  <entry>$a - $b</entry>
-				  <entry>difference of $a and $b</entry>
+				  <entry>różnica $a i $b</entry>
 				</row>
 				<row>
 				  <entry>*</entry>
 				  <entry>mul</entry>
 				  <entry>$a * $b</entry>
-				  <entry>product of $a and $b</entry>
+				  <entry>iloczyn $a i $b</entry>
 				</row>
 				<row>
 				  <entry>/</entry>
 				  <entry>div</entry>
 				  <entry>$a / $b</entry>
-				  <entry>quotient of $a and $b</entry>
+				  <entry>iloraz $a i $b</entry>
 				</row>
 				<row>
 				  <entry>%</entry>
 				  <entry>mod</entry>
 				  <entry>$a % $b</entry>
-				  <entry>remainder of $a divided by $b</entry>
+				  <entry>reszta z dzielenia $a przez $b</entry>
 				</row>
 				<row>
 				  <entry>++</entry>
 				  <entry></entry>
 				  <entry>$a++</entry>
-				  <entry>increments the value of $a by 1</entry>
+				  <entry>zwraca wartość $a, a następnie zwiększa ją o 1</entry>
 				</row>
 				<row>
 				  <entry>--</entry>
 				  <entry></entry>
 				  <entry>$a--</entry>
-				  <entry>decrements the value of $a by 1</entry>
+				  <entry>zwraca wartość $a, a następnie zmniejsza ją o 1</entry>
 				</row>
 				<row>
 				  <entry>::</entry>
 				  <entry></entry>
 				  <entry>$a :: $b</entry>
-				  <entry>concatenation of strings $a and $b</entry>
+				  <entry>połączenie ciągów tekstowych $a i $b</entry>
 				</row>
 				<row>
 				  <entry>=</entry>
 				  <entry>is</entry>
 				  <entry>@a is $b</entry>
-				  <entry>assigns the right value to the variable on the left</entry>
+				  <entry>przypisuje wartość wyrażenia po prawej zmiennej lub blokowi po lewej</entry>
 				</row>
 				</tbody>
 			  </tgroup>
 			</table>
-			<para>Note: OPT supports only post-increment and post-decrement operators. The syntax <emphasis>++$a</emphasis> may cause
-			unexpected behaviour.</para>
-			<para>The table may look a bit confusing, so now we are going to take a tour on an example. There is an instruction called
-			"if" that allows to show a part of the template, if the specified condition is true. The script sends us two blocks:
-			<variable>$name</variable> and <variable>$surname</variable> - we want to show additional text, if they both point to
-			a certain person.</para>
+			<para>Uwaga: OPT wspiera jedynie operatory postinkrementacji i postdekrementacji. Zapis <emphasis>++$a</emphasis> może spowodować
+			nieokreślone zachowanie.</para>
+			<para>Tabelka może wyglądać zniechęcająco, dlatego teraz zapoznamy się z paroma przykładami. W OPT istnieje instrukcja if,
+			która pozwala wyświetlić fragment szablonu, jeśli podane do niej wyrażenie jest prawdziwe. Skrypt przysyła nam dwa bloki:
+			<variable>$imie</variable> oraz <variable>$nazwisko</variable> - chcemy pokazać dodatkowy tekst, jeśli wskazują one pewną,
+			konkretną osobę.</para>
 			<example id="example.syntax.expressions2">
-				<title>Simple expressions</title>
-				<programlisting><![CDATA[{if $name == "John" and $surname == "Brown"}
-	<p>Hey John, how are you!</p>
+				<title>Proste wyrażenia</title>
+				<programlisting><![CDATA[{if $imie == "Jan" and $nazwisko == "Kowalski"}
+	<p>Witaj, Janku! Jak się masz</p>
 {/if}]]></programlisting>
 			</example>
-			<para>Such operators, as <emphasis>&gt;</emphasis> and <emphasis>==</emphasis> can be used to compare some data, whereas
-			<emphasis>and</emphasis>, <emphasis>or</emphasis> define relations between them. Another example will be a result of some
-			internet test divided into three stages. The competitor takes one, and then chooses another from two possibilities. The
-			script sends to our template the following blocks: <variable>$test1</variable> - a number of points in test 1,
-			<variable>$test2</variable> in test 2, and <variable>$test3</variable> in test 3. We want to display additional congratulations,
-			if he passed the first test, and another one of the twos.</para>
+			<para>Operatory takie, jak <emphasis>&gt;</emphasis> i <emphasis>==</emphasis> mogą być używane do porównywania danych, natomiast
+			<emphasis>and</emphasis> czy <emphasis>or</emphasis> określają relacje między innymi wyrażeniami. Kolejny przykład będzie dotyczyć
+			internetowego quizu. Uczestnik musi obowiązkowo rozwiązać zestaw numer 1, a następnie wybrać zestaw 2 lub 3. Wyniki każdego zestawu skrypt
+			przesyła w trzech blokach: <variable>$test1</variable>, <variable>$test2</variable> i <variable>$test3</variable> in test 3. Chcemy wyświetlić dodatkowe
+			gratulacje dla osoby, która zaliczyła pierwszy oraz przynajmniej jeden z dwóch kolejnych zestawów.</para>
 			<example id="example.syntax.expressions3">
-				<title>More complicated expression</title>
+				<title>Bardziej skomplikowane wyrażenia</title>
 				<programlisting><![CDATA[{if $test1 > 50 and ($test2 > 50 or $test3 > 50)}
-	<p>Congratulations, you have passed our test!</p>
+	<p>Gratulacje, zdałeś nasz test śpiewająco!</p>
 {/if}]]></programlisting>
 			</example>
-			<para>As you see, we used brackets to group the conditions for test 2 and 3 into one bigger expression. Now the parser
-			knows that the results in test 1 and the one chosen by the competitor must be greater than 50. Without the brackets,
-			it would be calculated in the following way: test 1 and test 2, or just test 3, must be greather than 50. It is completely
-			different task that we wanted.</para>
+			<para>Użyliśmy tutaj nawiasów do zgrupowania wyrażeń dla testu 2 i 3 w jedno większe. Teraz parser wie, że
+			ma wyświetlić gratulacje tylko wtedy, gdy test 1 i przynajmniej jeden z testów 2 i 3 zdany jest na 50 punktów. Bez nawiasów,
+			wyrażenie byłoby liczone następująco: testy 1 i 2 razem LUB test 3 musi być zdany, co nie jest dokładnie tym,
+			co chcieliśmy uzyskać.</para>
 			</mark>
 		</sect1>
 		<sect1 id="syntax.functions">
-			<title>Functions</title>
+			<title>Funkcje</title>
 			<mark type="orange">
-			<para>A function is something that modifies the input data and generates the result. The input data are called
-			parameters and they are simply some values we want to process. In OPT, functions have similar syntax to other
-			programming languages and mathematics:</para>
-			<programlisting><![CDATA[{function(parameters)}]]></programlisting>
-			<para><emphasis>parameters</emphasis> is a list of values or expressions separated by commas. If the function takes
-			no parameters, we still keep the brackets. OPT has a number of different built-in functions and the programmers may
-			create their own, too.</para>
-			<para>The example below shows the idea hidden behind the functions. Let's say the script sets the block called
-			<variable>$introduction</variable> with a text "Welcome to our site", but in this layout, it has to be written with
-			capitalized letters.</para>
+			<para>Funkcja jest elementem, który pobiera dane wejściowe, modyfikuje je i zwraca wynik.
+			Dane wejściowe zwane są parametrami i są po prostu grupą wartości, które chcemy przetwarzać.
+			W OPT funkcje mają podobną składnię, jak w językach
+			programowania i matematyce:</para>
+			<programlisting><![CDATA[{funkcja(parametry)}]]></programlisting>
+			<para><emphasis>parametry</emphasis> to lista wyrażeń oddzielonych od siebie przecinkami. Jeśli
+			funkcja nie posiada żadnych parametrów, wciąż musimy zostawić nawiasy. OPT posiada zestaw
+			wbudowanych funkcji, zaś programiści mogą tworzyć również własne.</para>
+			<para>Poniższy przykład w praktyce ukazuje ideę stojącą za funkcjami. Powiedzmy, że skrypt
+			definiuje nam blok <variable>$introduction</variable> z wartością "Witamy na naszej stronie",
+			jednak w pewnym miejscu chcemy użyć go zapisanego w całości dużymi literami. Wystarczy użyć
+			funkcji, która pobierze oryginalny tekst, zamieni w nim małe litery na duże i zwróci go
+			z powrotem szablonowi.</para>
 			<example id="example.syntax.functions1">
-				<title>Sample use of functions</title>
-				<programlisting><![CDATA[<p>{capitalize($introduction)}</p>]]></programlisting>
+				<title>Przykładowe użycie funkcji</title>
+				<programlisting><![CDATA[<p>{upper($introduction)}</p>]]></programlisting>
 			</example>
-			<para>Now the value of <variable>$introduction</variable> block is passed to the function, which capitalizes all the
-			small letters and returns the modified text to the template.</para>
-			<para>Some functions appearing in OPT may be easily replaced by CSS stylesheets and in the HTML template design there
-			is no need to use them. However, the template engine is intended to work not only with the HTML data, but can process
-			any of the text content, where such features may be the only way, for example to capitalize the letters.</para>
-			<para>Below, we provided a complete reference of functions available in OPT. In the description, we use the following
-			data types:</para>
+			<para>Co prawda w wielu wypadkach nie potrzeba posługiwać się systemem szablonów do
+			wykonania tego typu czynności (odpowiednie opcje udostępniają arkusze stylów CSS), ale
+			nie zapominajmy, że w OPT można również tworzyć inne rodzaje dokumentów tekstowych,
+			które wcale nie muszą CSS-a rozumieć.</para>
+			<para>Poniżej przedstawiamy kompletną listę funkcji zaimplementowanych domyślnie w OPT.
+			Przy każdym parametrze zaznaczyliśmy, jakiego typu wartości on wymaga. Przyjęta jest
+			następująca konwencja:</para>
 			<orderedlist>
-				<listitem><emphasis>Integer</emphasis> - a number that belongs to ..., -2, -1, 0, 1, 2 ...</listitem>
-				<listitem><emphasis>Float</emphasis> - a real number (with fractions), for example 3.14</listitem>
-				<listitem><emphasis>Number</emphasis> - integer or float</listitem>
-				<listitem><emphasis>String</emphasis> - any text</listitem>
-				<listitem><emphasis>Boolean</emphasis> - a logical value: 1 (true) or 0 (false).</listitem>
-				<listitem><emphasis>Array</emphasis> - a PHP array</listitem>
-				<listitem><emphasis>Object</emphasis> - a PHP object</listitem>
-				<listitem><emphasis>Lang</emphasis> - a language block</listitem>
-				<listitem><emphasis>Mixed</emphasis> - more than one types possible</listitem>
-				<listitem><emphasis>Void</emphasis> - the function returns no value</listitem>
-				<listitem>... - three dots mean a custom number of parameters.</listitem>
+				<listitem><emphasis>Integer</emphasis> - liczba całkowita: ..., -2, -1, 0, 1, 2 ...</listitem>
+				<listitem><emphasis>Float</emphasis> - liczba rzeczywista (z ułamkami): 3.14</listitem>
+				<listitem><emphasis>Number</emphasis> - liczba całkowita lub rzeczywista</listitem>
+				<listitem><emphasis>String</emphasis> - dowolny ciąg tekstowy</listitem>
+				<listitem><emphasis>Boolean</emphasis> - wartość logiczna: 1 (prawda) lub 0 (fałsz).</listitem>
+				<listitem><emphasis>Array</emphasis> - tablica PHP</listitem>
+				<listitem><emphasis>Object</emphasis> - obiekt PHP</listitem>
+				<listitem><emphasis>Lang</emphasis> - blok językowy</listitem>
+				<listitem><emphasis>Mixed</emphasis> - dozwolone wartości większej liczby typów</listitem>
+				<listitem><emphasis>Void</emphasis> - funkcja nie zwraca wartości</listitem>
+				<listitem>... - trzy kropki oznaczają zmienną liczbę parametrów.</listitem>
 			</orderedlist>
-			<para>Note: the square brackets in the synopsis mark <emphasis>optional parameters</emphasis> that do not have to
-			be set, if not necessary.</para>
+			<para>Uwaga: kwadratowymi nawiasami zaznaczone zostały <emphasis>parametry opcjonalne</emphasis>, które
+			nie muszą być koniecznie definiowane. Ich wartość ustawia się tylko, gdy faktycznie jest taka potrzeba.</para>
 			</mark>
 			<sect2 id="syntax.functions.apply">
 				<title>apply()</title>
 				<methodsynopsis>
 				<type>void</type><methodname>apply</methodname>
-					<methodparam><type>lang</type><parameter>block</parameter></methodparam>
+					<methodparam><type>lang</type><parameter>blok</parameter></methodparam>
 					<methodparam><parameter>...</parameter></methodparam>
 				</methodsynopsis>
-				<para>The function allows to put the dynamic data into the specified language block. The items to assign are
-				passed as the function parameters. They replace the formatting codes of the C <function>sprinft()</function> function
-				inserted in the specified text. The exact result depends on the used I18n engine. If it is a default, procedural-based i18n
-				built into OPT, you may use this function only once on each language block, because the formatting codes are lost.
-				If you write your own engine, you may avoid this issue.</para>
+				<para>Funkcja umożliwia umieszczenie dynamicznych danych we wskazanym bloku językowym.
+				Wartości do wstawienia przekazywane są jako kolejne parametry. Zastępują one odpowiednie
+				kody formatujące umieszczone w treści bloku językowego, identyczne z kodami funkcji <function>sprinft()</function>
+				z języka C. Dokładny rezultat działania zależy od konkretnego systemu językowego
+				używanego przez aplikację WWW. Jeśli korzystasz z systemu wbudowanego w OPT, możesz
+				wywołać tę funkcję tylko raz na tym samym bloku, gdyż wygenerowana treść nadpisuje źródłową.
+				Pisząc własny system, możesz ominąć ten problem.</para>
 				<example id="example.syntax.functions.apply1">
-					<title>apply() function</title>
-					<programlisting><![CDATA[{* content of menu@welcome: Welcome %s, thanks for the visit. *}
+					<title>Funkcja apply()</title>
+					<programlisting><![CDATA[{* zawartość $menu@welcome: Witaj %s, dziękujemy za wizytę. *}
 {apply($menu@welcome, 'Adam')}
-{* Wyswietli np.: Welcome Adam, thanks for the visit. *}
+{* Wyswietli np.: Witaj Adam, dziękujemy za wizytę. *}
 <p>{$menu@welcome}</p>]]></programlisting>
 				</example>
 			</sect2>
@@ -677,36 +695,37 @@ $opt.version - returns the OPT version]]></programlisting>
 				<title>array()</title>
 				<methodsynopsis>
 				<type>array</type><methodname>array</methodname>
-					<methodparam><parameter>array definition</parameter></methodparam>
+					<methodparam><parameter>definicja tablicy</parameter></methodparam>
 				</methodsynopsis>
-				<para>Creates an array. The array definition specifies the content of the array and consists of pairs
-				<emphasis>key => value</emphasis> separated with commas.</para>
+				<para>Tworzy tablicę. Definicja tablicy opisuje jej początkową zawartość za pomocą par
+				<emphasis>indeks => wartość</emphasis> oddzielonych przecinkami.</para>
 				<example id="example.syntax.functions.array1">
-					<title>Creating simple arrays</title>
-					<programlisting><![CDATA[{@array is array('title' => 'A title', 'author' => 'Johnny', 'body' => 'A body.')}
-<h3>{@array.title}</h3>
-<p>By {@array.author}</p>
-<p>{@array.body}</p>]]></programlisting>
+					<title>Tworzenie prostych tablic</title>
+					<programlisting><![CDATA[{@tablica is array('tytul' => 'Tytuł', 'autor' => 'Janusz', 'tresc' => 'Trochę treści.')}
+<h3>{@tablica.tytul}</h3>
+<p>By {@tablica.autor}</p>
+<p>{@tablica.tresc}</p>]]></programlisting>
 				</example>
-				<para>To give the values autoindexes, specify only the first (numerical) key and next insert only the values
-				separated by commas:</para>
+				<para>Aby elementy były indeksowane automatycznie, podaj tylko początkową wartość numeryczną
+				i oddzielaj następne wartości przecinkami bez podawania indeksu:</para>
 				<example id="example.syntax.functions.array2">
-					<title>Autoindex</title>
-					<programlisting><![CDATA[{@array is array(0 => 'value1', 'value2', 'value3', 'value4')}]]></programlisting>
+					<title>Automatyczne indeksowanie</title>
+					<programlisting><![CDATA[{@tablica is array(0 => 'wartość 1', 'wartość 2', 'wartość 3', 'wartość 4')}]]></programlisting>
 				</example>
-				<para>Like in PHP, there might be both numerical and alphanumerical keys in one array.</para>
+				<para>Podobnie jak w PHP, dozwolone jest istnienie indeksów numerycznych i tekstowych w jednej tablicy jednocześnie.</para>
 			</sect2>
 			<sect2 id="syntax.functions.capitalize">
 				<title>capitalize()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>capitalize</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
 				</methodsynopsis>
-				<para>Returns a string with the first character of <variable>text</variable> capitalized, if that character
-				is alphabetic. Note that 'alphabetic' is determined by the current locale set by the PHP application.</para>
+				<para>Zwraca podany w parametrze <variable>tekst</variable>, w którym pierwsza litera
+				została zamieniona na dużą. To, czy dany znak zostanie uznany za literę, zależy
+				od ustawień regionalnych skryptu PHP.</para>
 				<example id="example.syntax.functions.capitalize1">
-					<title>capitalize() function</title>
-					<programlisting><![CDATA[{* shows "Hello world" *}
+					<title>Funkcja capitalize()</title>
+					<programlisting><![CDATA[{* pokaże "Hello world" *}
 {capitalize("hello world")}]]></programlisting>
 				</example>
 			</sect2>
@@ -714,22 +733,22 @@ $opt.version - returns the OPT version]]></programlisting>
 				<title>count()</title>
 				<methodsynopsis>
 				<type>int</type><methodname>count</methodname>
-					<methodparam><type>array</type><parameter>array</parameter></methodparam>
+					<methodparam><type>array</type><parameter>tablica</parameter></methodparam>
 				</methodsynopsis>
-				<para>Returns a number of elements assigned to the <variable>array</variable> array.</para>
+				<para>Zwraca ilość elementów znajdujących się w tablicy <variable>tablica</variable>.</para>
 			</sect2>
 			<sect2 id="syntax.functions.countwords">
 				<title>countWords()</title>
 				<methodsynopsis>
 				<type>int</type><methodname>countWords</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
 				</methodsynopsis>
-				<para>Returns the number of words in the <variable>text</variable> text.</para>
+				<para>Zwraca ilość słów znajdujących się w tekście <variable>tekst</variable>.</para>
 				<example id="example.syntax.functions.countwords1">
-					<title>capitalize() function</title>
-					<programlisting><![CDATA[<h1>{$title}</h1>
-<p>{$body}</p>
-<span class="small">Total words: {countWords($body)}</span>]]></programlisting>
+					<title>Funkcja countWords()</title>
+					<programlisting><![CDATA[<h1>{$tytul}</h1>
+<p>{$tresc}</p>
+<span class="small">Łącznie słów: {countWords($tresc)}</span>]]></programlisting>
 				</example>
 			</sect2>
 			<sect2 id="syntax.functions.cycle">
@@ -738,198 +757,207 @@ $opt.version - returns the OPT version]]></programlisting>
 				<type>mixed</type><methodname>cycle</methodname>
 					<methodparam><parameter>...</parameter></methodparam>
 				</methodsynopsis>
-				<para>Iterates through the specified parameters after each calling. For example, if we specify three values:
-				1, 2, 3, the function returns 1 after first calling, 2 after second, 3 after third, again 1 after fourth etc.
-				Useful in desing issues - in the example below we color in a different way each row of the table:</para>
+				<para>Cyklicznie pobiera kolejne parametry za każdym kolejnym wywołaniem. Dla przykładu,
+				jeśli podamy parametry <emphasis>1, 2, 3</emphasis>, to pierwsze wywołanie funkcji zwróci nam
+				1, drugie 2, trzecie 3, czwarte z powrotem 1 itd. Jest użyteczna w niektórych sprawach związanych
+				z wyglądem. W poniższym przykładzie naprzemiennie kolorujemy za jej pomocą wiersze tabeli:</para>
 				<example id="example.syntax.functions.cycle1">
-					<title>cycle() function</title>
+					<title>Funkcja cycle()</title>
 					<programlisting><![CDATA[<table border="0">
-{section=rows}
-{@class is cycle("bright", "dark")}
+{section=wiersze}
+{@klasa is cycle("jasny", "ciemny")}
 <tr>
-  <td class="{@class}">{$rows.name}</td>
-  <td class="{@class}">{$rows.value}</td>
+  <td class="{@klasa}">{$wiersze.nazwa}</td>
+  <td class="{@klasa}">{$wiersze.wartosc}</td>
 </tr>
 {/section}
 </table>]]></programlisting>
 				</example>
-				<para>Note: since OPT 1.1.0 <function>cycle()</function> is not necessary in this place. You can use section
-				attributes:</para>
+				<para>Uwaga: od wersji OPT 1.1.0 funkcja <function>cycle()</function> nie jest tu niezbędna, gdyż jej
+				zadanie przejął jeden z atrybutów sekcji:</para>
 				<example id="example.syntax.functions.cycle2">
-					<title>cycle() is not necessay</title>
+					<title>Funkcja cycle() jest niepotrzebna</title>
 					<programlisting><![CDATA[<table border="0">
-{section=rows}
-{cycle=class; bright; dark} {* internal section tag *}
+{section=wiersze}
+{cycle=class; jasny; ciemny} {* wewnetrzny znacznik sekcji *}
 <tr>
-  <td opt:cycle="rows">{$rows.name}</td>
-  <td opt:cycle="rows">{$rows.value}</td>
+  <td opt:cycle="wiersze">{$wiersze.nazwa}</td>
+  <td opt:cycle="wiersze">{$wiersze.wartosc}</td>
 </tr>
 {/section}
 </table>]]></programlisting>
 				</example>
-				<para>See <link linkend="syntax.instructions.section" endterm="">sections</link> for more details.</para>
+				<para>Zobacz rozdział <link linkend="syntax.instructions.section" endterm="">sekcje</link>, aby uzyskać więcej informacji.</para>
 			</sect2>
 			<sect2 id="syntax.functions.date">
 				<title>date()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>date</methodname>
 					<methodparam><type>string</type><parameter>format</parameter></methodparam>
-					<methodparam choice="opt"><type>int</type><parameter>timestamp</parameter></methodparam>
+					<methodparam choice="opt"><type>int</type><parameter>czas</parameter></methodparam>
 				</methodsynopsis>
-				<para>Formats the date using PHP <ulink url="http://www.php.net/date">date()</ulink> function syntax. If
-				<variable>timestamp</variable> specified, formats the specified date, otherwise current time is taken.</para>
+				<para>Formatuje datę zgodnie z regułami funkcji <ulink url="http://www.php.net/date">date()</ulink> dostępnej w PHP. Jeśli
+				określiliśmy parametr <variable>czas</variable> (w sekundach od 1.1.1970), sformatowany zostanie właśnie on,
+				w przeciwnym wypadku funkcja sformatuje aktualny czas.</para>
 				<example id="example.syntax.functions.date1">
-					<title>capitalize() function</title>
-					<programlisting><![CDATA[<p>Today is {date("d.m.Y")}.</p>]]></programlisting>
+					<title>Funkcja date()</title>
+					<programlisting><![CDATA[<p>Dziś jest {date("d.m.Y")}.</p>]]></programlisting>
 				</example>
 			</sect2>
 			<sect2 id="syntax.functions.length">
 				<title>length()</title>
 				<methodsynopsis>
 				<type>int</type><methodname>length</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
 				</methodsynopsis>
-				<para>Returns the number of characters in <variable>text</variable>.</para>
+				<para>Zwraca ilość znaków w tekście <variable>tekst</variable>.</para>
 			</sect2>
 			<sect2 id="syntax.functions.lower">
 				<title>lower()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>lower</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
 				</methodsynopsis>
-				<para>Makes all the characters lowercase.</para>
+				<para>Zamienia wszystkie litery w podanym tekście na małe.</para>
 			</sect2>
 			<sect2 id="syntax.functions.parseint">
 				<title>parseInt()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>parseInt</methodname>
-					<methodparam><type>number</type><parameter>num</parameter></methodparam>
+					<methodparam><type>number</type><parameter>liczba</parameter></methodparam>
 				</methodsynopsis>
-				<para>Formats the number to a human-readable form by adding separating characters between groups
-				of digits. By default, it formats the numbers using English-language settings, but they can be
-				changed in OPT configuration with these directives:</para>
+				<para>Formatuje duże liczby do postaci czytelnej dla człowieka. Domyślnie używane są
+				angielskie reguły formatowania, lecz mogą one zostać zmienione następującymi dyrektywami
+				konfiguracyjnymi OPT:</para>
 				<orderedlist>
-					<listitem><emphasis>parseIntDecimals</emphasis> - how many decimals after dot we want to present.</listitem>
-					<listitem><emphasis>parseIntDecPoint</emphasis> - separator between fractions and integer parts.</listitem>
-					<listitem><emphasis>parseIntThousands</emphasis> - separator between each group of thousands.</listitem>
+					<listitem><emphasis>parseIntDecimals</emphasis> - jak dużo cyfr po przecinku chcemy pokazać.</listitem>
+					<listitem><emphasis>parseIntDecPoint</emphasis> - separator części ułamkowych i całkowitych (w polskim: przecinek).</listitem>
+					<listitem><emphasis>parseIntThousands</emphasis> - separator między grupami tysięcy (w polskim: spacja lub kropka).</listitem>
 				</orderedlist>
 				<example id="example.syntax.functions.parseint1">
-					<title>parseInt() function</title>
+					<title>Funkcja parseInt()</title>
 					<programlisting><![CDATA[<p>{parse_int(3483745.3490)}</p>
-{* will display: 3,483,745.349 *}]]></programlisting>
+{* wyświetli (przy polskich ustawieniach): 3 483 745.349 *}]]></programlisting>
 				</example>
 			</sect2>
 			<sect2 id="syntax.functions.trim">
 				<title>trim()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>trim</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
-					<methodparam choice="opt"><type>string</type><parameter>characters</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>znaki</parameter></methodparam>
 				</methodsynopsis>
-				<para>Returns a string with the specified in <variable>characters</variable> stripped from the beginning and the
-				end of <variable>text</variable>. If the character set is not specified, it strips whitechars (spaces, tabs etc.).</para>
+				<para>Zwraca podany <variable>text</variable>, w którym z początku i końca zostały usunięte znaki podane w
+				parametrze <variable>znaki</variable>. Jeśli zbiór znaków jest nieokreślony, wtedy
+				usuwane są domyślnie tzw. białe znaki (spacje, tabulacje, znaki nowej linii itd.).</para>
 			</sect2>
 			<sect2 id="syntax.functions.upper">
 				<title>upper()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>upper</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
 				</methodsynopsis>
-				<para>Makes all characters uppercase.</para>
+				<para>Zamienia wszystie litery w podanym tekście na duże.</para>
 			</sect2>
 			<sect2 id="syntax.functions.wordwrap">
 				<title>wordwrap()</title>
 				<methodsynopsis>
 				<type>string</type><methodname>wordwrap</methodname>
-					<methodparam><type>string</type><parameter>text</parameter></methodparam>
-					<methodparam><type>int</type><parameter>width</parameter></methodparam>
-					<methodparam choice="opt"><type>string</type><parameter>break</parameter></methodparam>
+					<methodparam><type>string</type><parameter>tekst</parameter></methodparam>
+					<methodparam><type>int</type><parameter>dlugosc</parameter></methodparam>
+					<methodparam choice="opt"><type>string</type><parameter>przelamanie</parameter></methodparam>
 				</methodsynopsis>
-				<para>Returns a string with <variable>text</variable> wrapped at the column number specified by the
-				optional <variable>width</variable> parameter. The line is broken using the (optional) <variable>break</variable> parameter.</para>
+				<para>Zwraca podany <variable>tekst</variable> połamany względem wyrazów tak, aby pasował do kolumny o szerokości
+				określonej parametrem <variable>dlugosc</variable>. Do przełamania używany jest ciąg podany w parametrze <variable>przelamanie</variable>.</para>
 				<example id="example.syntax.functions.wordwrap1">
-					<title>wordwrap() function</title>
-					<programlisting><![CDATA[{* only about 120 characters in one column *}
-<p>{wordwrap($article, 120, "\n<br/>")}</p>]]></programlisting>
+					<title>Funkcja wordwrap()</title>
+					<programlisting><![CDATA[{* co najwyzej 120 znaków w jednej kolumnie *}
+<p>{wordwrap($artykul, 120, "\n<br/>")}</p>]]></programlisting>
 				</example>
 			</sect2>
 		</sect1>
 		<sect1 id="syntax.tags">
-			<title>Tags</title>
-			<para>Most of the template logic is built of OPT tags. They work and sometimes also look
-			like XML/XHTML, however there are some important differences which will be pointed here. By default,
-			the tags are also enclosed inside curly brackets: { and }. The programmer may define new
-			delimiters, which may be used by the template designer. Here we can see a simple pair of
-			tags:</para>
+			<title>Znaczniki</title>
+			<para>Większość logiki szablonu zbudowana jest ze znaczników OPT. Zachowują się one,
+			a czasem też wyglądają, podobnie jak znaczniki XML/XTML, jednak jest między nimi kilka
+			istotnych różnic, które zostaną tu wymienione. Domyślnie znaczniki OPT zamknięte są
+			w nawiasach klamrowych: { oraz }. Programista może zdefiniować nowe ograniczniki do użytku
+			twórczy szablonów. Poniżej widzimy parę dwóch prostych znaczników:</para>
 			<example id="example.syntax.tags1">
-				<title>Simple tags</title>
-				<programlisting><![CDATA[static text
-{tag}
-static text enclosed in the tags
-{/tag}
-static text]]></programlisting>
+				<title>Proste znaczniki</title>
+				<programlisting><![CDATA[statyczny tekst
+{znacznik}
+statyczny tekst wewnątrz znaczników
+{/znacznik}
+statyczny tekst]]></programlisting>
 			</example>
-			<para>The ending tag starts with / and next there is a name of closed tag. Like in XML, you have to
-			remember to close the tags in the reversed order they were opened. The example below is invalid and
-			it will cause a syntax error:</para>
+			<para>Znacznik kończący poznamy po znaku / na jego początku, po którym następuje nazwa
+			elementu, który chcemy zakończyć. Podobnie jak w XML, musisz pamiętać o zamykaniu znaczników
+			w kolejności odwrotnej do ich otwierania, tj. jeśli otwarłeś znacznik "a", a potem "b",
+			to zamkniesz najpierw "b" i dopiero później "a". Poniższy przykład ukazuje <emphasis>błędną</emphasis>
+			sytuację, która spowoduje błąd kompilacji:</para>
 			<example id="example.syntax.tags2">
-				<title>Invalid tags</title>
-				<programlisting><![CDATA[{tag1}
-{tag2}
-{/tag1}
-{/tag2}]]></programlisting>
+				<title>Nieprawidłowe zamknięcie znaczników</title>
+				<programlisting><![CDATA[{a}
+{b}
+{/a}
+{/b}]]></programlisting>
 			</example>
-			<para>If OPT does not know, how to process some tag, it ignores it and all the content located inside.
-			This is because some other tags may make use of it, so it is better not to display them like a static
-			text. The next consequence of this behavior is that the mistakes in the tag names <emphasis>are not</emphasis>
-			reported by the template compiler! So, if something does not display, but should do this, check the name of
-			the tag.</para>
-			<para>Since 1.1.0, OPT supports namespaces known from XML. If the namespace is not provides, OPT assigns
-			the tag to the default one: <emphasis>opt</emphasis>. Thus, the tags <emphasis>sometag</emphasis> and
-			<emphasis>opt:sometag</emphasis> mean exactly the same. Separate OPT extensions may use different namespaces,
-			for example Open Power Forms uses <emphasis>opf</emphasis> to idenfity its tags.</para>
-			<para>OPT allows to use single tags, as well:</para>
+			<para>Jeśli OPT nie wie, w jaki sposób przetworzyć dany znacznik, nie raportuje tego jako
+			błędu, lecz po prostu ignoruje jego i całą zawartość. Dzieje się tak, ponieważ inne znaczniki
+			mogą wiedzieć, jak go obsłużyć, więc lepiej po prostu takie "nieznane" elementy pozostawić
+			w drzewie i zignorować ich zawartość. Konsewkencją tego jest, że literówki w nazwach znaczników <emphasis>nie są</emphasis>
+			zgłaszane przez kompilator! Zatem, jeśli coś się nie wyświetla, a powinno, w pierwszej kolejności
+			sprawdź, czy wpisałeś prawidłową nazwę znacznika.</para>
+			<para>Od wersji 1.1.0 OPT wspiera przestrzenie nazw znane z XML-a. Domyślną przestrzenią nazw
+			dla znaczniów jest <emphasis>opt</emphasis>, przez co znaczniki <emphasis>znacznik</emphasis> i
+			<emphasis>opt:znacznik</emphasis> są dokładnie tym samym. Niezależne dodatki do OPT mogą używać
+			własnych przestrzeni nazw, np. Open Power Forms korzysta z <emphasis>opf</emphasis> do własnych znaczników.</para>
+			<para>OPT umożliwia też tworzenie pojedynczych znaczników, które zamykane są natychmiast:</para>
 			<example id="example.syntax.tags3">
-				<title>Single tags</title>
-				<programlisting><![CDATA[{singletag/}]]></programlisting>
+				<title>Pojedyncze znaczniki</title>
+				<programlisting><![CDATA[{pojedynczy/}]]></programlisting>
 			</example>
-			<para>There is also another type that does not appear in XML: alternative tags.</para>
+			<para>Następny rodzaj znaczników nie występuje w XML-u: znaczniki alternatywne.</para>
 			<example id="example.syntax.tags4">
-				<title>Alternative tags</title>
-				<programlisting><![CDATA[static text
-{tag}
-static text enclosed in the tags
-{tagelse}
-alternative content of the tag
-{/tag}
-static text]]></programlisting>
+				<title>Znaczniki alternatywne</title>
+				<programlisting><![CDATA[statyczny tekst
+{znacznik}
+statyczny tekst zamknięty w znacznikach
+{znacznikelse}
+alternatywna zawartość znacznika
+{/znacznik}
+statyczny tekst]]></programlisting>
 			</example>
-			<para>The tags may take one or more parameters. OPT provides here two different syntaxes:</para>
+			<para>Znaczniki również mogą pobierać parametry. OPT udostępnia tutaj dwie wymienne składnie:</para>
 			<orderedlist>
-				<listitem>Position-based syntax: <emphasis>{tag=parameter1; parameter2; parameter3}</emphasis> - it begins
-					with an equality character right after the tag name. The parameters are not named, we only specify the
-					values and separate them with a semicolon. If we want to pass the default value for one of the parameters,
-					we write <emphasis>!x</emphasis>, for example: <emphasis>{tag=parameter1; !x; parameter3}</emphasis></listitem>
-				<listitem>XML-style syntax: <emphasis>{tag parameter1="value" parameter2="value" parameter="3"}</emphasis></listitem>
+				<listitem>Składnia pozycyjna: <emphasis>{znacznik=parametr1; parametr2; parametr3}</emphasis> - rozpoczyna
+					się znakiem równości podanym zaraz po nazwie znacznika. Następnie podajemy same wartości oddzielone od
+					siebie średnikiem. Jeżeli chcemy w danym miejscu użyć wartości domyślnej opcjonalnego parametru, piszemy
+					<emphasis>!x</emphasis>, na przykład: <emphasis>{znacznik=parametr1; !x; parametr3}</emphasis></listitem>
+				<listitem>XML-owa składnia: <emphasis>{znacznik parametr1="wartość" parametr2="wartość" parametr="wartość"}</emphasis></listitem>
 			</orderedlist>
-			<para>The syntaxes above unsually can be freely mixed. For example, for the first time you may write
-			<emphasis>{section=foo}</emphasis> and later in the same template - <emphasis>{section name="foo"}</emphasis>.
-			Some of the instructions use also their own parameter format.</para>
-			<para>The parameters may be of different types. For example, if the tag requires a string, you can write
-			<emphasis>{tag=this is a text}</emphasis>. But if there is a need to write an expression, you have to write
-			<emphasis>{tag="this is a text"}</emphasis> or <emphasis>{tag parameter="`this is a text`"}</emphasis>
-			(with two quotes. The first one is for the parameter parser, the second - for the expression parser).</para>
-			<para>Be careful when using OPT delimiter characters inside parameters. The code <emphasis>{tag="foo {bar}"}</emphasis>
-			will cause error. If you think such situations may happen, ask your programmer for enable the <emphasis>entities</emphasis>
-			directive in the configuration. Then you may use entities, known from HTML:</para>
+			<para>Obie składnie mogą być stosowane wymiennie, to znaczy w jednym miejscu możemy napisać np.	<emphasis>{section=foo}</emphasis>,
+			a gdzie indziej w tym samym szablonie - <emphasis>{section name="foo"}</emphasis>.
+			Niektóre instrukcje mogą używać również własnych formatów paramertów, ale jest to specjalnie oznaczone i można
+			to wyłączyć.</para>
+			<para>Podobnie jak w przypadku funkcji, parametry znaczników również mają określony typ. Jeśli znacznik wymaga,
+			aby dany parametr był ciągiem tekstowym, możemy swobodnie napisać <emphasis>{znacznik=to jest tekst}</emphasis>. Lecz gdyby
+			parametr ten był określony jako "wyrażenie", jedyną poprawną formą będzie <emphasis>{znacznik="this is a text"}</emphasis>,
+			lub <emphasis>{tag parameter="`this is a text`"}</emphasis> (cudzysłowy i odwrócone apostrofy. Pierwsze są dla
+			parsera parametrów, drugie dla parsera wyrażeń). Jest tak dlatego, iż OPT wymaga, aby w wyrażeniach wielowyrazowe
+			ciągi tekstowe były podawane w cudzysłowach lub apostrofach.</para>
+			<para>Bądź ostrożny, używając znaków ograniczników wewnątrz znaczników. Kod <emphasis>{znacznik="foo {bar}"}</emphasis>
+			spowoduje błąd. Jeśli myślisz, że będziesz mieć problem ze znakami specjalnymi OPT, poproś programistę o włączenie
+			w konfiguracji dyrektywy <emphasis>entities</emphasis>. OPT będzie wtedy parsować znane z HTML-a encje:</para>
 			<table frame="all" id="entity_list">
 				<?dbhtml table-width="100%" ?>
-				<caption>OPT entities</caption>
+				<caption>Encje OPT</caption>
 				<tgroup cols="2" align="center">
 				<thead>
 				<row>
-				  <entry>Entity</entry>
-				  <entry>Character</entry>
+				  <entry>Encja</entry>
+				  <entry>Znak</entry>
 				</row>
 				</thead>
 				<tbody>
@@ -964,48 +992,47 @@ static text]]></programlisting>
 				</tbody>
 				</tgroup>
 			</table>
-			<para>Two last entities may be used also in a static template code outside OPT tags and expressions.</para>
+			<para>Dwie ostatnie encje mogą być również używane w statycznym kodzie szablonu, poza znacznikami OPT..</para>
 		</sect1>
 		<sect1 id="syntax.instructions">
-			<title>Instructions</title>
-			<para>Instructions define most of the logic in the template. Using them, you may define, where the lists of
-			data are, what parts of the content are shown conditionally etc. They make use of OPT tags explained above,
-			however they support some optional simplifications you can use (but only with the instructions!):</para>
+			<title>Instrukcje</title>
+			<para>Instrukcje tworzą najważniejszą część logiki szablonu. Z ich pomocą możesz określić, gdzie mają znajdować
+				się listy danych, które części mają pokazywać się warunkowo itd. Instrukcje korzystają z opcji oferowanych przez
+				opisane wyżej znaczniki, jednak do tego posiadają kilka dodatkowych uproszczeń, których nie można stosować
+				w innych rodzajach znaczników.</para>
 			<orderedlist>
-				<listitem>Single tags do not have to be ended with slash. <emphasis>{include="`file.tpl`"}</emphasis>
-					is the same, as <emphasis>{include="`file.tpl`"/}</emphasis></listitem>
-				<listitem>Alternative tags do not have to be ended with "else" - it depends on the instruction.</listitem>
+				<listitem>Pojedyncze znaczniki nie muszą być kończone slashem: <emphasis>{include="`file.tpl`"}</emphasis>
+					jest tym samym, co <emphasis>{include="`file.tpl`"/}</emphasis></listitem>
+				<listitem>Alternatywne znaczniki nie muszą kończyć się słówkiem "else". Zależy to całkowicie od instrukcji.</listitem>
 			</orderedlist>
-			<para>An instruction may extend the <variable>$opt</variable> special block and add new features to it.</para>
-			<para>In OPT 1.1.0, the attributes were introduced. They are special attributes of normal HTML tags that
-			are parsed by OPT instructions. Consider the following example. A section is an instruction to make lists.
-			We want to mark the first element of the list. To do this, we use the attribute <emphasis>opt:first</emphasis>
-			for the list item element:</para>
+			<para>Instrukcja może rozszerzać blok specjalny <variable>$opt</variable> i dodawać do niego nowe opcje.</para>
+			<para>W OPT 1.1.0 zostały wprowadzone atrybuty. Są to atrybuty zwykłych znaczników HTML, które są rozpoznawane i
+				przetwarzane przez procesory instrukcji. Rozważmy następujący przykład. Sekcja jest instrukcją do tworzenia list.
+			Pragniemy wyróżnić pierwszy element listy, nadając mu inną klasę CSS. Możemy do tego użyć atrybutu <emphasis>opt:sectionfirst</emphasis>:</para>
 			<example id="example.instructions1">
 				<title>Single tags</title>
 				<programlisting><![CDATA[<ul>
 {section=list}
-<li opt:first="list">{$list.title}</li>
+<li opt:sectionfirst="list">{$list.title}</li>
 {/section}
 </ul>]]></programlisting>
 			</example>
-			<para>Now, for the first element of the list, the attribute will change into <emphasis>class="first"</emphasis>, so
-			that we can define the style in the CSS. For the rest, it does nothing.</para>
-			<para>Note: you have to define a namespace for all the attributes!</para>
-			<para>The instruction reference contains also the information about the usage from the <emphasis>script-side</emphasis>
-			indented for PHP programmers. These parts are marked with the blue bar.</para>
+			<para>Teraz w pierwszym elemencie listy zostanie on zastąpiony przez <emphasis>class="first"</emphasis>, natomiast
+			w kolejnych nie zrobi on nic. Naszą klasę CSS możemy sobie teraz dowolnie obudować w arkuszu stylów.</para>
+			<para>Uwaga: wszystkie atrybuty muszą mieć określoną przestrzeń nazw!</para>
+			<para>Poniższy spis instrukcji zawiera również dodatkowe informacje dla programistów PHP (<emphasis>script-side</emphasis>),
+			które głównie opisują, w jaki sposób przygotowywać dane dla instrukcji. Te informacje oznaczone są niebieskim paskiem.</para>
 			<sect2 id="syntax.instructions.section">
-				<title>Section</title>
-				<para>Sections are used to create lists. It starts with a <emphasis>{section}</emphasis> tag and ends
-				with <emphasis>{/section}</emphasis>. The content between them is the look of a single element of the list.
-				The section has a unique name, which we use to access the list element data and to identify, where are the list
-				data for it.</para>
+				<title>Sekcja</title>
+				<para>Sekcje są używane do tworzenia list. Rozpoczynają się znacznikiem <emphasis>{section}</emphasis> i kończą <emphasis>{/section}</emphasis>. The content between them is the look of a single element of the list.
+				Sekcja posiada unikalną nazwę używaną do uzyskania dostępu do danych aktualnie wyświetlanego elementu oraz do identyfikacji,
+				gdy zajdzie taka potrzeba. Kod wewnątrz znaczników określa wygląd pojedynczego elementu listy.</para>
 				<example id="example.sections1">
-					<title>Simple section</title>
+					<title>Proste sekcje</title>
 					<programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 {section=products}
 <tr>
@@ -1015,16 +1042,35 @@ static text]]></programlisting>
 {/section}
 </table>]]></programlisting>
 				</example>
-				<para>Inside sections, the syntax <emphasis>{$table.key}</emphasis> changes its meaning and it is used to access
-				the section element blocks. The first part identifies the section and the second - the name of an element block.</para>
-				<para>The optional <emphasis>{sectionelse}</emphasis> element can be added to display some text, if the section contains
-				no elements:</para>
+				<para>Wewnątrz sekcji składnia <emphasis>{$tablica.klucz}</emphasis> zmienia swoje znaczenie i jest wykorzystywana
+					do odwoływania się do danych elementu sekcji. Pierwszy człon identyfikuje nazwę sekcji, a drugi nazwę bloku elementu listy, który
+					chcemy użyć. Jeśli kompilator stwierdzi, że pierwszy człon nie odnosi się do żadnej z aktywnych sekcji, wtedy kompiluje
+					taki blok w tradycyjny sposób.</para>
+				<para>Od wersji 1.1.3, sekcje mogą również współpracować z elementami innymi, niż tablice:</para>
+				<example id="example.sections45">
+					<title>Nietablicowe dane sekcji</title>
+					<programlisting><![CDATA[<p>Liczby:</p>
+<ul>
+{section=liczby}
+	<li>{$liczby}</li>
+{/section}
+</ul>
+
+<p>Obiekty:</p>
+<ul>
+{section=obiekty}
+	<li>{$obiekty -> metoda()}</li>
+{/section}
+</ul>]]></programlisting>
+				</example>
+				<para>Opcjonalny znacznik <emphasis>{sectionelse}</emphasis> może być użyty do wyświetlenia zastępczego tekstu,
+					jeśli sekcja nie zawiera żadnych elementów:</para>
 				<example id="example.sections2">
 					<title>Sectionelse</title>
 					<programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 {section=products}
 <tr>
@@ -1033,61 +1079,69 @@ static text]]></programlisting>
 </tr>
 {sectionelse}
 <tr>
-<td colspan="2">There are no products in this list!</td>
+<td colspan="2">Na liście nie ma produktów!</td>
 </tr>
 {/section}
 </table>]]></programlisting>
 				</example>
-				<para>The section takes some parameters:</para>
+				<para>Sekcja przyjmuje kilka parametrów:</para>
 				<table frame="all" id="params.section">
 					<?dbhtml table-width="100%" ?>
-					<caption>Section: parameters</caption>
+					<caption>Sekcja: parametry</caption>
 					<tgroup cols="4" align="center">
 					<thead>
 					<row>
-					  <entry>Name</entry>
-					  <entry>Type</entry>
-					  <entry>Required?</entry>
-					  <entry>Description</entry>
+					  <entry>Nazwa</entry>
+					  <entry>Typ</entry>
+					  <entry>Wymagany?</entry>
+					  <entry>Opis</entry>
 					</row>
 					</thead>
 					<tbody>
 					<row>
 					  <entry>name</entry>
 					  <entry>ID</entry>
-					  <entry>Yes</entry>
-					  <entry>The section name.</entry>
+					  <entry>Tak</entry>
+					  <entry>Nazwa sekcji.</entry>
 					</row>
 					<row>
 					  <entry>order</entry>
 					  <entry>ID</entry>
-					  <entry>No</entry>
-					  <entry>If set to "reversed", the section items are shown in reversed order.</entry>
+					  <entry>Nie</entry>
+					  <entry>Jeśli ustawiony na "reversed", elementy sekcji wyświetlane są w odwrotnej kolejności.</entry>
 					</row>
 					<row>
 					  <entry>state</entry>
-					  <entry>Expression</entry>
-					  <entry>No</entry>
-					  <entry>If the expression returns false, the section will be hidden like it contains no elements.</entry>
+					  <entry>Wyrażenie</entry>
+					  <entry>Nie</entry>
+					  <entry>Jeśli podane wyrażenie jest fałszywe, sekcja nie zostanie pokazana tak, jakby nie zawierała żadnych elementów.</entry>
 					</row>
 					<row>
 					  <entry>datasource</entry>
-					  <entry>Expression</entry>
-					  <entry>No</entry>
-					  <entry>The location of section data. If not specified, the section name is used.</entry>
+					  <entry>Wyrażenie</entry>
+					  <entry>Nie</entry>
+					  <entry>Lokalizacja danych sekcji. Jeśli niepodana, nazwa sekcji jest używana do określenia bloku, w którym znajduje się tablica z danymi.</entry>
+					</row>
+					<row>
+					  <entry>separator</entry>
+					  <entry>Wyrażenie</entry>
+					  <entry>Nie</entry>
+					  <entry>Separator wstawiany między dwa sąsiednie elementy listy. Parametr jest implementacją instrukcji
+						  <link linkend="syntax.instruction.separator" endterm="">separator</link>. Jest on dostępny od wersji OPT 1.1.3.
+					  </entry>
 					</row>
 					</tbody>
 					</tgroup>
 				</table>
-				<para>In the examples above, we were not able to hide the whole table structure, if the section contains
-				not elements. However, OPT allows to do this by using additional <emphasis>{show}</emphasis> tags.</para>
+				<para>W przykładach powyżej nie byliśmy w stanie ukryć całej struktury tabeli, jeśli sekcja nie zawierała
+					żadnych elementów. Jednak w OPT istnieje również znacznik <emphasis>{show}</emphasis>:</para>
 				<example id="example.sections3">
 					<title>{show}</title>
 					<programlisting><![CDATA[{show=products}
 <table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 {section}
 <tr>
@@ -1097,51 +1151,50 @@ static text]]></programlisting>
 {/section}
 </table>
 {showelse}
-<p>There are no products in this list</p>
+<p>Na liście nie ma żadnych produktów.</p>
 {/show}]]></programlisting>
 				</example>
-				<para>In this variant, we define all the parameters in the <emphasis>{show}</emphasis> tags and keep
-				<emphasis>{section}</emphasis> empty. Moreover, instead of <emphasis>{sectionelse}</emphasis>, we use
-				<emphasis>{showelse}</emphasis>.</para>
-				<para>Now, if the section has some data, the table will be displayed and the code inside a section will
-				be used as the list element. In the other case, the paragraph with a message is shown.</para>
-				<para>You may also create subsections. Just put a <emphasis>section... /section</emphasis> block into another section:</para>
+				<para>W tym przypadku wszystkie parametry podajemy w instrukcji <emphasis>{show}</emphasis> i zostawiamy <emphasis>{section}</emphasis> puste.
+					Co więcej, zamiast <emphasis>{sectionelse}</emphasis> musimy skorzystać z <emphasis>{showelse}</emphasis>.</para>
+				<para>Teraz, jeśli dodaliśmy do sekcji niepustą listę, pokaże nam się tablica, a kod wewnątrz sekcji zostanie użyty do
+					wyświetlenia jej elementów. W przeciwnym wypadku ujrzymy jedynie paragraf z komunikatem o braku danych.</para>
+				<para>Możesz także zagnieżdżać sekcje. Po prostu umieść kolejny blok <emphasis>section... /section</emphasis> wewnątrz innego:</para>
 				<example id="example.sections4">
-					<title>Subsections</title>
+					<title>Sekcje zagnieżdżone</title>
 					<programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product categories</td>
+<td>Nazwa produktu</td>
+<td>Kategorie produktu</td>
 </tr>
 {section=products}
 <tr>
 <td>{$products.name}</td>
 <td><ul>
   {section=categories}
-  <li>{$categories.name} (or) {$products.categories.name}</li>
+  <li>{$categories.name} (lub) {$products.categories.name}</li>
   {/section}
 </ul></td>
 </tr>
 {/section}
 </table>]]></programlisting>
 				</example>
-				<para>Note that you may access to the subsection data in two ways: <emphasis>$categories.block</emphasis>
-				or <emphasis>$products.categories.block</emphasis>. Just make sure the first element of the block is a name
-				of one of the sections - otherwise OPT translates it as a standard array call.</para>
+				<para>Zauważ, że istnieją dwie równoważne składnie dostępu do danych sekcji podrzędnej: <emphasis>$categories.block</emphasis>
+				lub <emphasis>$products.categories.block</emphasis>. Jedyne, co musisz zrobić, to upewnić się, że pierwszy człon zawsze
+					odnosi się do istniejącej sekcji, by nie został skompilowany jako odwołanie do tablicy. OPT sam zajmie się połączeniem
+				elementów w obu sekcjach zgodnie z istniejącymi między nimi relacjami.</para>
 				<sect3 id="syntax.instructions.section.attributes">
-					<title>Attributes</title>
-					<para>Since OPT 1.1.0, sections provide some attributes to use with HTML tags.</para>
+					<title>Atrybuty</title>
+					<para>Począwszy od OPT 1.1.0, sekcje dostarczają kilku atrybutów do użycia z tagami HTML.</para>
 					<sect4 id="syntax.instructions.section.attributes.first">
 						<title>opt:sectionfirst</title>
-						<para>Defines the <emphasis>class="first"</emphasis> HTML attribute for the tag, if
-						the current section element is the first on the list. It takes the section name as
-						the value.</para>
+						<para>Generuje kod <emphasis>class="first"</emphasis> jeśli przetwarzany jest pierwszy element
+						podanej listy. Za parametr pobiera nazwę sekcji.</para>
 						<example id="example.sections5">
 							<title>opt:sectionfirst</title>
 							<programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 {section=products}
 <tr>
@@ -1154,15 +1207,14 @@ static text]]></programlisting>
 					</sect4>
 					<sect4 id="syntax.instructions.section.attributes.last">
 						<title>opt:sectionlast</title>
-						<para>Defines the <emphasis>class="last"</emphasis> HTML attribute for the tag, if
-						the current section element is the last on the list. It takes the section name as
-						the value.</para>
+						<para>Generuje kod <emphasis>class="last"</emphasis> jeśli przetwarzany jest ostatni
+						element listy. Za parametr pobiera nazwę sekcji.</para>
 						<example id="example.sections6">
 							<title>opt:sectionlast</title>
 							<programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 {section=products}
 <tr>
@@ -1175,17 +1227,16 @@ static text]]></programlisting>
 					</sect4>
 					<sect4 id="syntax.instructions.section.attributes.cycle">
 						<title>opt:sectioncycle</title>
-						<para>Alternates a set of HTML attributes. This makes it easy to alternate
-						between two or more colors in the table. The values are defined in additional
-						tag located inside a section: <emphasis>{cycle=attributename; ...}</emphasis> - 
-						the first parameter is the name of HTML attribute; next we define the values
-						to cycle.</para>
+						<para>Wykonuje cykliczną rotację zbioru atrybutów HTML. Umożliwa to łatwe kolorowanie
+							kolejnych wierszy tabeli innymi barwami. Wartości są zdefiniowane w dodatkowym
+							znaczniku umieszczonym w sekcji: <emphasis>{cycle=attributename; ...}</emphasis> - 
+						pierwszy parametr określa nazwę atrybutu HTML, a kolejne dowolnie długą listę wartości do rotacji.</para>
 						<example id="example.sections7">
 							<title>opt:sectioncycle</title>
 							<programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 {section=products}
 {cycle='class'; 'brighter'; 'darker'}
@@ -1196,77 +1247,77 @@ static text]]></programlisting>
 {/section}
 </table>]]></programlisting>
 						</example>
-						<para>The result:</para>
+						<para>Rezultat:</para>
 <programlisting><![CDATA[<table>
 <tr>
-<td>Product name</td>
-<td>Product Price</td>
+<td>Nazwa produktu</td>
+<td>Cena produktu</td>
 </tr>
 <tr>
-<td class="brighter">Product 1</td>
+<td class="brighter">Produkt 1</td>
 <td class="brighter">15.50</td>
 </tr>
 <tr>
-<td class="darker">Product 2</td>
+<td class="darker">Produkt 2</td>
 <td class="darker">12.00</td>
 </tr>
 <tr>
-<td class="brighter">Product 3</td>
+<td class="brighter">Produkt 3</td>
 <td class="brighter">17.30</td>
 </tr>
 <tr>
-<td class="darker">Product 4</td>
+<td class="darker">Produkt 4</td>
 <td class="darker">13.99</td>
 </tr>
 </table>]]></programlisting>
 					</sect4>
 				</sect3>
 				<sect3 id="syntax.instructions.section.opt">
-					<title>{$opt} features</title>
-					<para>Sections could tell you much more with <variable>$opt</variable> special block:</para>
+					<title>Możliwości {$opt}</title>
+					<para>Sekcje mogą powiedzieć Ci więcej dzięki specjalnemu blokowi <variable>$opt</variable>:</para>
 					<table frame="all" id="opt.section">
 						<?dbhtml table-width="100%" ?>
-						<caption>$opt.section reference</caption>
+						<caption>Opis $opt.section</caption>
 						<tgroup cols="2" align="center">
 						<thead>
 						<row>
-						  <entry>Special block</entry>
-						  <entry>Value</entry>
+						  <entry>Blok specjalny</entry>
+						  <entry>Wartość</entry>
 						</row>
 						</thead>
 						<tbody>
 						<row>
-						  <entry>$opt.section.sect_name.count</entry>
-						  <entry>The number of elements in the section <emphasis>sect_name</emphasis>.</entry>
+						  <entry>$opt.section.nazwa_sekcji.count</entry>
+						  <entry>Ilość elementów sekcji <emphasis>nazwa_sekcji</emphasis>.</entry>
 						</row>
 						<row>
-						  <entry>$opt.section.sect_name.id</entry>
-						  <entry>The current section element ID.</entry>
+						  <entry>$opt.section.nazwa_sekcji.id</entry>
+						  <entry>Aktualny ID elementu.</entry>
 						</row>
 						<row>
-						  <entry>$opt.section.sect_name.size</entry>
-						  <entry>The current section element size (number of section blocks).</entry>
+						  <entry>$opt.section.nazwa_sekcji.size</entry>
+						  <entry>Ilość bloków zdefiniowana w aktualnym elemencie.</entry>
 						</row>
 						<row>
-						  <entry>$opt.section.sect_name.first</entry>
-						  <entry>True, if the first section element is processed.</entry>
+						  <entry>$opt.section.nazwa_sekcji.first</entry>
+						  <entry>Prawda, jeśli przetwarzany jest pierwszy element sekcji.</entry>
 						</row>
 						<row>
-						  <entry>$opt.section.sect_name.last</entry>
-						  <entry>True, if the last section element is processed.</entry>
+						  <entry>$opt.section.nazwa_sekcji.last</entry>
+						  <entry>Prawda, jeśli przetwarzany jest ostatni element sekcji.</entry>
 						</row>
 						<row>
-						  <entry>$opt.section.sect_name.far</entry>
-						  <entry>True, if the first or last section element is processed.</entry>
+						  <entry>$opt.section.nazwa_sekcji.far</entry>
+						  <entry>Prawda, jeśli przetwarzany jest pierwszy lub ostatni element sekcji.</entry>
 						</row>
 						</tbody>
 						</tgroup>
 					</table>
-					<para>Sample use:</para>
+					<para>Przykładowe użycie:</para>
 					<example id="example.sections8">
 						<title>Sample use</title>
 						<programlisting><![CDATA[{show=products}
-<p>There are {$opt.section.products.count} products here.</p>
+<p>Jest tutaj {$opt.section.products.count} produktów.</p>
 <ul>
 {section}
   {if $opt.section.products.first}
@@ -1280,78 +1331,82 @@ static text]]></programlisting>
 					</example>
 				</sect3>
 				<sect3 id="syntax.instructions.section.programmers">
-					<title>Sections for programmers</title>
+					<title>Sekcje dla programistów</title>
 					<mark type="blue">
-					<para>Sections require data as an specific-type array. For single sections it is always the same.
-					OPT supports two formats for subsections and it is you who decide, which is default. The second format
-					is also available using the <parameter>datasource</parameter> parameter.</para>
-					<para>The data array for sections is multi-dimensional. It is an array of arrays containing data for the
-					section blocks. Here we see a sample PHP code:</para>
+					<para>Sekcje wymagają danych przygotowanych w specyficznej tablicy. Dla pojedynczej, niezagnieżdżonej
+					sekcji jej budowa jest zawsze identyczna, natomiast w przypadku zagnieżdżeń OPT wspiera dwa różne
+					formaty. Programista decyduje, którego z nich będzie używać domyślnie, za pomocą konfiguracji.
+					Drugi format jest jednak zawsze dostępny dzięki parametrowi <parameter>datasource</parameter>.</para>
+					<para>Tablica danych dla sekcji jest ma postać tablicy tablic (wielowymiarowa struktura). Oto przykładowy
+					kod PHP:</para>
 					<example id="example.sections_php1">
-						<title>Data for single sections</title>
-						<programlisting><![CDATA[$products = array(0 =>
-   array('name' => 'Apples', 'price' => 15),
-   array('name' => 'Pears', 'price' => 17),
-   array('name' => 'Bananas', 'price' => 13)
+						<title>Dane dla pojedynczych sekcji</title>
+						<programlisting><![CDATA[$produkty = array(0 =>
+   array('nazwa' => 'Jabłuszka', 'cena' => 15),
+   array('nazwa' => 'Gruszki', 'cena' => 17),
+   array('nazwa' => 'Banany', 'cena' => 13)
 );
-$tpl -> assign('products', $products);]]></programlisting>
+$tpl -> assign('produkty', $produkty);]]></programlisting>
 					</example>
-					<para>This code creates three list elements. Each of them contains two blocks: <variable>name</variable>
-					and <variable>price</variable>.</para>
-					<para>As we mentioned above, you have to decide, how you want to support subsection data. You may specify
-					the format with the <emphasis>sectionStructure</emphasis> configuration directive, which takes one of two
-					values: <emphasis>OPT_SECTION_MULTI</emphasis> (default) and <emphasis>OPT_SECTION_SINGLE</emphasis>.</para>
-					<para>OPT_SECTION_MULTI: This format is set by default. Each subsection must be assigned separately, as another array. It has
-					to have as many indexes, as deep it is located. If we want to show the categories assigned to the product,
-					using this format, we have to built second array with three indexes. First one tells, which product it is
-					assigned to, second is the category iterator inside this product, and the third is block data index:</para>
+					<para>Ten kod w połączeniu z sekcją utworzy nam trójelementową listę. Do każdego elementu przypisaliśmy
+					po dwa bloki: <variable>nazwę</variable> oraz <variable>cenę</variable>.</para>
+					<para>Jak wspominaliśmy wyżej, w przypadku sekcji zagnieżdżonych należy wybrać jeden z dwóch formatów danych.
+					Domyślny określa dyrektywa konfiguracyjna <emphasis>sectionStructure</emphasis> przyjmująca jedną z dwóch
+					wartości: <emphasis>OPT_SECTION_MULTI</emphasis> (domyślna) oraz <emphasis>OPT_SECTION_SINGLE</emphasis>.</para>
+					<para>OPT_SECTION_MULTI: Jest to domyślny format OPT. Każda podsekcja musi zostać przypisana niezależnie
+					od innych jako kolejna tablica wielowymiarowa. Musi ona posiadać tak dużo indeksów położenia, jak głęboko
+					leży. Jeśli do przykładu powyżej chcielibyśmy dodać wyświetlenie kategorii, do jakich należy produkt,
+					musielibyśmy stworzyć najpierw trójelementową tablicę odpowiedzialną produktom. Pierwszy indeks opisywałby,
+					do jakiego produktu kategoria należy, drugi byłby wewnętrznym indeksem kategorii w obrębie danego produktu,
+					a trzeci opisywałby konkretny blok pojedynczej kategorii:</para>
 					<example id="example.sections_php2">
 						<title>OPT_SECTION_MULTI</title>
-						<programlisting><![CDATA[$categories = array(0 =>
-   // Categories for product 1
+						<programlisting><![CDATA[$kategorie = array(0 =>
+   // Kategorie dla produktu 1
    array(0 =>
-      array('name' => 'Food'),
-      array('name' => 'Drinks')
+      array('nazwa' => 'Jedzenie'),
+      array('nazwa' => 'Napoje')
    ),
    // Categories for product 2
    array(0 =>
-      array('name' => 'Meat'),
-      array('name' => 'Dinner'),
+      array('nazwa' => 'Mięso'),
+      array('nazwa' => 'Obiad'),
    ),
    // Categories for product 3
    array(0 =>
-      array('name' => 'Vegetables'),
-      array('name' => 'Dinner'),
+      array('nazwa' => 'Warzywa'),
+      array('nazwa' => 'Obiad'),
    )
 );
-$tpl -> assign('categories', $categories);]]></programlisting>
+$tpl -> assign('kategorie', $kategorie);]]></programlisting>
 					</example>
-					<para>If the subsection is located inside two other, you must create four indexes, etc.</para>
-					<para>OPT_SECTION_SINGLE: In this format, all the data for section and its subsections are located in one array and assigned
-					only once to the template engine. Within the section blocks we create an index named like the subsection
-					and we put its array there.</para>
+					<para>Jeśli sekcja zagnieżdżona jest w dwóch innych, indeksów będzie cztery, itd.</para>
+					<para>OPT_SECTION_SINGLE: w tym formacie dane sekcji oraz wszystkich innych sekcji w niej
+					zagnieżdżonych przechowywane są w jednej wspólnej tablicy. Do parsera przekazujemy tylko tablicę
+					dla sekcji głównej. Wewnątrz danych najwyższych elementów tworzymy też blok o nazwie identycznej,
+					jak sekcja podrzędna i umieszczamy w nim dane dla danej sekcji powiązane z aktualnym elementem.</para>
 					<example id="example.sections_php3">
 						<title>OPT_SECTION_SINGLE</title>
-						<programlisting><![CDATA[$products = array(0 =>
-   array('name' => 'Apples', 'price' => 17, 'categories' =>
-     // Category subsection data for this product
+						<programlisting><![CDATA[$produkty = array(0 =>
+   array('nazwa' => 'Jabłuszka', 'cena' => 17, 'kategorie' =>
+     // Dane dla kategorii związanych z tym produktem
      array(0 =>
-       array('name' => 'Fruit'),
-       array('name' => 'Drinks')
+       array('nazwa' => 'Owoce'),
+       array('nazwa' => 'Napoje')
      )
    ),
-   array('name' => 'Pears', 'price' => 15, 'categories' =>
-     // Category subsection data for this product
+   array('nazwa' => 'Gruszki', 'cena' => 15, 'kategorie' =>
+     // Dane dla kategorii związanych z tym produktem
      array(0 =>
-       array('name' => 'Fruit'),
-       array('name' => 'Ice cream')
+       array('nazwa' => 'Owoce'),
+       array('nazwa' => 'Lody')
      )
    )
 );
-$tpl -> assign('products', $products);]]></programlisting>
+$tpl -> assign('produkty', $produkty);]]></programlisting>
 					</example>
 					<sect4 id="syntax.instructions.section.programmers.datasource">
-						<title>The "datasource" parameter</title>
+						<title>Parametr "datasource"</title>
 						<para>As mentioned above, you can always use both multi-array and single-array format, even if you
 						chose the other as your default one. This is provided by the datasource parameter available in each
 						section. If you work in <emphasis>OPT_SECTION_MULTI</emphasis> mode and you want to read subsection
@@ -1436,7 +1491,7 @@ $tpl -> parse('template.tpl');
 				</sect3>
 			</sect2>
 			<sect2 id="syntax.instructions.tree">
-				<title>Tree</title>
+				<title>Drzewo</title>
 				<para>Tree instruction is a kind of section, which generates hierarchical tree structures. Everything
 				that works for sections, works for trees, too. The only difference is that here we use the
 				<emphasis>{tree}</emphasis>, <emphasis>{treeelse}</emphasis> and <emphasis>{/tree}</emphasis> tags
@@ -1521,7 +1576,7 @@ $tpl -> parse('template.tpl');
 					replaced with the correct name, when the snippet is put into the tree.</para>
 			</sect2>
 			<sect2 id="syntax.instructions.pagesystem">
-				<title>Pagesystem</title>
+				<title>System stronicowania</title>
 				<para><emphasis>Pagesystem</emphasis> instruction is used to integrate OPT with the pagination systems from the
 						  web application. It allows to define the layout of the page list used in the templates, so that it is independent
 						  from the PHP code. The instruction takes from one to three parameters:</para>
@@ -1711,44 +1766,83 @@ $tpl -> parse('template.tpl');
 				</mark>
 			</sect2>
 			<sect2 id="syntax.instructions.conditions">
-				<title>Conditions</title>
-				<para>OPT supports conditional instruction <emphasis>if ... elseif ... else ... /if</emphasis> known from
-				programming languages. It allows to show the parts of the template, where specified condition is true. A
-				condidion is a correct OPT expression that should return <emphasis>true</emphasis> or <emphasis>false</emphasis>.</para>
+				<title>Instrukcja warunkowa</title>
+				<para>OPT obsługuje instrukcję warunkową <emphasis>if ... elseif ... else ... /if</emphasis> znaną z języków programowania. 
+				Umożliwia ona wyświetlenie fragmentu szablonu tylko wtedy, gdy podany warunek jest prawdziwy. Warunek
+				użyty w instrukcji powinien dlatego zwracać wartości logiczne: <emphasis>true</emphasis> (prawda) lub <emphasis>false</emphasis> (fałsz).</para>
 				<example id="example.conditions1">
-					<title>Conditional instruction</title>
-					<programlisting><![CDATA[{if $access eq 1}
-{* this will be displayed, if $access is equal 1 *}
-<p>Welcome, administrator</p>
-{elseif $access eq 2}
-{* this will be displayed, if the previous condition is false *}
-{* and $access is equal 2 *}
-<p>Welcome, editor</p>
+					<title>Instrukcja warunkowa</title>
+					<programlisting><![CDATA[{if $dostep eq 1}
+{* wyświetli się tylko, gdy $dostep będzie mieć wartość 1 *}
+<p>Witaj, najjaśniejszy Administratorze</p>
+{elseif $dostep eq 2}
+{* to się wyświetli tylko, gdy poprzedni warunek jest fałszywy, a *}
+{* blok $dostep ma wartość 2 *}
+<p>Witaj, redaktorze</p>
 {else}
-{* This will be displayed, if all the conditions are false *}
-<p>Permission denied</p>
+{* to się wyświetli, gdy wszystkie inne warunki będą fałszywe *}
+<p>Dostęp zabroniony</p>
 {/if}]]></programlisting>
 				</example>
-				<para>Notes:</para>
+				<para>Uwagi:</para>
 				<orderedlist>
-					<listitem><emphasis>elseif</emphasis> and <emphasis>else</emphasis> are optional.</listitem>
-					<listitem>You can specify as many <emphasis>elseif</emphasis> nodes as you need.</listitem>
-					<listitem><emphasis>if</emphasis> and <emphasis>elseif</emphasis> use their own parameter format by
-					default. You may force them to use the standard one by setting one of these configuration directives
-					to true: <emphasis>strictSyntax</emphasis>, <emphasis>xmlsyntaxMode</emphasis>. The parameter is then
-					called <emphasis>test</emphasis>. The following code shows the if instruction in strict syntax mode:
+					<listitem><emphasis>elseif</emphasis> oraz <emphasis>else</emphasis> są opcjonalne.</listitem>
+					<listitem>Możesz dodać tak dużo węzłów <emphasis>elseif</emphasis>, jak tylko potrzebujesz.</listitem>
+					<listitem><emphasis>if</emphasis> oraz <emphasis>elseif</emphasis> używają domyślnie własnego formatu parametrów.
+					Można wymusić na nich stosowanie wspólnego parsera parametrów poprzez włączenie jednej z poniższych dyrektyw:
+					<emphasis>strictSyntax</emphasis>, <emphasis>xmlsyntaxMode</emphasis>. Parametr, w którym należy podać wyrażenie,
+					nazywa się wtedy <emphasis>test</emphasis>. Poniższy kod działa, gdy OPT pracuje w trybie ścisłej składni:
 					<example id="example.conditions2">
-						<title>Conditions in XML syntax mode</title>
-						<programlisting><![CDATA[{* Position syntax *}
-{if=$access eq 1}
-<p>Welcome, administrator</p>
-{* XML style syntax *}
-{elseif test="$access eq 2"}
-<p>Welcome, editor</p>
+						<title>Warunki w trybie ścisłej składni</title>
+						<programlisting><![CDATA[{* parametry pozycyjne *}
+{if=$dostep eq 1}
+<p>Witaj najjaśniejszy Administratorze</p>
+{* składnia XML *}
+{elseif test="$dostep eq 2"}
+<p>Witaj, redaktorze</p>
 {/if}]]></programlisting>
 						</example>					
 					</listitem>
 				</orderedlist>
+			</sect2>
+			<sect2 id="syntax.instructions.separator">
+				<title>Separator</title>
+				<para>This instruction allows to define	a content that is put between every two iterations of a loop. It always comes with a parameter "separator"
+					specified in the loop tag, but it has a lower priority while compiling.</para>
+				<example id="example.separator1">
+					<title>Using separators</title>
+					<programlisting><![CDATA[{section=navigation}
+{separator} / {/separator}
+{$navigation.title}
+{/section}]]></programlisting>
+				</example>
+				<para>The result for three section elements:</para>
+				<programlisting><![CDATA[Element A / Element B / Element C]]></programlisting>
+				<para>The same result can be achieved with the section parameter:</para>
+				<example id="example.separator2">
+					<title>Separator as a parameter</title>
+					<programlisting><![CDATA[{section name="navigation" separator="' / '"}
+{$navigation.title}
+{/section}]]></programlisting>
+				</example>
+				<para>The result for three section elements:</para>
+				<programlisting><![CDATA[Element A / Element B / Element C]]></programlisting>
+				<para>Separators can be also used with <link linkend="syntax.instructions.for" endterm="">for</link> and
+				<link linkend="syntax.instructions.foreach" endterm="">foreach</link> loops exactly in the same way:</para>
+				<example id="example.separator3">
+					<title>Separators and other loops</title>
+					<programlisting><![CDATA[{for begin="@i = 1" end="@i lt 5" iterate="@i++" separator="` / `"}
+{@i}
+{/for}
+<br/>			
+{for begin="@i = 1" end="@i lt 5" iterate="@i++"}
+{separator} / {/separator}
+{@i}
+{/for}]]></programlisting>
+				</example>
+				<para>The result:</para>
+				<programlisting><![CDATA[1 / 2 / 3 / 4
+1 / 2 / 3 / 4]]></programlisting>
 			</sect2>
 			<sect2 id="syntax.instructions.var">
 				<title>Var</title>
@@ -2279,7 +2373,7 @@ Bbb]]></programlisting>
 			</sect2>
 		</sect1>
 		<sect1 id="syntax.components">
-			<title>Components</title>
+			<title>Komponenty</title>
 			<para>A component is a high-level port, where we can bind a special object that generates the HTML code. It is
 			allowed to communicate with your application and it may be created either by the template or by you in your
 			application. These features are really useful when working with dynamic forms. You write several components
@@ -2665,7 +2759,7 @@ Bbb]]></programlisting>
 			</sect2>
 		</sect1>
 		<sect1 id="syntax.xmlmode">
-			<title>XML-Syntax Mode</title>
+			<title>Tryb kompatybilności z XML</title>
 			<para>This is a special compiler mode enabled by the <emphasis>xmlsyntaxMode</emphasis> configuration directive. It
 			adds several XML-style tag delimiters that may be used to make your template fully XML-compilant. Standard { and }
 			delimiters are still available. <emphasis>Remember that this is only an emulation. OPT does not have, if fact, a
@@ -2690,7 +2784,7 @@ Bbb]]></programlisting>
 			starting from 1.0.1, it is not parsed anymore because of problems with XHTML code generating.</para>
 		</sect1>
 		<sect1 id="syntax.mastertpl">
-			<title>Master templates</title>
+			<title>Szablony kompilacyjne</title>
 			<mark type="orange">
 			<para>Starting from 1.1.0, OPT supports master templates. They are automatically loaded, when any of the website templates
 			has changed and needs to be compiled. Some instructions, like <link linkend="syntax.instructions.bind" endterm="">binds</link>
@@ -2735,60 +2829,58 @@ Bbb]]></programlisting>
 		</sect1>
 	</chapter>
 	<chapter id="library">
-		<title>Library reference</title>
+		<title>Opis biblioteki</title>
 		<sect1 id="library.optclass">
-			<title>optClass class</title>
-			<para>The OPT library is splitted into several files:</para>
+			<title>Klasa optClass</title>
+			<para>Biblioteka OPT rozbita jest na kilka plików:</para>
 			<orderedlist>
-				<listitem><filename>opt.class.php</filename> - main template parser class: <classname>optClass</classname>. This
-				is the file you have to include in order to use OPT.</listitem>
-				<listitem><filename>opt.compiler.php</filename> - template compiler. Loaded only, if there is a template to compile.</listitem>
-				<listitem><filename>opt.core.php</filename> - some additional and less used features (debug console etc.). Loaded,
-				if needed.</listitem>
-				<listitem><filename>opt.error.php</filename> - OPT error handling. Loaded, if an error occurs.</listitem>
-				<listitem><filename>opt.instructions.php</filename> - instruction and component implementations. Loaded only, if there
-				is a template to compile.</listitem>
-				<listitem><filename>opt.components.php</filename> - sample component implementations.</listitem>
-				<listitem><filename>opt.api.php</filename> - the base of the template parser required to run the compiler. Include it
-				only, if you want to write your own template parser based on OPT compiler.</listitem>
+				<listitem><filename>opt.class.php</filename> - główna klasa parsera: <classname>optClass</classname>. Ten plik
+					powinieneś załączać, aby używać OPT.</listitem>
+				<listitem><filename>opt.compiler.php</filename> - kompilator szablonów ładowany tylko wtedy, gdy jest potrzebny.</listitem>
+				<listitem><filename>opt.core.php</filename> - kilka rzadziej używanych opcji ładowanych, gdy zajdzie potrzeba.</listitem>
+				<listitem><filename>opt.error.php</filename> - obsługa błędów OPT. Ładowana, gdy jest potrzeba</listitem>
+				<listitem><filename>opt.instructions.php</filename> - implementacje instrukcji i systemu komponentów. Ładowane tylko
+					w momencie kompilowania szablonów</listitem>
+				<listitem><filename>opt.components.php</filename> - przykładowe implementacje komponentów (nie są dołączane automatycznie!)</listitem>
+				<listitem><filename>opt.api.php</filename> - API do budowy własnych parserów opartych o kompilator OPT.</listitem>
 			</orderedlist>
-			<para>The alphabetical list of classes declared by the library:</para>
+			<para>Alfabetyczna lista klas definiowanych przez bibliotekę:</para>
 			<orderedlist>
-				<listitem><classname>optApi</classname> (simplified OPT parser)</listitem>
-				<listitem><classname>optBind</classname> (instruction class)</listitem>
-				<listitem><classname>optBindEvent</classname> (instruction class)</listitem>
+				<listitem><classname>optApi</classname> (uproszczony parser OPT)</listitem>
+				<listitem><classname>optBind</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optBindEvent</classname> (klasa instrukcji)</listitem>
 				<listitem><classname>optBlock</classname></listitem>
-				<listitem><classname>optCapture</classname> (instruction class)</listitem>
+				<listitem><classname>optCapture</classname> (klasa instrukcji)</listitem>
 				<listitem><classname>optClass</classname></listitem>
 				<listitem><classname>optCompiler</classname></listitem>
-				<listitem><classname>optComponent</classname> (component compilation class)</listitem>
-				<listitem><classname>optDefault</classname> (instruction class)</listitem>
-				<listitem><classname>optDynamic</classname> (instruction class)</listitem>
+				<listitem><classname>optComponent</classname> (klasa kompilacji komponentów)</listitem>
+				<listitem><classname>optDefault</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optDynamic</classname> (klasa instrukcji)</listitem>
 				<listitem><classname>optDynamicData</classname></listitem>
-				<listitem><classname>optFor</classname> (instruction class)</listitem>
-				<listitem><classname>optForeach</classname> (instruction class)</listitem>
-				<listitem><classname>optIf</classname> (instruction class)</listitem>
-				<listitem><classname>optInclude</classname> (instruction class)</listitem>
-				<listitem><classname>optInsert</classname> (instruction class)</listitem>
+				<listitem><classname>optFor</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optForeach</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optIf</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optInclude</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optInsert</classname> (klasa instrukcji)</listitem>
 				<listitem><classname>optInstruction</classname></listitem>
 				<listitem><classname>optNode</classname></listitem>
-				<listitem><classname>optPagelist</classname> (instruction class)</listitem>
-				<listitem><classname>optPlace</classname> (instruction class)</listitem>
-				<listitem><classname>optSection</classname> (instruction class)</listitem>
+				<listitem><classname>optPagelist</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optPlace</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optSection</classname> (klasa instrukcji)</listitem>
 				<listitem><classname>optTextNode</classname></listitem>
-				<listitem><classname>optTree</classname> (instruction class)</listitem>
-				<listitem><classname>optVar</classname> (instruction class)</listitem>
+				<listitem><classname>optTree</classname> (klasa instrukcji)</listitem>
+				<listitem><classname>optVar</classname> (klasa instrukcji)</listitem>
 			</orderedlist>
-			<para>The list of interfaces declared by the library:</para>
+			<para>Lista interfejsów definiowanych przez bibliotekę:</para>
 			<orderedlist>
-				<listitem><classname>ioptComponent</classname> - component interface</listitem>
-				<listitem><classname>ioptI18n</classname> - i18n interface</listitem>
-				<listitem><classname>ioptNode</classname> - compiler node interface</listitem>
-				<listitem><classname>ioptPagesystem</classname> - a page system for the
-					<link linkend="syntax.instructions.pagesystem" endterm="">pagesystem</link> instruction.</listitem>
+				<listitem><classname>ioptComponent</classname> - interfejs komponentów</listitem>
+				<listitem><classname>ioptI18n</classname> - interfejs systemu językowego</listitem>
+				<listitem><classname>ioptNode</classname> - interfejs węzłów kompilatora</listitem>
+				<listitem><classname>ioptPagesystem</classname> - interfejs systemu stronicowania dla instrukcji
+					<link linkend="syntax.instructions.pagesystem" endterm="">pagesystem</link>.</listitem>
 			</orderedlist>
 			<sect2 id="library.optclass.fields">
-				<title>Class fields</title>
+				<title>Pola klasy</title>
 				<para>All the configuration directives are the fields of this class. Addtitional fields which should be
 				accessed only by the compiler, instructions and components:</para>
 				<table frame="all" id="fields.optclass">
@@ -5622,90 +5714,87 @@ $undef = $this -> compiler -> parametrize('include', $attributes, $params);]]></
 		</sect1>
 	</chapter>
 	<appendix label="A" id="appendix.a">
-		<title>Migration from Smarty™</title>
-		<para>Smarty™ is one of the most known template engines for PHP. There are plenty of
-			articles and other texts about it, however it was designed for PHP4 and some of its
-			features are not implemented as good as we might expect. One of the goals of
-			Open Power Template was to improve the features that we did not like in Smarty,
-			as well as add some new ones, but this required us to make some changes, contrary
-			to that library. This short appendix is written for people who already know Smarty
-			and would like to discover the new template engine quickly and without problems.</para>
-		<para>Let's begin with a short glossary. Both libraries have elements that have the same
-		name, but they are different things in fact.</para>
+		<title>Migracja ze Smarty™</title>
+		<para>Smarty™ to jeden z najbardziej znanych systemów szablonów dla PHP. Napisano już o
+			nim wiele książek i artykułów, jednak został on stworzony dla PHP4, a wiele jego elementów
+			nie jest zaprojektowanych tak, jak by sobie wiele osób tego życzyło. Jednym z założeń
+			OPT było ulepszenie tego wszystkiego, co w Smartym przeszkadza oraz dodanie nowych
+			możliwości. Wymagało to jednak wprowadzenia pewnych różnić między obiema bibliotekami.
+			Ten krótki dodatek przeznaczony jest dla osób korzystających dotąd ze Smarty'ego, które
+			chciałyby poznać nowy system szybko i bez problemów.</para>
+		<para>Zacznijmy od krótkiego słowniczka. Obie biblioteki używają wielu elementów o podobnych
+		nazwach, ale w rzeczywistości będących czym innym.</para>
 		<table frame="all" id="smarty.opt.glossary">
 			<?dbhtml table-width="100%" ?>
-			<caption>OPT-Smarty glossary</caption>
+			<caption>Słowniczek OPT-Smarty</caption>
 			<tgroup cols="3" align="center">
 			<thead>
 			<row>
 			  <entry>Smarty</entry>
 			  <entry>OPT</entry>
-			  <entry>Comments</entry>
+			  <entry>Komentarze</entry>
 			</row>
 			</thead>
 			<tbody>
 			<row>
-			  <entry>variable</entry>
-			  <entry>block</entry>
-			  <entry>In OPT, a variable is one of the block types. Variables are generally
-			  created by the templates and instructions, whereas the programmer puts the data
-			  from the script into blocks.</entry>
+			  <entry>zmienna</entry>
+			  <entry>blok</entry>
+			  <entry>W OPT zmienna jest jednym z rodzajów bloku. Zwykłe bloki są tworzone przez programistę w skrypcie, zmienne
+				  przez szablony do własnych celów. Takie odróżnienie pozwala unikać konfliktów nazw.</entry>
 			</row>
 			<row>
-			  <entry>function, block</entry>
-			  <entry>instruction</entry>
-			  <entry>Smarty functions and blocks are the same thing in OPT: instructions.</entry>
+			  <entry>funkcja, blok</entry>
+			  <entry>instrukcja</entry>
+			  <entry>Funkcje i bloki Smarty'ego to w OPT jedno i to samo: instrukcje.</entry>
 			</row>
 			<row>
-			  <entry>modifier</entry>
-			  <entry>function</entry>
-			  <entry>OPT uses the syntax from the maths and programming languages: <emphasis>name(args)</emphasis>.</entry>
+			  <entry>modyfikator</entry>
+			  <entry>funkcja</entry>
+			  <entry>OPT używa składni z języków programowania: <emphasis>name(args)</emphasis>.</entry>
 			</row>
 			<row>
-			  <entry>object</entry>
-			  <entry>block</entry>
-			  <entry>In OPT, the object is one of the blocks.</entry>
+			  <entry>obiekt</entry>
+			  <entry>blok</entry>
+			  <entry>W OPT obiekty są jednym z typów bloków.</entry>
 			</row>
 			<row>
-			  <entry>section</entry>
-			  <entry>loop</entry>
-			  <entry>Smarty section is in fact a loop with many additional features. In OPT,
-			  sections are higher-level instructions.</entry>
+			  <entry>sekcja</entry>
+			  <entry>pętla</entry>
+			  <entry>Sekcja ze Smarty'ego to tak naprawdę pętla z wieloma dodatkami. W OPT sekcje są
+			  znacznie bardziej wyspecjalizowaną konstrukcją.</entry>
 			</row>
 			<row>
 			  <entry>cache</entry>
-			  <entry>output cache</entry>
-			  <entry><emphasis>Compilation cache</emphasis> means the directory, where OPT
-				  stores the compiled templates.</entry>
+			  <entry>cache wyjścia</entry>
+			  <entry><emphasis>Cache kompilacji</emphasis> oznacza katalog, gdzie OPT przechowuje
+				  skompilowane szablony.</entry>
 			</row>
 			</tbody>
 			</tgroup>
 		</table>
-		<para>OPT initialization is similar to Smarty. The thing you have to watch out is
-			the naming standard. In OPT, all the names are in <emphasis>nameName()</emphasis>
-			style, whereas in Smarty <emphasis>name_name()</emphasis> are preferred. The configuration is loaded
-			only on the PHP level, but there are three ways to do this: </para>
+		<para>Inicjacja OPT jest podobna, jak w Smartym. Główna różnica to standard nazewnictwa. W OPT nazwy są w formacie <emphasis>nazwaNazwa()</emphasis>,
+			w Smartym - <emphasis>nazwa_nazwa()</emphasis>. Konfiguracja może być ładowana tylko z poziomu PHP, ale
+			za to są trzy sposoby na dokonanie tego:</para>
 		<orderedlist>
-			<listitem>Configuration file with syntax a’la <filename>php.ini</filename></listitem>
-			<listitem>Building a configuration array in PHP</listitem>
-			<listitem>Manual setting each directive, similarly to Smarty.</listitem>
+			<listitem>Plik konfiguracyjny ze składnią a'la <filename>php.ini</filename></listitem>
+			<listitem>Stworzenie tablicy PHP z dyrektywami.</listitem>
+			<listitem>Ręczne ustawianie każdej dyrektywy, jak w Smartym.</listitem>
 		</orderedlist>
-		<para>Like in Smarty, we do not have to specify all the options. The only ones that are
-			necessary are: <variable>root</variable> and <variable>compile</variable>
-			containing: path to the template directory; path to the compiled templates directory (compilation cache).</para>
-		<para>OPT can send headers only from the script level. For this, the
+		<para>W OPT również nie trzeba określać wszystkich opcji. Jedynymi wymaganymi są: <variable>root</variable> oraz <variable>compile</variable>
+			zawierające ścieżki do źródeł szablonów i do katalogu na szablony skompilowane..</para>
+		<para>Nagłówki HTTP mogą być wysyłane tylko z poziomu skryptu. Do tego służy metoda
 		<link linkend="library.optclass.http-headers" endterm="">optClass::httpHeaders()</link>
-		method is used. You can set there the content type and simple caching settings. Note
-		that OPT detects, whether it can send the XHTML header to the browser, depending on
-		its type and the user preferences.</para>
-		<para>OPT makes use of the new PHP5 features like exceptions. Whole code, where we
-			make any operation using OPT, should be placed inside a <emphasis>try...catch</emphasis>
-			block. If you do not want to write your own handler, you may use the default one:
+		Możesz ustawić w niej rodzaj zawartości (Content-type), proste informacje dot. cache'owania
+		oraz informację o kodowaniu (za pomocą konfiguracji). Należy dodać, że OPT potrafi wykryć,
+		czy przeglądarka przyjmuje nagłówki XHTML i w razie problemów wysłać zastępczy typ.</para>
+		<para>OPT wykorzystuje nowe możliwości PHP5, jak np. wyjątki. Generalnie cały kod korzystający z
+			systemu szablonów powinien być umieszczony w bloku <emphasis>try...catch</emphasis>.
+			Jeśli nie chcesz pisać własnej obsługi wyjątków, możesz skorzystać z gotowej funkcji:
 			<emphasis>optErrorHandler($exception)</emphasis>.</para>
 		<example id="example.appendix.a.e1">
-			<title>Sample OPT initialization</title>
+			<title>Przykładowa inicjacja OPT</title>
 			<programlisting><![CDATA[<?php
-define('OPT_DIR', 'opt/');
+define('OPT_DIR', './opt/');
 require(OPT_DIR.'opt.class.php');
 try{
   $tpl = new optClass;
@@ -5713,18 +5802,18 @@ try{
   $tpl -> compile = 'templates_c/';
   $tpl -> httpHeaders(OPT_HTML);
  
-  // template processing
+  // przetwarzanie szablonów
  
 }catch(optException $ex){
   optErrorHandler($ex);
 }
 ?>]]></programlisting>
 		</example>
-		<para>The equivalent of Smarty directive <variable>compile_check</variable> is
-			<variable>performance</variable>, however you must note one thing:
-			<emphasis>$smarty->compile_check=true</emphasis> is <emphasis>$opt->performance=false</emphasis>
-			and vice versa.</para>
-		<para>Consider the following template:</para>
+		<para>Zamiennikiem dla dyrektywy <variable>compile_check</variable> ze Smarty'ego jest
+			<variable>performance</variable>, jednak należy zwrócić uwagę na pewną rzecz.
+			<emphasis>$smarty->compile_check=true</emphasis> to w OPT <emphasis>$opt->performance=false</emphasis>
+			i na odwrót (czyli innymi słowy, jedna dyrektywa jest negacją drugiej i działa w odwrotny sposób).</para>
+		<para>Przyjrzyj się poniższemu szablonowi:</para>
 		<programlisting><![CDATA[<ul>
 {section name=i loop=$items}
 	<li>{$items[i].title} <ul>
@@ -5734,13 +5823,14 @@ try{
 		</ul></li>
 {/section}
 </ul>]]></programlisting>
-		<para>This is the way of Smarty, how to do lists etc. Adding the next level of
-		depth complicates the code more and more. OPT does not like such constructs, because
-		they have many unnecessary elements, which unsually do not help the template designer.
-		Both OPT and Smarty provide complete programming languages for the template side,
-		however OPT prefers to use higher-level constructs and keeping the programming just
-		for the situations, where other solutions failed. So, what do you think? How does the code
-		above look in OPT?</para>
+		<para>W ten sposób Smarty tworzy wszelkiego rodzaju listy itd. Dodanie kolejnego
+			poziomu komplikuje kod jeszcze bardziej. OPT nie lubi takich konstrukcji, ponieważ
+			zawierają one szereg zbędnych elementów, które w ogóle nie pomagają twórcy szablonów
+			i sprawiają, że zaimplementowanie bardziej zaawansowanych rzeczy jest kłopotliwe.
+			Wprawdzie zarówno OPT, jak i Smarty oferują pełne języki programowania po stronie szablonów,
+			lecz pierwszy z nich zaleca korzystanie z nich tylko w ostateczności, jako że na co dzień
+			używa się wielu znacznie prostszych i automatycznych instrukcji, które same wiedzą,
+			co mają robić. Jak więc myślisz, jak powyższy kod będzie wyglądać w OPT?</para>
 		<programlisting><![CDATA[<ul>
 {section=items}
 	<li>{$items.title} <ul>
@@ -5750,9 +5840,8 @@ try{
 	</ul></li>
 {/section}
 </ul>]]></programlisting>
-		<para>No play with iterators, no play with the subitems - OPT links everything automatically.
-			We can extend the code in order not to show the UL tags, where the section contains
-			no elements.</para>
+		<para>Zero zabawy z iteratorami, zagnieżdżeniami itd. OPT łączy wszystko automatycznie. Bardzo
+		łatwo można rozszerzyć ten kod tak, aby nie pokazywał znaczników UL, jeśli lista jest pusta:</para>
 		<programlisting><![CDATA[{show=items}
 <ul>
 {section}
@@ -5764,8 +5853,7 @@ try{
 {/section}
 </ul>
 {/show}]]></programlisting>
-		<para>Starting from OPT 1.1.0, the library provides a special instruction for hierarchical
-		tree data structure rendering:</para>
+		<para>Od wersji 1.1.0, OPT zawiera specjalną instrukcję do renderowania hierarchicznych drzew:</para>
 		<programlisting><![CDATA[<ol>
 {tree=mytree}
 	{leaf}
@@ -5780,15 +5868,12 @@ try{
 {/tree}
 </ol>
 ]]></programlisting>
-		<para>OPT has more such easy-in-use features, such as:</para>
-		<orderedlist>
-			<listitem>Built-in pagination system support</listitem>
-			<listitem>Built-in i18n support</listitem>
-			<listitem>Components - a perfect tool for making the forms more dynamic.
-				There is developed an official add-on to OPT named <emphasis>Open Power Forms</emphasis>,
-				which provides a set of good-quality automated form components integraded with
-				the validation engine.</listitem>
-		</orderedlist>
+		<para>W OPT jest znacznie więcej takich prostych w użyciu instrukcji. W rzeczywistości niemal wszystkie
+		rzeczy używane na co dzień są w jakiś sposób zaimplementowane w parserze i mogą być zastosowane bez
+		żadnej wiedzy programistycznej, podczas gdy Smarty wymaga w tym samym miejscu używania skomplikowanych lub
+		ciężkich do rozczytania algorytmów. Co więcej, takie uproszczenia przydają się również bardziej zaawansowanym
+			użytkownikom - upraszczają one kod i czynią go czytelniejszym.</para>
+
 	</appendix>
 	<appendix label="B" id="appendix.b">
 		<title>Dyrektywy konfiguracyjne</title>
@@ -5819,7 +5904,7 @@ try{
 			<glossentry id="plugins">
 				<glossterm>plugins</glossterm>
 				<glossdef>
-				<para>(tekst) Definiuje katalog, w którym przechowywane są pluginy dla parsera. Skrypt musi mieć w nim prawa do zapisu, ponieważ generuje tam rezultat skanowania zawartości katalogu w poszukiwaniu pluginów.
+				<para>(tekst) Definiuje katalog, w którym przechowywane są pluginy dla parsera. Skrypt musi mieć w nim prawa do zapisu, ponieważ generuje tam rezultat skanowania zawartości katalogu w poszukiwaniu pluginów. Od wersji 1.1.3 możliwe jest także używanie tablicy nazw katalogów - OPT załaduje wtedy pluginy z każdego z nich.
 				</para>
 				</glossdef>
 			</glossentry>
@@ -6137,128 +6222,127 @@ try{
 		</table>
 	</appendix>
 	<appendix label="E" id="appendix.e">
-		<title>Problems</title>
+		<title>Problemy</title>
 		<qandaset defaultlabel="qanda">
 			<qandaentry>
-				<question><para>In the template I have some JavaScript code. However, OPT tries to
-					parse the { and } characters, which obviously causes error.</para></question>
+				<question><para>W szablonach mam trochę kodu JavaScript. Jednak OPT próbuje przetwarzać znaki { i } wewnątrz tego kodu, co
+					oczywiście powoduje błędy.</para></question>
 				<answer>
-					<para>Enclose your JS code inside <emphasis>{literal}</emphasis> and
-						<emphasis>{/literal}</emphasis> instructions.</para>
+					<para>Umieść kod JavaScript wewnątrz instrukcji <emphasis>{literal}</emphasis> oraz
+						<emphasis>{/literal}</emphasis>.</para>
 				</answer>				
 			</qandaentry>
 			<qandaentry>
-				<question><para>I parse some UTF-8 templates with OPT and all the national
-					characters are broken.</para></question>
+				<question><para>Przetwarzam trochę szablonów UTF-8 i OPT niszczy w nim znaki diaktryczne.</para></question>
 				<answer>
-					<para>This is not a problem of OPT, but of many modern browsers. You have
-					to specify the encoding in the HTTP headers. Set the <variable>charset</variable> directive
-					to "utf-8" and call
-					<link linkend="library.optclass.http-headers" endterm="">optClass::httpHeaders()</link>
-					method to send them.</para>
+					<para>OPT nie ma nic wspólnego z Unikodem i to nie on niszczy Twoje dokumenty, lecz nowoczesne przeglądarki.
+						Nie zapomnij, że aby używać tego kodowania, nie wystarczy informacja w tagu META. Musisz dodatkowo wysłać
+						nagłówek HTTP z informacją o użyciu tego kodowania. W OPT ustaw dyrektywę konfiguracyjną <variable>charset</variable>
+					na "utf-8" i wywołaj metodę
+					<link linkend="library.optclass.http-headers" endterm="">optClass::httpHeaders()</link> aby wysłać poprawne nagłówki.</para>
 				</answer>				
 			</qandaentry>
 			<qandaentry>
-				<question><para>OPT source code makes a use of a PHP @ operator. I have written my
-					own error handler and, however, it catches the notices even if they are
-					"removed" by this operator.</para></question>
+				<question><para>Kod źródłowy OPT wykorzystuje operator @. Napisałem mój własny przechwytywacz błędów,
+					jednak wyłapuje on wszystkie komunikaty, nawet gdy są ukryte przez ten operator. Jak mogę temu
+					zapobiec?</para></question>
 				<answer>
-					<para>If the captured PHP error is preceded by @, the <emphasis>error_reporting()</emphasis>
-					function called inside the handler returns 0:</para>
+					<para>Jeśli przechwycony błąd PHP jest poprzedzony przez @, funkcja <emphasis>error_reporting()</emphasis>
+					wywołana wewnątrz funkcji przechwytującej zwróci 0:</para>
 					<programlisting><![CDATA[function myErrorHandler($errno, $errstr, $errfile, $errline)
 {
 	if(error_reporting() != 0)
 	{
-		// your code
+		// twój kod
 	}
 }]]></programlisting>					
 				</answer>				
 			</qandaentry>
 			<qandaentry>
-				<question><para>My server accepts PHP5 in the scripts ended
-					with <filename>.php5</filename> extension and <filename>.php</filename> is
-					reserved for PHP4. How can I easily change the extension of OPT library
-					files?</para></question>
+				<question><para>Mój serwer akceptuje PHP5 tylko w skryptach z rozszerzeniem <filename>.php5</filename>, natomiast <filename>.php</filename>
+					jest zarezerwowane dla PHP4. Jak mogę prosto zmienić rozszerzenie plików biblioteki?</para></question>
 				<answer>
-					<para>You do not have at all. This requirement concerns only the scripts
-						runned directly from the browser. The sources included by them can have
-						different extensions, even such crazy, as "wigglywiggly". Just include
-						the OPT and do not care about the file extension.</para>
+					<para>Nie musisz wcale nic zmieniać. Ten wymóg dotyczy jedynie skryptów wywoływanych
+						z przeglądarki. Dołączane pliki mogą mieć dowolne rozszerzenie, nawet tak zwariowane,
+						jak "terefere". Po prostu dołącz pliki OPT i nie przejmuj się rozszerzeniem.</para>
 				</answer>				
 			</qandaentry>
 			<qandaentry>
-				<question><para>Take a look at the following template:</para>
+				<question><para>Przyjrzyj się poniższemu szablonowi:</para>
 				<programlisting><![CDATA[foo{var=foo; "bar"}
 bar]]></programlisting>
-				<para>The expected result:</para>
+				<para>Spodziewany rezultat:</para>
 				<programlisting><![CDATA[foo
 bar]]></programlisting>
-				<para>Given result:</para>
+				<para>Otrzymany rezultat:</para>
 				<programlisting><![CDATA[foobar]]></programlisting>
-				<para>What is going on?</para>
+				<para>Co się dzieje?</para>
 				</question>
 				<answer>
-					<para>The templates are compiled to the PHP code. We made some tests and
-						noticed the newline characters are removed by the PHP parser, not OPT
-						compiler.</para>
+					<para>Szablony są kompilowane do postaci kodu PHP. Wykonaliśmy kilka testów i odkryliśmy, że
+						znaki nowej linii usuwa parser PHP, a nie kompilator OPT, tak więc za problem odpowiadają
+						twórcy PHP.</para>
 				</answer>				
 			</qandaentry>
 			<qandaentry>
-				<question><para>I have an OPT expression with some strings and I want them
-					to contain { and } characters. But then my template gets broken and
-					an error occurs.</para>
+				<question><para>Mam w wyrażeniach OPT trochę ciągów tekstowych i chciałbym w nich używać znaków { i }.
+					Lecz wtedy w moich szablonach powstają dziwne błędy.</para>
 				</question>
 				<answer>
-					<para>These characters open and enclose OPT tags always, even inside a
-						string. In order to display them, use the special entities: &amp;lb;
-						and &amp;rb;. They are available, if the directives <variable>entities</variable>
-						or <variable>xmlsyntaxMode</variable> are enabled.</para>
+					<para>Te znaki zawsze otwierają i kończą znaczniki OPT, nawet wewnątrz nich samych.
+						Aby je wyświetlić, użyj specjalnych encji: &amp;lb;
+						oraz &amp;rb;. Są one dostępne nawet, jeśli dyrektywy <variable>entities</variable>
+						lub <variable>xmlsyntaxMode</variable> nie są włączone.</para>
 				</answer>
 			</qandaentry>
 		</qandaset>
 	</appendix>
 	<appendix label="F" id="appendix.f">
 		<title>Wsparcie</title>
-		<para>If you have any problems with OPT, you can always find help on the project
-			discussion board under <ulink url="http://forum.openpb.net">forum.openpb.net</ulink> address. This is an international
-			forum with English language as default. If there is a big group of people of
-			one nation, there is a possibility to create a national forum for them. Currently
-			such forum only the Polish have. Below, there are the main rules that we require
-			to know!</para>
-		<para>Please do not write directly to the OPT authors, if you have any problem. We refuse
-			to answer unless you post on the discussion board.</para>
+		<para>Jeśli masz problem z OPT, możesz zawsze znaleźć pomoc na forum dyskusyjnym projektu pod
+			adresem <ulink url="http://forum.openpb.net">forum.openpb.net</ulink>. Jest to
+			forum międzynarodowe z domyślnym językiem angielskim, lecz duże grupy użytkowników danej
+			narodowości mogą uzyskać także własne fora - tak też jest w przypadku języka polskiego.
+			Poniżej zamieszczamy kilka zasad, których należy się trzymać.</para>
+		<para>Prosimy nie kontaktować się bezpośrednio z autorami np. poprzez e-mail. Odpowiedzi na
+		tak zadane pytania nie będą udzielane, dopóki pytanie nie znajdzie się na forum!</para>
 		<orderedlist>
-			<listitem>Do not offend anyone.</listitem>
-			<listitem>Do not swear.</listitem>
-			<listitem>Use BBCode tags to make your posts clearer.</listitem>
-			<listitem>In case of problems, describe everything from A to Z.</listitem>
-			<listitem>Place the topic in the correct forum.</listitem>
-			<listitem>Spam and announcements are forbidden.</listitem>
-			<listitem>Do not post bug requests on the forum. You have a <ulink url="http://openpb.net/bugs">bugtracker</ulink>.</listitem>
-			<listitem>The moderators give warnings and bans, if someone does not follow the rules.</listitem>
-			<listitem>1.If you really want to know, how to ask a clever question, please read
-				<ulink url="http://www.catb.org/~esr/faqs/smart-questions.html">www.catb.org/~esr/faqs/smart-questions.html</ulink></listitem>		
+			<listitem>Nie atakuj nikogo.</listitem>
+			<listitem>Nie przeklinaj.</listitem>
+			<listitem>Użyj tagów BBCode, aby nadać swoim wiadomościom klarowny wygląd.</listitem>
+			<listitem>Jeśli zgłaszasz problem, opisz go wyczerpująco i dokładnie.</listitem>
+			<listitem>Umieść temat na właściwym forum.</listitem>
+			<listitem>Spam oraz rozmaite ogłoszenia są zakazane.</listitem>
+			<listitem>Nie zgłaszaj błędów biblioteki na forum. Od tego masz <ulink url="http://openpb.net/bugs">bugtracker</ulink>.</listitem>
+			<listitem>Moderatorzy udzielają banów i ostrzeżeń, jeśli ktoś nie stosuje się do reguł.</listitem>
+			<listitem>Jeśli naprawdę chcesz wiedzieć, jak prawidłowo zadawać pytania na forach dyskusyjnych,
+				zajrzyj pod następujący adres:
+				<ulink url="http://rtfm.bsdzine.org">http://rtfm.bsdzine.org</ulink></listitem>		
 		</orderedlist>
-		<para>International forum rules:</para>
+		<para>Zasady forum międzynarodowego:</para>
 		<orderedlist>
-			<listitem>Post in English language.</listitem>
-			<listitem>Do not offend other nations.</listitem>
-			<listitem>If there are many people from your nation on the board, the administrator
-				could create a national forum for them.</listitem>
+			<listitem>Komunikacja tylko w języku angielskim.</listitem>
+			<listitem>Nie wolno atakować innych nacji.</listitem>
+			<listitem>Jeśli na forum jest duża grupa użytkowników danej narodowości, możliwe jest
+				utworzenie dla nich wydzielonego forum.</listitem>
 		</orderedlist>
 	</appendix>
 	<appendix label="G" id="appendix.g">
 		<title>Zgłaszanie błędów</title>
-		<para>Every release of Open Power Template library has to pass several tests:</para>
+		<para>Każde nowe wydanie biblioteki przechodzi przed opublikowaniem szereg testów:</para>
 		<orderedlist>
-			<listitem>Parser unit test - testing the behaviour of the optClass.</listitem>
-			<listitem>Compiler unit test - testing the compiler results in various situations.</listitem>
-			<listitem>Example passing - each example has to work.</listitem>
-			<listitem>Two complete, real world projects - if everything is working, the test is passed.</listitem>
+			<listitem>Parser unit test - test klasy parsera optClass.</listitem>
+			<listitem>Compiler unit test - testowanie wyników działania kompilatora w różnych sytuacjach.</listitem>
+			<listitem>Example passing - każdy dołączony do biblioteki przykład musi zadziałać poprawnie.</listitem>
+			<listitem>Development passing - do OPT istnieje również duża liczba nieopublikowanych plików testowych testujących całą funkcjonalność. One również muszą zadziałać.</listitem>
+			<listitem>Rzeczywiste projekty - zazwyczaj podpinamy nowe wydanie pod jakiś rzeczywisty projekt stworzony z użyciem
+				biblioteki i rekompilujemy w nim wszystkie szablony.</listitem>
 		</orderedlist>
-		<para>However, there still may occur some situations that we could not predict. If you notice any bug, please visit
-		<ulink url="http://bugs.openpb.net">bugs.openpb.net</ulink> and report it us! The report has to be written in English
-		and must contain a test case that causes bug, which can be reproduced by everyone who is interested.</para>
+		<para>Jednak przez taki filtr wciąż mogą prześlizgnąć się niezauważone problemy. Jeśli masz pewność, że znalazłeś taki, zgłoś go
+			w naszym bugtrackerze: <ulink url="http://bugs.openpb.net">bugs.openpb.net</ulink>! Raport musi być napisany w języku
+			angielskim (jest to ważne, tu już nie można zrobić podziału, jak na forum). Jeśli nie znasz dobrze angielskiego, poproś kogoś
+			o przetłumaczenie (nawet Slumpa). Nie zapomnij o dołączeniu przypadku testowego, który pozwoli odtworzyć błąd
+			twórcom biblioteki - jest to niezbędne, aby w ogóle zacząć myśleć o jego usunięciu.</para>
 	</appendix>
 	<appendix label="H" id="appendix.h">
 		<title>W następnej wersji</title>

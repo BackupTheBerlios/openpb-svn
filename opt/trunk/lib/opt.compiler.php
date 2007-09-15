@@ -413,11 +413,10 @@
 			$literal = false;
 			$php = false;
 
-			$textBlocks = preg_split('/('.$blockRegex.')/ms', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
-
+			$textBlocks = preg_split('/('.$blockRegex.')/si', $code, 0, PREG_SPLIT_DELIM_CAPTURE);
 			foreach($textBlocks as $bid => $bval)
 			{				
-				if(preg_match('/'.$blockRegex.'/ms', $bval))
+				if(preg_match('/'.$blockRegex.'/si', $bval))
 				{
 					// Escape the OPT namespace, if in XML Syntax mode
 					if($this -> tpl -> xmlsyntaxMode == 1)
@@ -464,7 +463,7 @@
 				elseif($literal == false && $php == false)
 				{
 					// tokenizer
-					preg_match_all('#({\*.+?\*\}|'.$regex.')#msi', $bval, $result, PREG_PATTERN_ORDER);
+					preg_match_all('#({\*.+?\*\}|'.$regex.')#si', $bval, $result, PREG_PATTERN_ORDER);
 					$resolution = sizeof($result);
 					$offset = 0;
 					foreach($result[0] as $i => &$item)
@@ -483,7 +482,7 @@
 						// Move to the end of the current token
 						$offset = $id + strlen($item);
 						// Process the token
-						if(preg_match('/{\*.+?\*\}/ms', trim($item)))
+						if(preg_match('/{\*.+?\*\}/s', trim($item)))
 						{
 							continue;
 						}
@@ -590,7 +589,7 @@
 							}
 						}
 						$sortMatches[1] = $this -> parseEntities($sortMatches[1]);
-						if(preg_match('/^(([a-zA-Z0-9\_\:]+)([= ]{1}(.*))?)$/ms', $sortMatches[1], $found))
+						if(preg_match('/^(([a-zA-Z0-9\_\:]+)([= \t]{1}(.*))?)$/s', $sortMatches[1], $found))
 						{
 							// we have an instruction
 							$realname = $found[2];
@@ -731,9 +730,15 @@
 					$textAssign = 1;
 				}
 			}
+			
+			if($current -> getType() != OPT_ROOT)
+			{
+				$this -> tpl -> error(E_USER_ERROR, 'Unexpected enclosing statement: "NULL"!', OPT_E_ENCLOSING_STATEMENT);
+			}
+			
 			// execute the tree
 			$this -> processors['generic'] -> nodeProcess($root);
-			
+			$this -> output = str_replace('?><'.'?php', '', $this -> output);
 			if(!$master)
 			{
 				// apply postfilters
@@ -1304,6 +1309,13 @@
 							return '$__'.$ns[$cnt-2].'_val[\''.$ns[$cnt-1].'\']';
 						}
 					}
+					else
+					{
+						if(in_array($ns[0], $this -> processors['section'] -> sectionList))
+						{
+							return '$__'.$ns[0].'_val';
+						}
+					}
 				}
 				$result = '$this->data';
 			}
@@ -1366,7 +1378,7 @@
 					return '\''.str_replace('\'', '\\\'', stripslashes(substr($str, 1, strlen($str) - 2))).'\'';
 					
 				default:
-					return '\''.$str.'\'';	
+					return '\''.$str.'\'';
 			}
 		} // end compileString();
 		
@@ -1597,36 +1609,49 @@
 					{
 						$optional = 1;
 					}
-
-					if(!isset($params[$pi]))
+					
+					if($name == '__UNKNOWN__')
 					{
-						// parameter not set
-						if($optional == 1)
+						$iterator = 0;
+						while(isset($params[$pi]))
 						{
-							// pass the default value
-							$config[$name] = $par[2];				
+							$unknown[$iterator] = $this -> paramTest($instruction, $pi, $par[1], $params[$pi]);
+							$iterator++;
+							$pi++;
 						}
-						else
-						{
-							$this -> parametrizeError($instruction, 1, $pi);
-						}		
 					}
 					else
 					{
-						if(trim($params[$pi]) == '!x')
+						if(!isset($params[$pi]))
 						{
-							if($optional == 0)
+							// parameter not set
+							if($optional == 1)
 							{
-								$this -> parametrizeError($instruction, 4, $pi);						
+								// pass the default value
+								$config[$name] = $par[2];				
 							}
-							// force the default value
-							$config[$name] = $par[2];
-							$pi++;
-							continue;
+							else
+							{
+								$this -> parametrizeError($instruction, 1, $pi);
+							}		
 						}
-						$config[$name] = $this -> paramTest($instruction, $pi, $par[1], $params[$pi]);
+						else
+						{
+							if(trim($params[$pi]) == '!x')
+							{
+								if($optional == 0)
+								{
+									$this -> parametrizeError($instruction, 4, $pi);						
+								}
+								// force the default value
+								$config[$name] = $par[2];
+								$pi++;
+								continue;
+							}
+							$config[$name] = $this -> paramTest($instruction, $pi, $par[1], $params[$pi]);
+						}
+						$pi++;
 					}
-					$pi++;
 				}
 				// End of parsing
 			}

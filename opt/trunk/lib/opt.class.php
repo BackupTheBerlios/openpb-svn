@@ -33,7 +33,7 @@
 	define('OPT_PRIORITY_NORMAL', 0);
 	define('OPT_PRIORITY_HIGH', 1);
 
-	define('OPT_VERSION', '1.1.2');
+	define('OPT_VERSION', '1.1.3');
 	
 	define('OPT_E_CONTENT_TYPE', 1);
 	define('OPT_E_ARRAY_REQUIRED', 2);
@@ -297,7 +297,7 @@
 
 		public function assignRef($name, &$value)
 		{
-			$this -> data[$name] = $value;		
+			$this -> data[$name] = &$value;		
 		} // end assignRef();
 
 		# HTTP_HEADERS
@@ -420,69 +420,17 @@
 
 		public function loadPlugins()
 		{	
-			$this -> instructionFiles[] = $this -> plugins.'compile.php';
-			if(file_exists($this -> plugins.'plugins.php'))
+			if(is_string($this -> plugins))
 			{
-				// Load precompiled plugin database
-				include($this -> plugins.'plugins.php');
+				$this -> _loadPlugins($this -> plugins);
 			}
-			else
+			elseif(is_array($this -> plugins))
 			{
-				// Compile plugin database
-				if(!is_writeable($this -> plugins))
+				foreach($this -> plugins as $path)
 				{
-					$this -> error(E_USER_ERROR, $this->plugins.' is not a writeable directory.', OPT_E_WRITEABLE);
+					$this -> _loadPlugins($path);
 				}
-
-				$code = '';
-				$compileCode = '';
-				$file = '';
-				$dir = opendir($this -> plugins);
-				while($file = readdir($dir))
-				{
-					if(preg_match('/(component|instruction|function|prefilter|postfilter|outputfilter|resource)\.([a-zA-Z0-9\_]+)\.php/', $file, $matches))
-					{
-						switch($matches[1])
-						{
-							# COMPONENTS
-							case 'component':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
-								break;
-							# /COMPONENTS
-							case 'instruction':
-								$compileCode .= "\trequire(\$this -> tpl-> plugins.'".$file."');\n";
-								$compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
-								break;
-							case 'function':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->functions['".$matches[2]."'] = '".$matches[2]."';\n";
-								break;
-							case 'prefilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->filters['pre'][] = 'optPrefilter".$matches[2]."';\n";
-								break;
-							case 'postfilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->filters['post'][] = 'optPostfilter".$matches[2]."';\n";
-								break;
-							case 'outputfilter':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->filters['output'][] = 'optOutputfilter".$matches[2]."';\n";
-								break;
-							case 'resource':
-								$code .= "\trequire(\$this -> plugins.'".$file."');\n";
-								$code .= "\t\$this->resources[".$matches[2]."] = \$".$matches[4].";\n";
-								break;
-						}	
-					}
-				}
-				closedir($dir);
-				file_put_contents($this -> plugins.'plugins.php', '<'."?php\n".$code.'?'.'>');
-				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$compileCode.'?'.'>');
-				eval($code);
 			}
-			return 1;
 		} // end loadPlugins();
 
 		public function setDefaultI18n(&$lang)
@@ -981,7 +929,7 @@
 			optErrorMessage($this, $type, $message, $code, end($this->filenames));
 		} // end error();
 		
-		private function needCompile($filename, $noException = false)
+		protected function needCompile($filename, $noException = false)
 		{
 			$compiled = optCompileFilename($filename);
 			# CUSTOM_RESOURCES
@@ -1150,6 +1098,73 @@
 		} // end cacheWrite();
 		# /OUTPUT_CACHING
 		
+		private function _loadPlugins($path)
+		{
+			$this -> instructionFiles[] = $path.'compile.php';
+			if(file_exists($path.'plugins.php'))
+			{
+				// Load precompiled plugin database
+				include($path.'plugins.php');
+			}
+			else
+			{
+				// Compile plugin database
+				if(!is_writeable($path))
+				{
+					$this -> error(E_USER_ERROR, $path.' is not a writeable directory.', OPT_E_WRITEABLE);
+				}
+
+				$code = '';
+				$compileCode = '';
+				$file = '';
+				$dir = opendir($path);
+				while($file = readdir($dir))
+				{
+					if(preg_match('/(component|instruction|function|prefilter|postfilter|outputfilter|resource)\.([a-zA-Z0-9\_]+)\.php/', $file, $matches))
+					{
+						switch($matches[1])
+						{
+							# COMPONENTS
+							case 'component':
+								$code .= "\trequire('".$path.$file."');\n";
+								$code .= "\t\$this->components['".$matches[2]."'] = 1;\n";
+								break;
+							# /COMPONENTS
+							case 'instruction':
+								$compileCode .= "\trequire('".$path.$file."');\n";
+								$compileCode .= "\t\$this->tpl->control[] = '".$matches[2]."';\n";
+								break;
+							case 'function':
+								$code .= "\trequire('".$path.$file."');\n";
+								$code .= "\t\$this->functions['".$matches[2]."'] = '".$matches[2]."';\n";
+								break;
+							case 'prefilter':
+								$code .= "\trequire('".$path.$file."');\n";
+								$code .= "\t\$this->filters['pre'][] = 'optPrefilter".$matches[2]."';\n";
+								break;
+							case 'postfilter':
+								$code .= "\trequire('".$path.$file."');\n";
+								$code .= "\t\$this->filters['post'][] = 'optPostfilter".$matches[2]."';\n";
+								break;
+							case 'outputfilter':
+								$code .= "\trequire('".$path.$file."');\n";
+								$code .= "\t\$this->filters['output'][] = 'optOutputfilter".$matches[2]."';\n";
+								break;
+							case 'resource':
+								$code .= "\trequire('".$path.$file."');\n";
+								$code .= "\t\$this->resources[".$matches[2]."] = \$".$matches[4].";\n";
+								break;
+						}	
+					}
+				}
+				closedir($dir);
+				file_put_contents($this -> plugins.'plugins.php', '<'."?php\n".$code.'?'.'>');
+				file_put_contents($this -> plugins.'compile.php', '<'."?php\n".$compileCode.'?'.'>');
+				eval($code);
+			}
+			return true;
+		} // end _loadPlugins();
+		
 		# HTTP_HEADERS
 		protected function header($header)
 		{
@@ -1157,9 +1172,8 @@
 		} // end header();		
 		# /HTTP_HEADERS
 	}
-	
+
 	// Functions
-	
 	function optCompileFilenameFull($filename)
 	{
 		# CUSTOM_RESOURCES
@@ -1169,14 +1183,14 @@
 			$filename = $resource[1];
 		}
 		# /CUSTOM_RESOURCES
-		return '%%'.str_replace(array('/', '\\'), '_', $filename).'.php';
+		return '%%'.str_replace(array('/', '\\'), '__', $filename).'.php';
 	} // end optCompileFilenameFull();
-	
+
 	function optCompileFilename($filename)
 	{
-		return '%%'.str_replace(array('/', ':', '\\'), '_', $filename).'.php';
+		return '%%'.str_replace(array('/', ':', '\\'), '__', $filename).'.php';
 	} // end optCompileFilename();
-	
+
 	function optCacheFilename($filename, $id = '')
 	{
 		return str_replace(array('|', '/', '\\'),'^',$id).'_'.base64_encode(dirname($filename)).basename($filename);

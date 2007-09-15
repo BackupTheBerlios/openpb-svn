@@ -235,14 +235,15 @@
 				'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 				'order' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_STRING, NULL),
 				'state' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
-				'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
+				'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
+				'separator' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
 			
 			$this -> compiler -> parametrize('show', $paramStr, $params);
-			$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], true);
+			$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], $params['separator'], true);
 		} // end showBegin();
 		
-		private function showAction($name, $order, $state, $datasource, $show)
+		private function showAction($name, $order, $state, $datasource, $separator, $show)
 		{
 			$link = '';
 			if($this -> tpl -> sectionDynamic == OPT_SECTION_COMPILE)
@@ -288,6 +289,7 @@
 				'state' => $state,
 				'link' => $link,
 				'show' => $show,
+				'separator' => $separator,
 				'else' => false
 			);
 			$this -> compiler -> out($output);
@@ -325,10 +327,26 @@
 					'name' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
 					'order' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_STRING, NULL),
 					'state' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
-					'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
+					'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL),
+					'separator' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
 				$this -> compiler -> parametrize('section', $paramStr, $params);
-				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], false);			
+				
+				$separatorNode = $block -> getElementByTagName('separator');
+				if(is_object($separatorNode))
+				{
+					$params['separator'] = $separatorNode;
+				}
+				
+				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], $params['separator'], false);			
+			}
+			else
+			{
+				$separatorNode = $block -> getElementByTagName('separator');
+				if(is_object($separatorNode))
+				{
+					$this->sections[$this->nesting]['separator'] = $separatorNode;
+				}
 			}
 			
 			// Process the section
@@ -357,6 +375,21 @@
 		public function sectionEnd()
 		{
 			$this -> nesting--;
+			
+			if(!is_null($this->sections[$this->nesting]['separator']))
+			{
+				if(is_object($this->sections[$this->nesting]['separator']))
+				{
+					$this -> compiler -> out(' if(!'.$this->processOpt(array(0 => 'opt', 'section', $this->sections[$this->nesting]['name'], 'last')).'){ ');
+					$this -> defaultTreeProcess($this->sections[$this->nesting]['separator']->getFirstBlock());
+					$this -> compiler -> out(' } ');
+				}
+				else
+				{
+					$this -> compiler -> out(' if(!'.$this->processOpt(array(0 => 'opt', 'section', $this->sections[$this->nesting]['name'], 'last')).'){ echo '.$this->sections[$this->nesting]['separator'].'; } ');
+				}
+			}
+			
 			if($this->sections[$this->nesting]['show'] == true)
 			{				
 				$this -> compiler -> out(' } ');			
@@ -387,7 +420,7 @@
 					'datasource' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 				);
 				$this -> compiler -> parametrize('section', $paramStr, $params);
-				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], false);			
+				$this -> showAction($params['name'], $params['order'], $params['state'], $params['datasource'], NULL, false);			
 			}
 			// Find the code snippets
 			$snippetName = '';
@@ -547,7 +580,7 @@ case 0:
 				{
 					$syntax = OPT_SECTION_MULTI;
 					$link = $datasource;
-					if($this -> nesting == 0)
+					if($this -> nesting > 0)
 					{
 						foreach($this -> sections as $item)
 						{
@@ -1054,6 +1087,8 @@ case 0:
 	
 	class optFor extends optInstruction
 	{
+		protected $nesting = 0;
+		
 		public function configure()
 		{
 			return array(
@@ -1072,7 +1107,7 @@ case 0:
 				switch($block -> getName())
 				{
 					case 'for':
-							$this -> forBegin($block -> getAttributes());
+							$this -> forBegin($block);
 							$this -> defaultTreeProcess($block);
 							break;
 					case '/for':
@@ -1082,27 +1117,50 @@ case 0:
 			}
 		} // end process();
 		
-		private function forBegin($group)
+		private function forBegin($block)
 		{
 			$params = array(
 				'begin' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ASSIGN_EXPR),
 				'end' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ASSIGN_EXPR),
-				'iterate' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ASSIGN_EXPR)
+				'iterate' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ASSIGN_EXPR),
+				'separator' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
-			$this -> compiler -> parametrize('for', $group, $params);
-	 		$this -> compiler -> out(' for('.$params['begin'].'; '.$params['end'].'; '.$params['iterate'].'){ ');
+			$this -> compiler -> parametrize('for', $block->getAttributes(), $params);
+			$separatorNode = $block -> getElementByTagName('separator');
+			$start = false;
+			if(is_object($separatorNode))
+			{
+				$start = true;
+			}
+			elseif(!is_null($params['separator']))
+			{
+				$start = true;
+			}
+			
+	 		$this -> compiler -> out(' '.($start ? '$__for_'.$this->nesting.'=0; ' : '').' for('.$params['begin'].'; '.$params['end'].'; '.$params['iterate'].'){ ');
+			if(is_object($separatorNode))
+			{
+				$this -> compiler -> out(' if($__for_'.$this->nesting.' != 0){ ');
+				$this -> defaultTreeProcess($separatorNode->getFirstBlock());
+				$this -> compiler -> out(' } $__for_'.$this->nesting.' = 1;');
+			}
+			elseif(!is_null($params['separator']))
+			{
+				$this -> compiler -> out(' if($__for_'.$this->nesting.' != 0){ echo '.$params['separator'].'; } $__for_'.$this->nesting.' = 1;');
+			}
+			$this -> nesting++;
 		} // end forBegin();
 		
 		private function forEnd()
 		{
 	 		$this -> compiler -> out(' } ');
+	 		$this -> nesting--;
 		} // end forEnd();
 	}
 	
 	class optForeach extends optInstruction
 	{
-		private $nesting;
-		private $else;
+		private $nesting = 0;
 	
 		public function configure()
 		{
@@ -1124,7 +1182,7 @@ case 0:
 				switch($block -> getName())
 				{
 					case 'foreach':
-							$this -> foreachBegin($block -> getAttributes());
+							$this -> foreachBegin($block);
 							$this -> defaultTreeProcess($block);
 							break;
 					case 'foreachelse':
@@ -1137,37 +1195,60 @@ case 0:
 				}			
 			}		
 		} // end process();
-		
-		private function foreachBegin($group)
+
+		private function foreachBegin($block)
 		{
 			$params = array(
 				'table' => array(OPT_PARAM_REQUIRED, OPT_PARAM_EXPRESSION),
 				'index' => array(OPT_PARAM_REQUIRED, OPT_PARAM_ID),
-				'value' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, NULL)
+				'value' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_ID, NULL),
+				'separator' => array(OPT_PARAM_OPTIONAL, OPT_PARAM_EXPRESSION, NULL)
 			);
-			$this -> compiler -> parametrize('foreach', $group, $params);
-	
+			$this -> compiler -> parametrize('foreach', $block -> getAttributes(), $params);
+			$separatorNode = $block -> getElementByTagName('separator');
+			$start = false;
+			if(is_object($separatorNode))
+			{
+				$start = true;
+			}
+			elseif(!is_null($params['separator']))
+			{
+				$start = true;
+			}
+
 			if($params['value'] == NULL)
 			{
-				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ foreach('.$params['table'].' as &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = &$__f_'.$this -> nesting.'_val; ');
+				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ '.($start ? '$__foreach_'.$this->nesting.'=0; ' : '').' foreach('.$params['table'].' as $__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
 			else
 			{
-				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ foreach('.$params['table'].' as $__f_'.$this -> nesting.'_id => &$__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = $__f_'.$this -> nesting.'_id; $this -> vars[\''.$params['value'].'\'] = &$__f_'.$this -> nesting.'_val; ');
+				$this -> compiler -> out(' if(sizeof('.$params['table'].') > 0){ '.($start ? '$__foreach_'.$this->nesting.'=0; ' : '').' foreach('.$params['table'].' as $__f_'.$this -> nesting.'_id => $__f_'.$this -> nesting.'_val){ $this -> vars[\''.$params['index'].'\'] = $__f_'.$this -> nesting.'_id; $this -> vars[\''.$params['value'].'\'] = &$__f_'.$this -> nesting.'_val; ');
 			}
+			if(is_object($separatorNode))
+			{
+				$this -> compiler -> out(' if($__foreach_'.$this->nesting.' != 0){ ');
+				$this -> defaultTreeProcess($separatorNode->getFirstBlock());
+				$this -> compiler -> out(' } $__foreach_'.$this->nesting.' = 1;');
+			}
+			elseif(!is_null($params['separator']))
+			{
+				$this -> compiler -> out(' if($__foreach_'.$this->nesting.' != 0){ echo '.$params['separator'].'; } $__foreach_'.$this->nesting.' = 1;');
+			}
+			$this -> nesting++;
 		} // end foreachBegin();
-		
+
 		private function foreachElse()
 		{
 		 	$this -> compiler -> out(' } }else{ { ');		
 		} // end foreachElse();
-		
+
 		private function foreachEnd()
 		{
  			$this -> compiler -> out(' } } ');
+ 			$this -> nesting--;
 		} // end foreachEnd();
 	}
-	
+
 	class optDynamic extends optInstruction
 	{
 		public $active = 0;

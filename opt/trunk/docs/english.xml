@@ -4,7 +4,7 @@
 <book id="opt" lang="en">
 	<bookinfo id="bookinfo">
 		<title>Open Power Template</title>
-		<subtitle>Reference manual - version 1.1.2</subtitle>
+		<subtitle>Reference manual - version 1.1.3</subtitle>
 		<authorgroup id="authors">
 			<author>
 				<firstname>Tomasz</firstname>
@@ -16,7 +16,7 @@
 			</author>
 		</authorgroup>
 		<copyright>
-			<year>2006</year>
+			<year>2006-2007</year>
 			<holder>Tomasz Jędrzejewski, Tomasz Szczupliński</holder>
 		</copyright>
 	</bookinfo>
@@ -74,10 +74,9 @@
 	</preface>
 	<chapter id="installation">
 		<title>Installation</title>
-		<para>Open Power Template requires a web server running PHP 5.0.0 or later. The Zlib extension is recommended,
+		<para>Open Power Template requires a web server running PHP 5.1.0 or later. The Zlib extension is recommended,
 		if you want to compress the HTTP output.</para>
-		<para>Note: we test every release on the latest available PHP6 snapshot. Version 1.0.2, released on 6 October
-		2006, still seems to have problems with gZip compression on the snapshot from 24 September.</para>
+		<para>Note: OPT will also include a full PHP6 support, however now we are not able to test every release.</para>
 		<sect1 id="installation.simple">
 			<title>Simple installation</title>
 			<para>A typical installation process is done in two stages. First, copying files. The project
@@ -622,7 +621,7 @@ $opt.version - returns the OPT version]]></programlisting>
 			capitalized letters.</para>
 			<example id="example.syntax.functions1">
 				<title>Sample use of functions</title>
-				<programlisting><![CDATA[<p>{capitalize($introduction)}</p>]]></programlisting>
+				<programlisting><![CDATA[<p>{upper($introduction)}</p>]]></programlisting>
 			</example>
 			<para>Now the value of <variable>$introduction</variable> block is passed to the function, which capitalizes all the
 			small letters and returns the modified text to the template.</para>
@@ -663,7 +662,7 @@ $opt.version - returns the OPT version]]></programlisting>
 					<title>apply() function</title>
 					<programlisting><![CDATA[{* content of menu@welcome: Welcome %s, thanks for the visit. *}
 {apply($menu@welcome, 'Adam')}
-{* Wyswietli np.: Welcome Adam, thanks for the visit. *}
+{* Will show us: Welcome Adam, thanks for the visit. *}
 <p>{$menu@welcome}</p>]]></programlisting>
 				</example>
 			</sect2>
@@ -720,7 +719,7 @@ $opt.version - returns the OPT version]]></programlisting>
 				</methodsynopsis>
 				<para>Returns the number of words in the <variable>text</variable> text.</para>
 				<example id="example.syntax.functions.countwords1">
-					<title>capitalize() function</title>
+					<title>countWords() function</title>
 					<programlisting><![CDATA[<h1>{$title}</h1>
 <p>{$body}</p>
 <span class="small">Total words: {countWords($body)}</span>]]></programlisting>
@@ -734,7 +733,7 @@ $opt.version - returns the OPT version]]></programlisting>
 				</methodsynopsis>
 				<para>Iterates through the specified parameters after each calling. For example, if we specify three values:
 				1, 2, 3, the function returns 1 after first calling, 2 after second, 3 after third, again 1 after fourth etc.
-				Useful in desing issues - in the example below we color in a different way each row of the table:</para>
+				Useful in design issues - in the example below we color in a different way each row of the table:</para>
 				<example id="example.syntax.functions.cycle1">
 					<title>cycle() function</title>
 					<programlisting><![CDATA[<table border="0">
@@ -773,7 +772,7 @@ $opt.version - returns the OPT version]]></programlisting>
 				<para>Formats the date using PHP <ulink url="http://www.php.net/date">date()</ulink> function syntax. If
 				<variable>timestamp</variable> specified, formats the specified date, otherwise current time is taken.</para>
 				<example id="example.syntax.functions.date1">
-					<title>capitalize() function</title>
+					<title>date() function</title>
 					<programlisting><![CDATA[<p>Today is {date("d.m.Y")}.</p>]]></programlisting>
 				</example>
 			</sect2>
@@ -878,7 +877,7 @@ static text]]></programlisting>
 			text. The next consequence of this behavior is that the mistakes in the tag names <emphasis>are not</emphasis>
 			reported by the template compiler! So, if something does not display, but should do this, check the name of
 			the tag.</para>
-			<para>Since 1.1.0, OPT supports namespaces known from XML. If the namespace is not provides, OPT assigns
+			<para>Since 1.1.0, OPT supports namespaces known from XML. If the namespace is not provided, OPT assigns
 			the tag to the default one: <emphasis>opt</emphasis>. Thus, the tags <emphasis>sometag</emphasis> and
 			<emphasis>opt:sometag</emphasis> mean exactly the same. Separate OPT extensions may use different namespaces,
 			for example Open Power Forms uses <emphasis>opf</emphasis> to idenfity its tags.</para>
@@ -1010,7 +1009,26 @@ static text]]></programlisting>
 </table>]]></programlisting>
 				</example>
 				<para>Inside sections, the syntax <emphasis>{$table.key}</emphasis> changes its meaning and it is used to access
-				the section element blocks. The first part identifies the section and the second - the name of an element block.</para>
+				the section element blocks. The first part identifies the section and the second - the name of an element block.
+				Since OPT 1.1.3, sections could be also used with non-array elements, such as integers or objects.</para>
+
+				<example id="example.sections45">
+					<title>Non-array section data</title>
+					<programlisting><![CDATA[<p>Numbers:</p>
+<ul>
+{section=numbers}
+	<li>{$numbers}</li>
+{/section}
+</ul>
+
+<p>Objects:</p>
+<ul>
+{section=objects}
+	<li>{$objects -> method()}</li>
+{/section}
+</ul>]]></programlisting>
+				</example>
+				
 				<para>The optional <emphasis>{sectionelse}</emphasis> element can be added to display some text, if the section contains
 				no elements:</para>
 				<example id="example.sections2">
@@ -1069,6 +1087,15 @@ static text]]></programlisting>
 					  <entry>Expression</entry>
 					  <entry>No</entry>
 					  <entry>The location of section data. If not specified, the section name is used.</entry>
+					</row>
+					<row>
+					  <entry>separator</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>A separator inserted between two section elements. The parameter can be replaced with the
+						  <link linkend="syntax.instruction.separator" endterm="">separator</link> instruction. The
+						  parameter is available since OPT 1.1.3.
+					  </entry>
 					</row>
 					</tbody>
 					</tgroup>
@@ -1292,6 +1319,16 @@ $tpl -> assign('products', $products);]]></programlisting>
 					</example>
 					<para>This code creates three list elements. Each of them contains two blocks: <variable>name</variable>
 					and <variable>price</variable>.</para>
+					<para>Since OPT 1.1.3, it is possible to work with non-array elements. In order to use
+					them, you have to replace the array of element blocks visible above, with an integer, string
+					or some object. Remember that you must still keep the contignous and starting from 0 index order.</para>
+					<example id="example.sections_php1a">
+						<title>Data for non-array sections</title>
+						<programlisting><![CDATA[$integers = array(0 =>
+   15, 17, 13, 21
+);
+$tpl -> assign('integers', $integers);]]></programlisting>
+					</example>
 					<para>As we mentioned above, you have to decide, how you want to support subsection data. You may specify
 					the format with the <emphasis>sectionStructure</emphasis> configuration directive, which takes one of two
 					values: <emphasis>OPT_SECTION_MULTI</emphasis> (default) and <emphasis>OPT_SECTION_SINGLE</emphasis>.</para>
@@ -1744,6 +1781,45 @@ $tpl -> parse('template.tpl');
 					</listitem>
 				</orderedlist>
 			</sect2>
+			<sect2 id="syntax.instructions.separator">
+				<title>Separator</title>
+				<para>This instruction allows to define	a content that is put between every two iterations of a loop. It always comes with a parameter "separator"
+					specified in the loop tag, but it has a lower priority while compiling.</para>
+				<example id="example.separator1">
+					<title>Using separators</title>
+					<programlisting><![CDATA[{section=navigation}
+{separator} / {/separator}
+					{$navigation.title}
+					{/section}]]></programlisting>
+				</example>
+				<para>The result for three section elements:</parta>
+				<programlisting><![CDATA[Element A / Element B / Element C]]></programlisting>
+				<para>The same result can be achieved with the section parameter:</para>
+				<example id="example.separator2">
+					<title>Separator as a parameter</title>
+					<programlisting><![CDATA[{section name="navigation" separator="' / '"}
+					{$navigation.title}
+					{/section}]]></programlisting>
+				</example>
+				<para>The result for three section elements:</parta>
+				<programlisting><![CDATA[Element A / Element B / Element C]]></programlisting>
+				<para>Separators can be also used with <link linkend="syntax.instructions.for" endterm="">for</link> and
+				<link linkend="syntax.instructions.foreach" endterm="">foreach</link> loops exactly in the same way:</para>
+				<example id="example.separator3">
+					<title>Separators and other loops</title>
+					<programlisting><![CDATA[{for begin="@i = 1" end="@i lt 5" iterate="@i++" separator="` / `"}
+{@i}
+{/for}
+<br/>			
+{for begin="@i = 1" end="@i lt 5" iterate="@i++"}
+{separator} / {/separator}
+{@i}
+{/for}]]></programlisting>
+				</example>
+				<para>The result:</parta>
+				<programlisting><![CDATA[1 / 2 / 3 / 4
+1 / 2 / 3 / 4]]></programlisting>
+			</sect2>
 			<sect2 id="syntax.instructions.var">
 				<title>Var</title>
 				<para>Var is used to declare variables. It takes two parameters: <parameter>name</parameter> (ID) and
@@ -1993,6 +2069,15 @@ Bbb]]></programlisting>
 					  <entry>Yes</entry>
 					  <entry>Iterating expression executed every call.</entry>
 					</row>
+					<row>
+					  <entry>separator</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>A separator inserted between two section elements. The parameter can be replaced with the
+						  <link linkend="syntax.instruction.separator" endterm="">separator</link> instruction. The
+						  parameter is available since OPT 1.1.3.
+					  </entry>
+					</row>
 					</tbody>
 					</tgroup>
 				</table>
@@ -2002,6 +2087,7 @@ Bbb]]></programlisting>
 <p>{@a}</p>
 {/for}]]></programlisting>
 				</example>
+				<para>This instruction can be used with <link linkend="syntax.instruction.separator" endterm="">separators</link>.</para>
 				</mark>
 			</sect2>
 			<sect2 id="syntax.instructions.foreach">
@@ -2040,6 +2126,15 @@ Bbb]]></programlisting>
 					  <entry>Yes</entry>
 					  <entry>Value variable name.</entry>
 					</row>
+					<row>
+					  <entry>separator</entry>
+					  <entry>Expression</entry>
+					  <entry>No</entry>
+					  <entry>A separator inserted between two section elements. The parameter can be replaced with the
+						  <link linkend="syntax.instruction.separator" endterm="">separator</link> instruction. The
+						  parameter is available since OPT 1.1.3.
+					  </entry>
+					</row>
 					</tbody>
 					</tgroup>
 				</table>
@@ -2060,6 +2155,7 @@ Bbb]]></programlisting>
 {/foreach}
 </table>]]></programlisting>
 				</example>
+				<para>This instruction can be used with <link linkend="syntax.instruction.separator" endterm="">separators</link>.</para>
 				<para>OPT variant of foreach supports also <emphasis>{foreachelse}</emphasis> block. Its content is presented, if
 				the parsed array/object contains no elements:</para>
 				<example id="example.foreach2">
@@ -5774,15 +5870,11 @@ try{
 {/tree}
 </ol>
 ]]></programlisting>
-		<para>OPT has more such easy-in-use features, such as:</para>
-		<orderedlist>
-			<listitem>Built-in pagination system support</listitem>
-			<listitem>Built-in i18n support</listitem>
-			<listitem>Components - a perfect tool for making the forms more dynamic.
-				There is developed an official add-on to OPT named <emphasis>Open Power Forms</emphasis>,
-				which provides a set of good-quality automated form components integraded with
-				the validation engine.</listitem>
-		</orderedlist>
+		<para>In OPT, there are more such easy-in-use features and you should become familiar with
+		the fact that many common things can be achieved without any programming knowledge, whereas
+		Smarty requires complicated or strange-looking algorithms from you in the same place. This template
+		engine tries to avoid it - the helpers are useful not only for the non-programmers. Other
+		template designers will find them as easier in use and keeping the code much cleaner and simpler.</para>
 	</appendix>
 	<appendix label="B" id="appendix.b">
 		<title>Configuration directives</title>
@@ -5813,7 +5905,7 @@ try{
 			<glossentry id="plugins">
 				<glossterm>plugins</glossterm>
 				<glossdef>
-				<para>(string) Defines the directory, where the plugins are stored. The directory has to be writeable in order to store them plugin loader cache data. If not set, the plugins are not loaded.
+				<para>(string) Defines the directory, where the plugins are stored. The directory has to be writeable in order to store them plugin loader cache data. If not set, the plugins are not loaded. Optionally, an array of plugin directories can be specified. OPT will load the plugins in all of them then.
 				</para>
 				</glossdef>
 			</glossentry>
@@ -6256,7 +6348,7 @@ bar]]></programlisting>
 	<appendix label="H" id="appendix.h">
 		<title>In the next release</title>
 		<para>In the nearest future, we will start implementing a new template compiler for OPT,
-		which fully supports XHTML language. The version with the compiler will be released as
+		which fully supports the XHTML language. The version with the compiler will be released as
 		OPT 2.0.0 because of the backward incompability. During the development process, there
 		may appear also the releases of 1.1.x branch with bugfixes.</para>
 	</appendix>

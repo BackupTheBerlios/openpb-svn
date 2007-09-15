@@ -1156,10 +1156,11 @@ $template = '{compiler}{tag1}
 		{
 			try
 			{
-				$this->opt->compiler->parse(NULL, '{instruction
-test="foo"
-  bar = "bar" }');
-  				return 1;
+				$result = $this->opt->compiler->parse(NULL, '{compiler	
+					test="foo"
+						bar = "bar" } {/compiler}');
+				$template = "BEGIN COMPILER SESSION\r\nEND COMPILER SESSION";
+  				$this -> assertEquals($result, $template);
 			}
 			catch(optException $exc)
 			{
@@ -1172,7 +1173,7 @@ test="foo"
 			try
 			{
 				$template = '<test foo:attribute="{$variable}" opt:attribute="{$value}"/>';
-				echo $result = $this->opt->compiler->parse(NULL, $template);
+				$result = $this->opt->compiler->parse(NULL, $template);
 				$this -> assertEquals('<test foo:attribute="<'.'?php echo $this->data[\'variable\']; ?'.'>" opt:attribute="{$value}"/>', $result);
 			}
 			catch(optException $exc)
